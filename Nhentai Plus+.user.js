@@ -7,7 +7,7 @@
 // @match        https://nhentai.net/*
 // @require      https://code.jquery.com/jquery-3.6.0.min.js
 // @icon         https://i.imgur.com/4zMY2VD.png
-// @license      none
+// @license      MIT
 // @grant        GM.setValue
 // @grant        GM.getValue
 // @grant        GM.addStyle
