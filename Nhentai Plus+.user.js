@@ -192,7 +192,7 @@ function shuffleArray(array) {
 
 //------------------------  **Nhentai Related Manga Button**  ------------------
 
-//------------------------  **Nhentai English Filter**  ----------------------  
+
 //------------------------  **Nhentai English Filter**  ----------------------
 var pathname = window.location.pathname;
 var searchQuery = window.location.search.split('=')[1] || '';
