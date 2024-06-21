@@ -298,31 +298,67 @@ if (window.location.href.includes('/settings')) {
         notFoundMessage.remove();
     }
 
-
     // Add settings form
     const settingsHtml = `
+        <style>
+            #content {
+                padding: 20px;
+                background: #1a1a1a;
+                color: #fff;
+                border-radius: 5px;
+            }
+            #settingsForm {
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+            }
+            #settingsForm label {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+            #settingsForm input[type="text"], #settingsForm input[type="password"] {
+                width: 100%;
+                padding: 5px;
+                border-radius: 3px;
+                border: 1px solid #333;
+                background: #333;
+                color: #fff;
+            }
+            #settingsForm button {
+                padding: 10px;
+                background: #2a2a2a;
+                border: 1px solid #333;
+                border-radius: 3px;
+                color: #fff;
+                cursor: pointer;
+            }
+            #settingsForm button:hover {
+                background: #333;
+            }
+        </style>
         <div id="content">
             <h1>Settings</h1>
             <form id="settingsForm">
                 <label>
                     <input type="checkbox" id="findSimilarEnabled">
                     Enable Find Similar Button
-                </label><br>
+                </label>
                 <label>
                     <input type="checkbox" id="englishFilterEnabled">
                     Enable English Filter Button
-                </label><br>
+                </label>
                 <label>
                     <input type="checkbox" id="autoLoginEnabled">
                     Enable Auto Login
-                </label><br>
+                </label>
                 <div id="autoLoginCredentials">
                     <label>
                         Email: <input type="text" id="email">
-                    </label><br>
+                    </label>
                     <label>
                         Password: <input type="password" id="password">
-                    </label><br>
+                    </label>
                 </div>
                 <button type="submit">Save Settings</button>
             </form>
@@ -370,4 +406,5 @@ if (window.location.href.includes('/settings')) {
         $('#autoLoginCredentials').toggle(this.checked);
     });
 }
+
 //----------------------------**Settings**-----------------------------
