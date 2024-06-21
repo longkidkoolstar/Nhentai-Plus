@@ -229,7 +229,7 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
     }
 })();
 //------------------------  **Nhentai English Filter**  ----------------------
-//------------------------  **Nhentai English Filter**  ----------------------  
+ 
 
 //------------------------  **Nhentai Auto Login**  --------------------------
 (async function() {
@@ -255,7 +255,7 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
 })();
 //------------------------  **Nhentai Auto Login**  --------------------------
 
-//----------------------------**Settings**-----------------------------
+
 
 //----------------------------**Settings**-----------------------------
 
