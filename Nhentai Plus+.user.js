@@ -6,7 +6,8 @@
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
 // @require      https://code.jquery.com/jquery-3.6.0.min.js
-// @icon         https://i.imgur.com/1lihxY2.png
+// @icon         https://i.imgur.com/4zMY2VD.png
+// @license      none
 // @grant        GM.setValue
 // @grant        GM.getValue
 // @grant        GM.addStyle
