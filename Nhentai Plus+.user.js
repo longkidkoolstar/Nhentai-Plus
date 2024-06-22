@@ -345,34 +345,36 @@ addBookmarkButton(); // Call the function to add the bookmark button
 
 
 // Delete error message on unsupported bookmarks page
-if (window.location.href.includes('/bookmarks')) {
-    // Remove not found heading
-    const notFoundHeading = document.querySelector('h1');
-    if (notFoundHeading?.textContent === '404 – Not Found') {
-        notFoundHeading.remove();
-    }
+(async function() {
+    if (window.location.href.includes('/bookmarks')) {
+        // Remove not found heading
+        const notFoundHeading = document.querySelector('h1');
+        if (notFoundHeading?.textContent === '404 – Not Found') {
+            notFoundHeading.remove();
+        }
 
-    // Remove not found message
-    const notFoundMessage = document.querySelector('p');
-    if (notFoundMessage?.textContent === "Looks like what you're looking for isn't here.") {
-        notFoundMessage.remove();
-    }
+        // Remove not found message
+        const notFoundMessage = document.querySelector('p');
+        if (notFoundMessage?.textContent === "Looks like what you're looking for isn't here.") {
+            notFoundMessage.remove();
+        }
 
-    // Get bookmarked pages from localStorage
-    const bookmarkedPages = await GM.getValue('bookmarkedPages', []);
+        // Get bookmarked pages from localStorage
+        const bookmarkedPages = await GM.getValue('bookmarkedPages', []);
 
-    // Display bookmarked pages
-    if (Array.isArray(bookmarkedPages)) {
-        const bookmarksList = $('<ul class="bookmarks">');
-        bookmarkedPages.forEach(page => {
-            const listItem = $(`<li><a href="${page}">${page}</a></li>`);
-            bookmarksList.append(listItem);
-        });
-        $('body').append(bookmarksList);
-    } else {
-        console.error('Bookmarked pages is not an array');
+        // Display bookmarked pages
+        if (Array.isArray(bookmarkedPages)) {
+            const bookmarksList = $('<ul class="bookmarks">');
+            bookmarkedPages.forEach(page => {
+                const listItem = $(`<li><a href="${page}">${page}</a></li>`);
+                bookmarksList.append(listItem);
+            });
+            $('body').append(bookmarksList);
+        } else {
+            console.error('Bookmarked pages is not an array');
+        }
     }
-}
+})();
 // ------------------------  *Bookmarks**  ------------------
 
 
