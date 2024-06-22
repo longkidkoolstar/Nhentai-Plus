@@ -231,7 +231,7 @@ async function addFindAltButton() {
         const titleText = titleElement.text();
 
         // Remove text inside square brackets [] and parentheses ()
-        const cleanedTitleText = titleText.replace(/\[.*?\]|\(.*?\)/g, '').trim();
+        const cleanedTitleText = titleText.replace(/\[.*?\]|\(.*?\)|\d+/g, '').trim();
 
         // Find the search input
         const searchInput = $('input[name="q"]');
@@ -249,9 +249,7 @@ async function addFindAltButton() {
     });
 
     // Insert 'Find Similar' button next to the download button
-
-        $(downloadButton).after(copyTitleButton);
-   
+    $(downloadButton).after(copyTitleButton);
 }
 // Call the function to add the Copy Title button
 addFindAltButton();
