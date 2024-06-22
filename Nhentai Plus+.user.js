@@ -192,6 +192,190 @@ function shuffleArray(array) {
 
 //------------------------  **Nhentai Related Manga Button**  ------------------
 
+//-----------------------  **Find Alternative Manga Button**  ------------------
+
+
+
+
+// Adds a button to the page that allows the user to find alternative manga to the current one.
+// Checks if the feature is enabled in the settings before appending the button.
+
+async function addFindAltButton() {
+    const findAltEnabled = await GM.getValue('findAltEnabled', true);
+    if (!findAltEnabled) return;
+
+    const copyTitleButtonHtml = `
+        <a class="btn btn-primary btn-disabled tooltip copy-title">
+            <i class="fas fa-code-branch"></i>
+            <span>Find Alt.</span>
+            <div class="top">Click to find alternative manga to this one<i></i></div>
+        </a>
+    `;
+    const copyTitleButton = $(copyTitleButtonHtml);
+
+    // Handle click event for the button
+    copyTitleButton.click(function() {
+        // Get the title element
+        const titleElement = $('h1.title');
+        if (!titleElement.length) {
+            console.log('Title element not found.');
+            return;
+        }
+
+        // Extract the text content
+        const titleText = titleElement.text();
+
+        // Remove text inside square brackets [] and parentheses ()
+        const cleanedTitleText = titleText.replace(/\[.*?\]|\(.*?\)/g, '').trim();
+
+        // Find the search input
+        const searchInput = $('input[name="q"]');
+        if (searchInput.length > 0) {
+            // Update search input value with cleaned title text
+            searchInput.val(cleanedTitleText);
+            // Click the search button
+            const searchButton = $('button[type="submit"]');
+            if (searchButton.length) {
+                searchButton.click();
+            }
+        } else {
+            console.log('Search input not found.');
+        }
+    });
+
+    // Create a MutationObserver to watch for changes in the DOM
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            if (mutation.addedNodes.length) {
+                const findSimilarButton = $('.find-similar');
+                if (findSimilarButton.length) {
+                    findSimilarButton.after(copyTitleButton);
+                    observer.disconnect(); // Stop observing once the button is added
+                }
+            }
+        });
+    });
+
+    // Start observing the document body for child list changes
+    observer.observe(document.body, { childList: true, subtree: true });
+}
+// Call the function to add the Copy Title button
+addFindAltButton();
+
+//------------------------  **Find Alternative Manga Button**  ------------------
+
+
+// ------------------------  *Bookmarks**  ------------------
+
+// Function to create and insert bookmark button
+async function createBookmarkButton() {
+    // Check if the page is already bookmarked
+    const bookmarkedPages = await GM.getValue('bookmarkedPages', []);
+    const currentPage = window.location.href;
+    const isBookmarked = bookmarkedPages.includes(currentPage);
+
+    // Bookmark button HTML
+    const bookmarkButtonHtml = `
+        <a class="btn btn-primary bookmark-btn" style="margin-left: 10px;">
+            <i class="fa ${isBookmarked ? 'fa-bookmark' : 'fa-bookmark-o'}"></i>
+            <span>${isBookmarked ? 'Unbookmark' : 'Bookmark'}</span>
+        </a>
+    `;
+    const bookmarkButton = $(bookmarkButtonHtml);
+
+    // Append the bookmark button as a child of the h1 element
+    document.querySelector("#content > h1").append(bookmarkButton[0]);
+
+    // Handle click event for the bookmark button
+    bookmarkButton.click(async function() {
+        const bookmarkedPages = await GM.getValue('bookmarkedPages', []);
+        const currentPage = window.location.href;
+        const isBookmarked = bookmarkedPages.includes(currentPage);
+
+        if (isBookmarked) {
+            // Remove the bookmark
+            const updatedBookmarkedPages = bookmarkedPages.filter(page => page !== currentPage);
+            await GM.setValue('bookmarkedPages', updatedBookmarkedPages);
+            $(this).find('i').removeClass('fa-bookmark').addClass('fa-bookmark-o');
+            $(this).find('span').text('Bookmark');
+        } else {
+            // Add the bookmark
+            bookmarkedPages.push(currentPage);
+            await GM.setValue('bookmarkedPages', bookmarkedPages);
+            $(this).find('i').removeClass('fa-bookmark-o').addClass('fa-bookmark');
+            $(this).find('span').text('Unbookmark');
+        }
+    });
+}
+
+// Only execute if not on the settings page
+if (window.location.href.indexOf('nhentai.net/settings') === -1) {
+    createBookmarkButton();
+}
+
+
+
+
+
+
+function addBookmarkButton() {
+    // Create the bookmark button
+    const bookmarkButtonHtml = `
+      <li>
+        <a href="/bookmarks/">
+          <i class="fa fa-bookmark"></i>
+          Bookmarks
+        </a>
+      </li>
+    `;
+    const bookmarkButton = $(bookmarkButtonHtml);
+
+    // Append the bookmark button to the dropdown menu
+    const dropdownMenu = $('ul.dropdown-menu');
+    dropdownMenu.append(bookmarkButton);
+
+    // Append the bookmark button to the menu
+    const menu = $('ul.menu.left');
+    menu.append(bookmarkButton);
+}
+
+addBookmarkButton(); // Call the function to add the bookmark button
+
+
+// Delete error message on unsupported bookmarks page
+if (window.location.href.includes('/bookmarks')) {
+    // Remove not found heading
+    const notFoundHeading = document.querySelector('h1');
+    if (notFoundHeading?.textContent === '404 – Not Found') {
+        notFoundHeading.remove();
+    }
+
+    // Remove not found message
+    const notFoundMessage = document.querySelector('p');
+    if (notFoundMessage?.textContent === "Looks like what you're looking for isn't here.") {
+        notFoundMessage.remove();
+    }
+
+    // Get bookmarked pages from localStorage
+    const bookmarkedPages = await GM.getValue('bookmarkedPages', []);
+
+    // Display bookmarked pages
+    if (Array.isArray(bookmarkedPages)) {
+        const bookmarksList = $('<ul class="bookmarks">');
+        bookmarkedPages.forEach(page => {
+            const listItem = $(`<li><a href="${page}">${page}</a></li>`);
+            bookmarksList.append(listItem);
+        });
+        $('body').append(bookmarksList);
+    } else {
+        console.error('Bookmarked pages is not an array');
+    }
+}
+// ------------------------  *Bookmarks**  ------------------
+
+
+
+
 
 //------------------------  **Nhentai English Filter**  ----------------------
 var pathname = window.location.pathname;
@@ -231,6 +415,8 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
 })();
 //------------------------  **Nhentai English Filter**  ----------------------
  
+
+
 
 //------------------------  **Nhentai Auto Login**  --------------------------
 (async function() {
@@ -361,6 +547,10 @@ if (window.location.href.includes('/settings')) {
                         Password: <input type="password" id="password">
                     </label>
                 </div>
+                <label>
+                    <input type="checkbox" id="findAltmanagaEnabled">
+                    Enable Find Altmanaga Button
+                </label>
                 <button type="submit">Save Settings</button>
             </form>
         </div>
@@ -374,12 +564,14 @@ if (window.location.href.includes('/settings')) {
         const autoLoginEnabled = await GM.getValue('autoLoginEnabled', true);
         const email = await GM.getValue('email', '');
         const password = await GM.getValue('password', '');
+        const findAltmanagaEnabled = await GM.getValue('findAltmanagaEnabled', true);
 
         $('#findSimilarEnabled').prop('checked', findSimilarEnabled);
         $('#englishFilterEnabled').prop('checked', englishFilterEnabled);
         $('#autoLoginEnabled').prop('checked', autoLoginEnabled);
         $('#email').val(email);
         $('#password').val(password);
+        $('#findAltmanagaEnabled').prop('checked', findAltmanagaEnabled);
         $('#autoLoginCredentials').toggle(autoLoginEnabled);
     })();
 
@@ -392,12 +584,14 @@ if (window.location.href.includes('/settings')) {
         const autoLoginEnabled = $('#autoLoginEnabled').prop('checked');
         const email = $('#email').val();
         const password = $('#password').val();
+        const findAltmanagaEnabled = $('#findAltmanagaEnabled').prop('checked');
 
         await GM.setValue('findSimilarEnabled', findSimilarEnabled);
         await GM.setValue('englishFilterEnabled', englishFilterEnabled);
         await GM.setValue('autoLoginEnabled', autoLoginEnabled);
         await GM.setValue('email', email);
         await GM.setValue('password', password);
+        await GM.setValue('findAltmanagaEnabled', findAltmanagaEnabled);
 
         alert('Settings saved!');
     });
@@ -407,5 +601,4 @@ if (window.location.href.includes('/settings')) {
         $('#autoLoginCredentials').toggle(this.checked);
     });
 }
-
 //----------------------------**Settings**-----------------------------
