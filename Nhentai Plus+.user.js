@@ -269,6 +269,12 @@ addFindAltButton();
 
 // Function to create and insert bookmark button
 async function createBookmarkButton() {
+    // Check if the feature is enabled in settings
+    const bookmarksEnabled = await GM.getValue('bookmarksEnabled', true);
+    if (!bookmarksEnabled) {
+        return;
+    }
+
     // Check if the page is already bookmarked
     const bookmarkedPages = await GM.getValue('bookmarkedPages', []);
     const currentPage = window.location.href;
@@ -278,7 +284,6 @@ async function createBookmarkButton() {
     const bookmarkButtonHtml = `
         <a class="btn btn-primary bookmark-btn" style="margin-left: 10px;">
             <i class="fa ${isBookmarked ? 'fa-bookmark' : 'fa-bookmark-o'}"></i>
-            <span>${isBookmarked ? 'Unbookmark' : 'Bookmark'}</span>
         </a>
     `;
     const bookmarkButton = $(bookmarkButtonHtml);
@@ -297,17 +302,14 @@ async function createBookmarkButton() {
             const updatedBookmarkedPages = bookmarkedPages.filter(page => page !== currentPage);
             await GM.setValue('bookmarkedPages', updatedBookmarkedPages);
             $(this).find('i').removeClass('fa-bookmark').addClass('fa-bookmark-o');
-            $(this).find('span').text('Bookmark');
         } else {
             // Add the bookmark
             bookmarkedPages.push(currentPage);
             await GM.setValue('bookmarkedPages', bookmarkedPages);
             $(this).find('i').removeClass('fa-bookmark-o').addClass('fa-bookmark');
-            $(this).find('span').text('Unbookmark');
         }
     });
 }
-
 // Only execute if not on the settings page
 if (window.location.href.indexOf('nhentai.net/settings') === -1) {
     createBookmarkButton();
@@ -551,6 +553,10 @@ if (window.location.href.includes('/settings')) {
                     <input type="checkbox" id="findAltmanagaEnabled">
                     Enable Find Altmanaga Button
                 </label>
+                <label>
+                    <input type="checkbox" id="bookmarksEnabled">
+                    Enable Bookmarks Button
+                </label>
                 <button type="submit">Save Settings</button>
             </form>
         </div>
@@ -565,6 +571,7 @@ if (window.location.href.includes('/settings')) {
         const email = await GM.getValue('email', '');
         const password = await GM.getValue('password', '');
         const findAltmanagaEnabled = await GM.getValue('findAltmanagaEnabled', true);
+        const bookmarksEnabled = await GM.getValue('bookmarksEnabled', true);
 
         $('#findSimilarEnabled').prop('checked', findSimilarEnabled);
         $('#englishFilterEnabled').prop('checked', englishFilterEnabled);
@@ -572,6 +579,7 @@ if (window.location.href.includes('/settings')) {
         $('#email').val(email);
         $('#password').val(password);
         $('#findAltmanagaEnabled').prop('checked', findAltmanagaEnabled);
+        $('#bookmarksEnabled').prop('checked', bookmarksEnabled);
         $('#autoLoginCredentials').toggle(autoLoginEnabled);
     })();
 
@@ -585,6 +593,7 @@ if (window.location.href.includes('/settings')) {
         const email = $('#email').val();
         const password = $('#password').val();
         const findAltmanagaEnabled = $('#findAltmanagaEnabled').prop('checked');
+        const bookmarksEnabled = $('#bookmarksEnabled').prop('checked');
 
         await GM.setValue('findSimilarEnabled', findSimilarEnabled);
         await GM.setValue('englishFilterEnabled', englishFilterEnabled);
@@ -592,6 +601,7 @@ if (window.location.href.includes('/settings')) {
         await GM.setValue('email', email);
         await GM.setValue('password', password);
         await GM.setValue('findAltmanagaEnabled', findAltmanagaEnabled);
+        await GM.setValue('bookmarksEnabled', bookmarksEnabled);
 
         alert('Settings saved!');
     });
