@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      2.0
+// @version      2.1
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -201,11 +201,18 @@ function shuffleArray(array) {
 // Checks if the feature is enabled in the settings before appending the button.
 
 async function addFindAltButton() {
-    const findAltEnabled = await GM.getValue('findAltEnabled', true);
-    if (!findAltEnabled) return;
+    const findAltmangaEnabled = await GM.getValue('findAltmangaEnabled', true);
+    if (!findAltmangaEnabled) return;
+
+    // Get the download button
+    const downloadButton = document.getElementById('download');
+    if (!downloadButton) {
+        console.log('Download button not found.');
+        return;
+    }
 
     const copyTitleButtonHtml = `
-        <a class="btn btn-primary btn-disabled tooltip copy-title">
+        <a class="btn btn-primary btn-disabled tooltip find-similar">
             <i class="fas fa-code-branch"></i>
             <span>Find Alt.</span>
             <div class="top">Click to find alternative manga to this one<i></i></div>
@@ -243,21 +250,10 @@ async function addFindAltButton() {
         }
     });
 
-    // Create a MutationObserver to watch for changes in the DOM
-    const observer = new MutationObserver(function(mutations) {
-        mutations.forEach(function(mutation) {
-            if (mutation.addedNodes.length) {
-                const findSimilarButton = $('.find-similar');
-                if (findSimilarButton.length) {
-                    findSimilarButton.after(copyTitleButton);
-                    observer.disconnect(); // Stop observing once the button is added
-                }
-            }
-        });
-    });
+    // Insert 'Find Similar' button next to the download button
 
-    // Start observing the document body for child list changes
-    observer.observe(document.body, { childList: true, subtree: true });
+        $(downloadButton).after(copyTitleButton);
+   
 }
 // Call the function to add the Copy Title button
 addFindAltButton();
@@ -552,8 +548,8 @@ if (window.location.href.includes('/settings')) {
                     </label>
                 </div>
                 <label>
-                    <input type="checkbox" id="findAltmanagaEnabled">
-                    Enable Find Altmanaga Button
+                    <input type="checkbox" id="findAltmangaEnabled">
+                    Enable Find Altmanga Button
                 </label>
                 <label>
                     <input type="checkbox" id="bookmarksEnabled">
@@ -572,7 +568,7 @@ if (window.location.href.includes('/settings')) {
         const autoLoginEnabled = await GM.getValue('autoLoginEnabled', true);
         const email = await GM.getValue('email', '');
         const password = await GM.getValue('password', '');
-        const findAltmanagaEnabled = await GM.getValue('findAltmanagaEnabled', true);
+        const findAltmangaEnabled = await GM.getValue('findAltmangaEnabled', true);
         const bookmarksEnabled = await GM.getValue('bookmarksEnabled', true);
 
         $('#findSimilarEnabled').prop('checked', findSimilarEnabled);
@@ -580,7 +576,7 @@ if (window.location.href.includes('/settings')) {
         $('#autoLoginEnabled').prop('checked', autoLoginEnabled);
         $('#email').val(email);
         $('#password').val(password);
-        $('#findAltmanagaEnabled').prop('checked', findAltmanagaEnabled);
+        $('#findAltmangaEnabled').prop('checked', findAltmangaEnabled);
         $('#bookmarksEnabled').prop('checked', bookmarksEnabled);
         $('#autoLoginCredentials').toggle(autoLoginEnabled);
     })();
@@ -594,7 +590,7 @@ if (window.location.href.includes('/settings')) {
         const autoLoginEnabled = $('#autoLoginEnabled').prop('checked');
         const email = $('#email').val();
         const password = $('#password').val();
-        const findAltmanagaEnabled = $('#findAltmanagaEnabled').prop('checked');
+        const findAltmangaEnabled = $('#findAltmangaEnabled').prop('checked');
         const bookmarksEnabled = $('#bookmarksEnabled').prop('checked');
 
         await GM.setValue('findSimilarEnabled', findSimilarEnabled);
@@ -602,7 +598,7 @@ if (window.location.href.includes('/settings')) {
         await GM.setValue('autoLoginEnabled', autoLoginEnabled);
         await GM.setValue('email', email);
         await GM.setValue('password', password);
-        await GM.setValue('findAltmanagaEnabled', findAltmanagaEnabled);
+        await GM.setValue('findAltmangaEnabled', findAltmangaEnabled);
         await GM.setValue('bookmarksEnabled', bookmarksEnabled);
 
         alert('Settings saved!');
