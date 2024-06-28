@@ -38,6 +38,9 @@ async function createFindSimilarButton() {
             <i class="fas fa-search"></i>
             <span>Find Similar</span>
             <div class="top">Click to find similar hentai<i></i></div>
+                        <div id="lockedTagsCount">Locked tags: ${lockedTags.length}</div>
+
+
         </a>
     `;
     const findSimilarButton = $(findSimilarButtonHtml);
@@ -53,8 +56,21 @@ async function createFindSimilarButton() {
             return;
         }
 
-        // Find all tag links within the container
-        const tagLinks = tagsContainer.find('a.tag');
+       
+       // Update locked tags counter
+
+       $('#lockedTagsCount').text(`Locked tags: ${lockedTags.length}`);
+
+       // Find all tag links within the container
+
+       const tagLinks = tagsContainer.find('a.tag');
+
+      // Update locked tags counter
+
+       $('#lockedTagsCount').text(`Locked tags: ${lockedTags.length}`);
+
+    
+
 
         if (!tagLinks.length) {
             console.log('No tag links found.');
