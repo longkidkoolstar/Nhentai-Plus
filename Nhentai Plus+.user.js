@@ -59,19 +59,21 @@ async function createFindSimilarButton() {
        
        // Update locked tags counter
 
-       $('#lockedTagsCount').text(`Locked tags: ${lockedTags.length}`);
+        // Update locked tags counter
+        const lockedTagsCount = lockedTags.length;
+        if (lockedTagsCount > 0) {
+            $('#lockedTagsCount').text(`Locked tags: ${lockedTagsCount}`).show();
+        } else {
+            $('#lockedTagsCount').hide();
+        }
 
        // Find all tag links within the container
 
        const tagLinks = tagsContainer.find('a.tag');
 
-      // Update locked tags counter
-
-       $('#lockedTagsCount').text(`Locked tags: ${lockedTags.length}`);
-
-    
-
-
+     
+     
+       // Update locked tags counter
         if (!tagLinks.length) {
             console.log('No tag links found.');
             return;
