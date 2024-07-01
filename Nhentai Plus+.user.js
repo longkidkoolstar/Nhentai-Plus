@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      3.2
+// @version      3.2.1
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -47,24 +47,16 @@ async function createFindSimilarButton() {
 
     // Insert 'Find Similar' button next to the download button
     $(downloadButton).after(findSimilarButton);
-
+       
+    
+    
+    $('#lockedTagsCount').hide();
     // Handle click event for 'Find Similar' button
     findSimilarButton.click(async function() {
         const tagsContainer = $('div.tag-container.field-name:contains("Tags:")');
         if (!tagsContainer.length) {
             console.log('Tags container not found.');
             return;
-        }
-
-       
-       // Update locked tags counter
-
-        // Update locked tags counter
-        const lockedTagsCount = lockedTags.length;
-        if (lockedTagsCount > 0) {
-            $('#lockedTagsCount').text(`Locked tags: ${lockedTagsCount}`).show();
-        } else {
-            $('#lockedTagsCount').hide();
         }
 
        // Find all tag links within the container
@@ -163,6 +155,21 @@ function createSlider() {
 // Call the function to create 'Find Similar' button
 createFindSimilarButton();
 
+function updateLockedTagsCounter() {
+    const lockedTagsCount = lockedTags.length;
+    const lockedTagsCounter = $('#lockedTagsCount');
+    if (lockedTagsCount > 0) {
+        lockedTagsCounter.text(`Locked tags: ${lockedTagsCount}`).show();
+        if (lockedTagsCount > maxTagsToSelect) {
+            lockedTagsCounter.css('color', 'red');
+        } else {
+            lockedTagsCounter.css('color', ''); // Reset color to default
+        }
+    } else {
+        lockedTagsCounter.hide();
+    }
+}
+
 // Event listener for locking/unlocking tags
 $(document).on('click', 'span.lock-button', function(event) {
     event.stopPropagation(); // Prevent tag link click event from firing
@@ -176,10 +183,12 @@ $(document).on('click', 'span.lock-button', function(event) {
             lockedTags.splice(index, 1);
         }
         $(this).html('<i class="fas fa-plus"></i>'); // Change icon to plus
+        updateLockedTagsCounter();
     } else {
         // Lock the tag
         lockedTags.push(tagName);
         $(this).html('<i class="fas fa-minus"></i>'); // Change icon to minus
+        updateLockedTagsCounter();
     }
 });
 
