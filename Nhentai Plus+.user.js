@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      3.2.1
+// @version      3.3
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -698,20 +698,105 @@ addBookmarkButton(); // Call the function to add the bookmark button
             notFoundMessage.remove();
         }
 
-        // Get bookmarked pages from localStorage
-        const bookmarkedPages = await GM.getValue('bookmarkedPages', []);
+   // Function to fetch the title of a webpage
+   async function fetchTitle(url) {
+    try {
+        const response = await fetch(url);
+        const text = await response.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(text, 'text/html');
+        let title = doc.querySelector('title').innerText;
 
-        // Display bookmarked pages
-        if (Array.isArray(bookmarkedPages)) {
-            const bookmarksList = $('<ul class="bookmarks">');
-            bookmarkedPages.forEach(page => {
-                const listItem = $(`<li><a href="${page}">${page}</a></li>`);
-                bookmarksList.append(listItem);
-            });
-            $('body').append(bookmarksList);
-        } else {
-            console.error('Bookmarked pages is not an array');
+        // Remove "» nhentai: hentai doujinshi and manga" from the title
+        const unwantedPart = "» nhentai: hentai doujinshi and manga";
+        if (title.includes(unwantedPart)) {
+            title = title.replace(unwantedPart, '').trim();
         }
+
+        return title;
+    } catch (error) {
+        console.error('Error fetching title for:', url, error);
+        return url; // Fallback to URL if fetching title fails
+    }
+}
+
+// Get bookmarked pages from localStorage
+const bookmarkedPages = await GM.getValue('bookmarkedPages', []);
+
+// Display bookmarked pages
+if (Array.isArray(bookmarkedPages)) {
+    const bookmarksContainer = $('<div id="bookmarksContainer" class="container">');
+    const bookmarksTitle = $('<h2 class="bookmarks-title">Bookmarked Pages</h2>');
+    const bookmarksList = $('<ul class="bookmarks-list">');
+
+    for (const page of bookmarkedPages) {
+        const title = await fetchTitle(page);
+        const listItem = $(`<li><a href="${page}" class="bookmark-link">${title}</a></li>`);
+        bookmarksList.append(listItem);
+    }
+
+    bookmarksContainer.append(bookmarksTitle);
+    bookmarksContainer.append(bookmarksList);
+    $('body').append(bookmarksContainer);
+
+    // Add some CSS to style the bookmarks list
+    const styles = `
+    #bookmarksContainer {
+        margin: 20px auto; /* Center horizontally */
+        padding: 20px;
+        background-color: #2c2c2c;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        width: 80%; /* Adjust width as needed */
+        max-width: 600px; /* Limit width on larger screens */
+    }
+    .bookmarks-title {
+        font-size: 24px;
+        margin-bottom: 10px;
+        color: #e63946;
+    }
+    .bookmarks-list {
+        list-style: none;
+        padding: 0;
+    }
+    .bookmark-link {
+        display: block;
+        padding: 10px;
+        font-size: 18px;
+        color: #f1faee;
+        text-decoration: none;
+        transition: background-color 0.3s, color 0.3s;
+    }
+    .bookmark-link:hover {
+        background-color: #e63946;
+        color: #1d3557;
+    }
+
+    /* Media query for smaller screens */
+    @media only screen and (max-width: 600px) {
+        #bookmarksContainer {
+            width: 90%; /* Adjust width for smaller screens */
+            margin: 10px auto; /* Center horizontally with smaller margin */
+        }
+        .bookmarks-title {
+            font-size: 20px;
+        }
+        .bookmark-link {
+            font-size: 16px;
+        }
+    }
+`;
+
+    const styleSheet = document.createElement("style");
+    styleSheet.type = "text/css";
+    styleSheet.innerText = styles;
+    document.head.appendChild(styleSheet);
+
+} else {
+    console.error('Bookmarked pages is not an array');
+}
+
+
     }
 })();
 // ------------------------  *Bookmarks**  ------------------
