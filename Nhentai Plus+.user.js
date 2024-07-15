@@ -698,106 +698,136 @@ addBookmarkButton(); // Call the function to add the bookmark button
             notFoundMessage.remove();
         }
 
-   // Function to fetch the title of a webpage
-   async function fetchTitle(url) {
-    try {
-        const response = await fetch(url);
-        const text = await response.text();
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(text, 'text/html');
-        let title = doc.querySelector('title').innerText;
+// Function to fetch the title of a webpage with caching and retries
+async function fetchTitleWithCacheAndRetry(url, retries = 3) {
+    const cachedTitle = await GM.getValue(url);
+    if (cachedTitle) {
+        return cachedTitle;
+    }
 
-        // Remove "» nhentai: hentai doujinshi and manga" from the title
-        const unwantedPart = "» nhentai: hentai doujinshi and manga";
-        if (title.includes(unwantedPart)) {
-            title = title.replace(unwantedPart, '').trim();
+    for (let i = 0; i < retries; i++) {
+        try {
+            const response = await fetch(url);
+            if (response.status === 429) {
+                // If we get a 429, wait for a bit before retrying
+                await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+                continue;
+            }
+            const text = await response.text();
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(text, 'text/html');
+            let title = doc.querySelector('title').innerText;
+
+            // Remove "» nhentai: hentai doujinshi and manga" from the title
+            const unwantedPart = "» nhentai: hentai doujinshi and manga";
+            if (title.includes(unwantedPart)) {
+                title = title.replace(unwantedPart, '').trim();
+            }
+
+            // Cache the title
+            await GM.setValue(url, title);
+
+            return title;
+        } catch (error) {
+            console.error(`Error fetching title for: ${url}. Attempt ${i + 1} of ${retries}`, error);
+            if (i === retries - 1) {
+                return url; // Fallback to URL if all retries fail
+            }
         }
-
-        return title;
-    } catch (error) {
-        console.error('Error fetching title for:', url, error);
-        return url; // Fallback to URL if fetching title fails
     }
 }
 
-// Get bookmarked pages from localStorage
-const bookmarkedPages = await GM.getValue('bookmarkedPages', []);
+// Function to display bookmarked pages with active loading for unfetched bookmarks
+async function displayBookmarkedPages() {
+    const bookmarkedPages = await GM.getValue('bookmarkedPages', []);
 
-// Display bookmarked pages
-if (Array.isArray(bookmarkedPages)) {
-    const bookmarksContainer = $('<div id="bookmarksContainer" class="container">');
-    const bookmarksTitle = $('<h2 class="bookmarks-title">Bookmarked Pages</h2>');
-    const bookmarksList = $('<ul class="bookmarks-list">');
+    if (Array.isArray(bookmarkedPages)) {
+        const bookmarksContainer = $('<div id="bookmarksContainer" class="container">');
+        const bookmarksTitle = $('<h2 class="bookmarks-title">Bookmarked Pages</h2>');
+        const bookmarksList = $('<ul class="bookmarks-list">');
 
-    for (const page of bookmarkedPages) {
-        const title = await fetchTitle(page);
-        const listItem = $(`<li><a href="${page}" class="bookmark-link">${title}</a></li>`);
-        bookmarksList.append(listItem);
-    }
+        bookmarksContainer.append(bookmarksTitle);
+        bookmarksContainer.append(bookmarksList);
+        $('body').append(bookmarksContainer);
 
-    bookmarksContainer.append(bookmarksTitle);
-    bookmarksContainer.append(bookmarksList);
-    $('body').append(bookmarksContainer);
+        // Add CSS styles
+        const styles = `
+            #bookmarksContainer {
+                margin: 20px auto;
+                padding: 20px;
+                background-color: #2c2c2c;
+                border-radius: 8px;
+                box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+                width: 80%;
+                max-width: 600px;
+            }
+            .bookmarks-title {
+                font-size: 24px;
+                margin-bottom: 10px;
+                color: #e63946;
+            }
+            .bookmarks-list {
+                list-style: none;
+                padding: 0;
+            }
+            .bookmark-link {
+                display: block;
+                padding: 10px;
+                font-size: 18px;
+                color: #f1faee;
+                text-decoration: none;
+                transition: background-color 0.3s, color 0.3s;
+            }
+            .bookmark-link:hover {
+                background-color: #e63946;
+                color: #1d3557;
+            }
 
-    // Add some CSS to style the bookmarks list
-    const styles = `
-    #bookmarksContainer {
-        margin: 20px auto; /* Center horizontally */
-        padding: 20px;
-        background-color: #2c2c2c;
-        border-radius: 8px;
-        box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-        width: 80%; /* Adjust width as needed */
-        max-width: 600px; /* Limit width on larger screens */
-    }
-    .bookmarks-title {
-        font-size: 24px;
-        margin-bottom: 10px;
-        color: #e63946;
-    }
-    .bookmarks-list {
-        list-style: none;
-        padding: 0;
-    }
-    .bookmark-link {
-        display: block;
-        padding: 10px;
-        font-size: 18px;
-        color: #f1faee;
-        text-decoration: none;
-        transition: background-color 0.3s, color 0.3s;
-    }
-    .bookmark-link:hover {
-        background-color: #e63946;
-        color: #1d3557;
-    }
+            @media only screen and (max-width: 600px) {
+                #bookmarksContainer {
+                    width: 90%;
+                    margin: 10px auto;
+                }
+                .bookmarks-title {
+                    font-size: 20px;
+                }
+                .bookmark-link {
+                    font-size: 16px;
+                }
+            }
+        `;
 
-    /* Media query for smaller screens */
-    @media only screen and (max-width: 600px) {
-        #bookmarksContainer {
-            width: 90%; /* Adjust width for smaller screens */
-            margin: 10px auto; /* Center horizontally with smaller margin */
+        const styleSheet = document.createElement("style");
+        styleSheet.type = "text/css";
+        styleSheet.innerText = styles;
+        document.head.appendChild(styleSheet);
+
+        // Fetch titles for each bookmark and update dynamically
+        for (const page of bookmarkedPages) {
+            // Append a loading list item first
+            const listItem = $(`<li><a href="${page}" class="bookmark-link">Loading...</a></li>`);
+            bookmarksList.append(listItem);
+
+            fetchTitleWithCacheAndRetry(page).then(title => {
+                // Update the list item with the fetched title
+                const updatedListItem = $(`<li><a href="${page}" class="bookmark-link">${title}</a></li>`);
+                listItem.replaceWith(updatedListItem);
+            }).catch(error => {
+                console.error(`Error fetching title for: ${page}`, error);
+                listItem.text("Failed to fetch title");
+            });
         }
-        .bookmarks-title {
-            font-size: 20px;
-        }
-        .bookmark-link {
-            font-size: 16px;
-        }
+
+    } else {
+        console.error('Bookmarked pages is not an array');
     }
-`;
-
-    const styleSheet = document.createElement("style");
-    styleSheet.type = "text/css";
-    styleSheet.innerText = styles;
-    document.head.appendChild(styleSheet);
-
-} else {
-    console.error('Bookmarked pages is not an array');
 }
 
+// Call the function to display bookmarked pages with active loading
+displayBookmarkedPages();
 
-    }
+
+}
 })();
 // ------------------------  *Bookmarks**  ------------------
 
