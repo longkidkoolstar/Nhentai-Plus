@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      3.4
+// @version      3.5
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -38,19 +38,16 @@ async function createFindSimilarButton() {
             <i class="fas fa-search"></i>
             <span>Find Similar</span>
             <div class="top">Click to find similar hentai<i></i></div>
-                        <div id="lockedTagsCount">Locked tags: ${lockedTags.length}</div>
-
-
+            <div id="lockedTagsCount">Locked tags: ${lockedTags.length}</div>
         </a>
     `;
     const findSimilarButton = $(findSimilarButtonHtml);
 
     // Insert 'Find Similar' button next to the download button
     $(downloadButton).after(findSimilarButton);
-       
-    
-    
+
     $('#lockedTagsCount').hide();
+
     // Handle click event for 'Find Similar' button
     findSimilarButton.click(async function() {
         const tagsContainer = $('div.tag-container.field-name:contains("Tags:")');
@@ -59,13 +56,10 @@ async function createFindSimilarButton() {
             return;
         }
 
-       // Find all tag links within the container
+        // Find all tag links within the container
+        const tagLinks = tagsContainer.find('a.tag');
 
-       const tagLinks = tagsContainer.find('a.tag');
-
-     
-     
-       // Update locked tags counter
+        // Update locked tags counter
         if (!tagLinks.length) {
             console.log('No tag links found.');
             return;
@@ -107,6 +101,32 @@ async function createFindSimilarButton() {
             searchInput.val(searchTags);
         } else {
             // If search input not found, create and submit a hidden form
+            const hiddenSearchFormHtml = `
+                <form role="search" action="/search/" method="GET" style="display: none;">
+                    <input type="hidden" name="q" value="${searchTags}" />
+                </form>
+            `;
+            const hiddenSearchForm = $(hiddenSearchFormHtml);
+            $('body').append(hiddenSearchForm);
+            hiddenSearchForm.submit();
+        }
+
+        // Create and display the slider (only once)
+        if (!$('#tagSlider').length) {
+            createSlider();
+        }
+    });
+
+    // Handle double-click event for 'Find Similar' button
+    findSimilarButton.dblclick(async function() {
+        const searchTags = lockedTags.join(' ');
+
+        const searchInput = $('input[name="q"]');
+        if (searchInput.length > 0) {
+            // Update search input value with locked tags only
+            searchInput.val(searchTags);
+        } else {
+            // If search input not found, create and submit a hidden form with locked tags only
             const hiddenSearchFormHtml = `
                 <form role="search" action="/search/" method="GET" style="display: none;">
                     <input type="hidden" name="q" value="${searchTags}" />
@@ -216,6 +236,7 @@ function shuffleArray(array) {
         [array[i], array[j]] = [array[j], array[i]];
     }
 }
+
 
 //------------------------  **Nhentai Related Manga Button**  ------------------
 
