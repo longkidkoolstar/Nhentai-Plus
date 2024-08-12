@@ -925,72 +925,79 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
 
 //----------------------------**Settings**-----------------------------
 
-function addSettingsButton() {
-    // Create the settings button
-    const settingsButtonHtml = `
-      <li>
-        <a href="/settings/">
-          <i class="fa fa-cog"></i>
-          Settings
-        </a>
-      </li>
-    `;
-    const settingsButton = $(settingsButtonHtml);
+(function() {
+    'use strict';
 
-    // Append the settings button to the dropdown menu
-    const dropdownMenu = $('ul.dropdown-menu');
-    dropdownMenu.append(settingsButton);
+    // Function to add the settings button to the menu
+    function addSettingsButton() {
+        // Create the settings button
+        const settingsButtonHtml = `
+          <li>
+            <a href="/settings/">
+              <i class="fa fa-cog"></i>
+              Settings
+            </a>
+          </li>
+        `;
+        const settingsButton = $(settingsButtonHtml);
 
-    // Append the settings button to the menu
-    const menu = $('ul.menu.left');
-    menu.append(settingsButton);
-}
+        // Append the settings button to the dropdown menu and the left menu
+        const dropdownMenu = $('ul.dropdown-menu');
+        dropdownMenu.append(settingsButton);
 
-// Call the function to add the settings button
-addSettingsButton();
-
-// To delete the error thing on the webpage since nhentai.net/settings isn't supported by the website
-if (window.location.href.includes('/settings')) {
-
-    // Remove the <h1>404 – Not Found</h1> element
-    const notFoundHeading = document.querySelector('h1');
-    if (notFoundHeading && notFoundHeading.textContent === '404 – Not Found') {
-        notFoundHeading.remove();
+        const menu = $('ul.menu.left');
+        menu.append(settingsButton);
     }
 
-    // Remove the <p>Looks like what you're looking for isn't here.</p> element
-    const notFoundMessage = document.querySelector('p');
-    if (notFoundMessage && notFoundMessage.textContent === "Looks like what you're looking for isn't here.") {
-        notFoundMessage.remove();
-    }
+    // Call the function to add the settings button
+    addSettingsButton();
 
-    // Add settings form
-    const settingsHtml = `
-        <style>
+    // Handle settings page
+    if (window.location.href.includes('/settings')) {
+        // Remove 404 Not Found elements
+        const notFoundHeading = document.querySelector('h1');
+        if (notFoundHeading && notFoundHeading.textContent === '404 – Not Found') {
+            notFoundHeading.remove();
+        }
+
+        const notFoundMessage = document.querySelector('p');
+        if (notFoundMessage && notFoundMessage.textContent === "Looks like what you're looking for isn't here.") {
+            notFoundMessage.remove();
+        }
+
+        // Add settings form and random hentai preferences
+        const settingsHtml = `
+            <style>
             #content {
                 padding: 20px;
                 background: #1a1a1a;
                 color: #fff;
                 border-radius: 5px;
             }
+            
             #settingsForm {
                 display: flex;
                 flex-direction: column;
                 gap: 10px;
             }
+            
             #settingsForm label {
                 display: flex;
                 align-items: center;
                 gap: 10px;
             }
-            #settingsForm input[type="text"], #settingsForm input[type="password"] {
-                width: 100%;
+            
+            #settingsForm input[type="text"],
+            #settingsForm input[type="password"],
+            #settingsForm input[type="number"] {
+                width: calc(100% - 12px); /* Adjust for padding and borders */
                 padding: 5px;
                 border-radius: 3px;
                 border: 1px solid #333;
                 background: #333;
                 color: #fff;
             }
+            
             #settingsForm button {
                 padding: 10px;
                 background: #2a2a2a;
@@ -999,93 +1006,383 @@ if (window.location.href.includes('/settings')) {
                 color: #fff;
                 cursor: pointer;
             }
+            
             #settingsForm button:hover {
                 background: #333;
             }
-        </style>
-        <div id="content">
-            <h1>Settings</h1>
-            <form id="settingsForm">
-                <label>
-                    <input type="checkbox" id="findSimilarEnabled">
-                    Enable Find Similar Button
-                </label>
-                <label>
-                    <input type="checkbox" id="englishFilterEnabled">
-                    Enable English Filter Button
-                </label>
-                <label>
-                    <input type="checkbox" id="autoLoginEnabled">
-                    Enable Auto Login
-                </label>
-                <div id="autoLoginCredentials">
+            
+            #autoLoginCredentials {
+                display: block;
+                margin-top: 10px;
+            }
+            
+            #random-settings {
+                margin-top: 20px;
+            }
+            
+            #random-settings label {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+            
+            #random-settings input[type="text"],
+            #random-settings input[type="number"] {
+                width: calc(100% - 12px); /* Adjust for padding and borders */
+                padding: 5px;
+                border-radius: 3px;
+                border: 1px solid #333;
+                background: #333;
+                color: #fff;
+                margin-bottom: 10px; /* Add spacing between fields */
+            }
+            
+            #loading-popup {
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                padding: 20px;
+                background-color: rgba(0, 0, 0, 0.8);
+                color: #fff;
+                border-radius: 5px;
+                z-index: 1000;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+            }
+            
+            #loading-popup button.close {
+                position: absolute;
+                top: 10px;
+                right: 10px;
+                background: none;
+                border: none;
+                color: #fff;
+                font-size: 20px;
+                cursor: pointer;
+            }
+            
+            </style>
+            <div id="content">
+                <h1>Settings</h1>
+                <form id="settingsForm">
                     <label>
-                        Email: <input type="text" id="email">
+                        <input type="checkbox" id="findSimilarEnabled">
+                        Enable Find Similar Button
                     </label>
                     <label>
-                        Password: <input type="password" id="password">
+                        <input type="checkbox" id="englishFilterEnabled">
+                        Enable English Filter Button
                     </label>
+                    <label>
+                        <input type="checkbox" id="autoLoginEnabled">
+                        Enable Auto Login
+                    </label>
+                    <div id="autoLoginCredentials">
+                        <label>
+                            Email: <input type="text" id="email">
+                        </label>
+                        <label>
+                            Password: <input type="password" id="password">
+                        </label>
+                    </div>
+                    <label>
+                        <input type="checkbox" id="findAltmangaEnabled">
+                        Enable Find Altmanga Button
+                    </label>
+                    <label>
+                        <input type="checkbox" id="bookmarksEnabled">
+                        Enable Bookmarks Button
+                    </label>
+                    <div id="random-settings">
+                        <h3>Random Hentai Preferences</h3>
+                        <label>Language: <input type="text" id="pref-language"></label>
+                        <label>Tags: <input type="text" id="pref-tags"></label>
+                        <label>Minimum Pages: <input type="number" id="pref-pages-min"></label>
+                        <label>Maximum Pages: <input type="number" id="pref-pages-max"></label>
+                    </div>
+                    <button type="submit">Save Settings</button>
+                </form>
+            </div>
+        `;
+        $('div.container').append(settingsHtml);
+        function showPopup(message) {
+            const popup = document.createElement('div');
+            popup.id = 'popup';
+            popup.innerHTML = `
+                <div class="popup-content">
+                    <button class="close-btn">&times;</button>
+                    <p>${message}</p>
                 </div>
-                <label>
-                    <input type="checkbox" id="findAltmangaEnabled">
-                    Enable Find Altmanga Button
-                </label>
-                <label>
-                    <input type="checkbox" id="bookmarksEnabled">
-                    Enable Bookmarks Button
-                </label>
-                <button type="submit">Save Settings</button>
-            </form>
-        </div>
-    `;
-    $('div.container').append(settingsHtml);
+            `;
+            document.body.appendChild(popup);
+        
+            // Add CSS styling for the popup
+            const style = document.createElement('style');
+            style.textContent = `
+                #popup {
+                    position: fixed;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    background: rgba(0, 0, 0, 0.9);
+                    color: #fff;
+                    border-radius: 5px;
+                    z-index: 1000;
+                    padding: 15px;
+                    width: 250px; /* Make the popup smaller */
+                    text-align: center;
+                }
+                .popup-content {
+                    position: relative;
+                    padding: 10px; /* Adjust padding for a smaller popup */
+                }
+                .close-btn {
+                    position: absolute;
+                    top: 5px; /* Position closer to the top */
+                    right: 10px; /* Position closer to the right */
+                    background: none;
+                    border: none;
+                    color: #fff;
+                    font-size: 18px; /* Adjust font size for a smaller popup */
+                    cursor: pointer;
+                    transition: color 0.3s, opacity 0.3s;
+                }
+                .close-btn:hover {
+                    color: #ff0000;
+                    opacity: 0.7;
+                }
+            `;
+            document.head.appendChild(style);
+        
+            // Close the popup when the close button is clicked
+            document.querySelector('.close-btn').addEventListener('click', function() {
+                document.body.removeChild(popup);
+                document.head.removeChild(style); // Remove the styling
+            });
+        
+        
 
-    // Load settings
-    (async function() {
-        const findSimilarEnabled = await GM.getValue('findSimilarEnabled', true);
-        const englishFilterEnabled = await GM.getValue('englishFilterEnabled', true);
-        const autoLoginEnabled = await GM.getValue('autoLoginEnabled', true);
-        const email = await GM.getValue('email', '');
-        const password = await GM.getValue('password', '');
-        const findAltmangaEnabled = await GM.getValue('findAltmangaEnabled', true);
-        const bookmarksEnabled = await GM.getValue('bookmarksEnabled', true);
-
-        $('#findSimilarEnabled').prop('checked', findSimilarEnabled);
-        $('#englishFilterEnabled').prop('checked', englishFilterEnabled);
-        $('#autoLoginEnabled').prop('checked', autoLoginEnabled);
-        $('#email').val(email);
-        $('#password').val(password);
-        $('#findAltmangaEnabled').prop('checked', findAltmangaEnabled);
-        $('#bookmarksEnabled').prop('checked', bookmarksEnabled);
-        $('#autoLoginCredentials').toggle(autoLoginEnabled);
-    })();
-
-    // Save settings
-    $('#settingsForm').on('submit', async function(event) {
-        event.preventDefault();
-
-        const findSimilarEnabled = $('#findSimilarEnabled').prop('checked');
-        const englishFilterEnabled = $('#englishFilterEnabled').prop('checked');
-        const autoLoginEnabled = $('#autoLoginEnabled').prop('checked');
-        const email = $('#email').val();
-        const password = $('#password').val();
-        const findAltmangaEnabled = $('#findAltmangaEnabled').prop('checked');
-        const bookmarksEnabled = $('#bookmarksEnabled').prop('checked');
-
-        await GM.setValue('findSimilarEnabled', findSimilarEnabled);
-        await GM.setValue('englishFilterEnabled', englishFilterEnabled);
-        await GM.setValue('autoLoginEnabled', autoLoginEnabled);
-        await GM.setValue('email', email);
-        await GM.setValue('password', password);
-        await GM.setValue('findAltmangaEnabled', findAltmangaEnabled);
-        await GM.setValue('bookmarksEnabled', bookmarksEnabled);
-
-        alert('Settings saved!');
-    });
-
-    // Toggle auto login credentials
-    $('#autoLoginEnabled').on('change', function() {
-        $('#autoLoginCredentials').toggle(this.checked);
-    });
+    // Optionally remove the popup after a few seconds
+    setTimeout(() => {
+        if (document.body.contains(popup)) {
+            document.body.removeChild(popup);
+            document.head.removeChild(style); // Remove the styling
+        }
+    }, 3000); // Adjust the time as needed
 }
-//----------------------------**Settings**-----------------------------
+        // Load settings
+        (async function() {
+            const findSimilarEnabled = await GM.getValue('findSimilarEnabled', true);
+            const englishFilterEnabled = await GM.getValue('englishFilterEnabled', true);
+            const autoLoginEnabled = await GM.getValue('autoLoginEnabled', true);
+            const email = await GM.getValue('email', '');
+            const password = await GM.getValue('password', '');
+            const findAltmangaEnabled = await GM.getValue('findAltmangaEnabled', true);
+            const bookmarksEnabled = await GM.getValue('bookmarksEnabled', true);
+            const language = await GM.getValue('randomPrefLanguage', '');
+            const tags = await GM.getValue('randomPrefTags', []);
+            const pagesMin = await GM.getValue('randomPrefPagesMin', '');
+            const pagesMax = await GM.getValue('randomPrefPagesMax', '');
+
+            $('#findSimilarEnabled').prop('checked', findSimilarEnabled);
+            $('#englishFilterEnabled').prop('checked', englishFilterEnabled);
+            $('#autoLoginEnabled').prop('checked', autoLoginEnabled);
+            $('#email').val(email);
+            $('#password').val(password);
+            $('#findAltmangaEnabled').prop('checked', findAltmangaEnabled);
+            $('#bookmarksEnabled').prop('checked', bookmarksEnabled);
+            $('#pref-language').val(language);
+            $('#pref-tags').val(tags.join(', '));
+            $('#pref-pages-min').val(pagesMin);
+            $('#pref-pages-max').val(pagesMax);
+            $('#autoLoginCredentials').toggle(autoLoginEnabled);
+        })();
+
+        // Save settings
+        $('#settingsForm').on('submit', async function(event) {
+            event.preventDefault();
+
+            const findSimilarEnabled = $('#findSimilarEnabled').prop('checked');
+            const englishFilterEnabled = $('#englishFilterEnabled').prop('checked');
+            const autoLoginEnabled = $('#autoLoginEnabled').prop('checked');
+            const email = $('#email').val();
+            const password = $('#password').val();
+            const findAltmangaEnabled = $('#findAltmangaEnabled').prop('checked');
+            const bookmarksEnabled = $('#bookmarksEnabled').prop('checked');
+            const language = $('#pref-language').val();
+            let tags = $('#pref-tags').val().split(',').map(tag => tag.trim());
+            tags = tags.map(tag => tag.replace(/-/g, ' ')); // Replace hyphens with spaces
+            const pagesMin = $('#pref-pages-min').val();
+            const pagesMax = $('#pref-pages-max').val();
+
+            await GM.setValue('findSimilarEnabled', findSimilarEnabled);
+            await GM.setValue('englishFilterEnabled', englishFilterEnabled);
+            await GM.setValue('autoLoginEnabled', autoLoginEnabled);
+            await GM.setValue('email', email);
+            await GM.setValue('password', password);
+            await GM.setValue('findAltmangaEnabled', findAltmangaEnabled);
+            await GM.setValue('bookmarksEnabled', bookmarksEnabled);
+            await GM.setValue('randomPrefLanguage', language);
+            await GM.setValue('randomPrefTags', tags);
+            await GM.setValue('randomPrefPagesMin', pagesMin);
+            await GM.setValue('randomPrefPagesMax', pagesMax);
+
+    // Show custom popup instead of alert
+    showPopup('Settings saved!');
+        });
+
+        // Toggle auto login credentials
+        $('#autoLoginEnabled').on('change', function() {
+            $('#autoLoginCredentials').toggle(this.checked);
+        });
+    }
+//----------------------------**Settings**--------------------------------------------
+
+
+
+
+
+//----------------------------**Random Hentai Prefrences**----------------------------
+    // Intercept random button clicks only if preferences are set
+    document.addEventListener('click', async function(event) {
+        const target = event.target;
+        if (target.tagName === 'A' && target.getAttribute('href') === '/random/') {
+            event.preventDefault(); // Prevent the default navigation
+
+            // Check if user preferences are set
+            const preferencesSet = await arePreferencesSet();
+
+            if (preferencesSet) {
+                showLoadingPopup();
+                // Set a flag to stop the search if needed
+                window.searchInProgress = true;
+                fetchRandomHentai();
+            } else {
+                // Proceed with the default action
+                window.location.href = '/random/';
+            }
+        }
+    });
+
+    async function arePreferencesSet() {
+        try {
+            const language = await GM.getValue('randomPrefLanguage', '');
+            const tags = await GM.getValue('randomPrefTags', []);
+            const pagesMin = parseInt(await GM.getValue('randomPrefPagesMin', ''), 10);
+            const pagesMax = parseInt(await GM.getValue('randomPrefPagesMax', ''), 10);
+
+            return language || tags.length > 0 || !isNaN(pagesMin) || !isNaN(pagesMax);
+        } catch (error) {
+            console.error('Error checking preferences:', error);
+            return false;
+        }
+    }
+
+    function showLoadingPopup() {
+        // Create and display the popup
+        const popup = document.createElement('div');
+        popup.id = 'loading-popup';
+        popup.innerHTML = `
+            <span>Searching for random hentai...</span>
+            <button class="close">&times;</button>
+        `;
+        document.body.appendChild(popup);
+    
+        // Add event listener to close button
+        const closeButton = popup.querySelector('.close');
+        closeButton.addEventListener('click', function() {
+            hideLoadingPopup();
+            window.searchInProgress = false; // Stop the search
+        });
+    
+        // Add CSS styles to the close button
+        closeButton.style.transition = 'color 0.3s, opacity 0.3s';
+        closeButton.style.color = 'white';
+    
+        // Add hover effect
+        closeButton.addEventListener('mouseenter', function() {
+            closeButton.style.color = 'red';
+            closeButton.style.opacity = '0.7';
+        });
+    
+        closeButton.addEventListener('mouseleave', function() {
+            closeButton.style.color = 'white';
+            closeButton.style.opacity = '1';
+        });
+    }
+
+    function hideLoadingPopup() {
+        const popup = document.getElementById('loading-popup');
+        if (popup) {
+            document.body.removeChild(popup);
+        }
+    }
+
+    async function fetchRandomHentai() {
+        try {
+            if (!window.searchInProgress) return; // Stop if search was canceled
+            const response = await fetch('https://nhentai.net/random/', { method: 'HEAD' });
+            await analyzeURL(response.url);
+        } catch (error) {
+            console.error('Error fetching random URL:', error);
+        }
+    }
+
+    async function analyzeURL(url) {
+        try {
+            if (!window.searchInProgress) return; // Stop if search was canceled
+            const response = await fetch(url);
+            const html = await response.text();
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+
+            // Extract title, tags, pages, and upload date
+            const title = doc.querySelector('#info h1')?.textContent.trim();
+            const tags = Array.from(doc.querySelectorAll('#tags .tag')).map(tag => tag.textContent.trim());
+            const pages = parseInt(doc.querySelector('#tags .tag-container:nth-last-child(2) .name')?.textContent.trim(), 10);
+            const uploadDate = doc.querySelector('#tags .tag-container:last-child time')?.getAttribute('datetime');
+
+            console.log('Title:', title);
+            console.log('Tags:', tags);
+            console.log('Pages:', pages);
+            console.log('Upload Date:', uploadDate);
+
+            if (await meetsUserPreferences(tags, pages)) {
+                hideLoadingPopup();
+                window.location.href = url;
+            } else {
+                console.log('Does not meet user preferences, fetching another random hentai.');
+                fetchRandomHentai();
+            }
+        } catch (error) {
+            console.error('Error analyzing page:', error);
+        }
+    }
+
+    async function meetsUserPreferences(tags, pages) {
+        try {
+            const preferredLanguage = await GM.getValue('randomPrefLanguage', '');
+            const preferredTags = await GM.getValue('randomPrefTags', []);
+            const preferredPagesMin = parseInt(await GM.getValue('randomPrefPagesMin', ''), 10);
+            const preferredPagesMax = parseInt(await GM.getValue('randomPrefPagesMax', ''), 10);
+
+            // Strip tag counts and only keep the tag names
+            const cleanedTags = tags.map(tag => tag.replace(/\d+K?$/, '').trim());
+
+            const hasPreferredLanguage = preferredLanguage ? cleanedTags.includes(preferredLanguage) : true;
+            const hasPreferredTags = preferredTags.length > 0 ? preferredTags.every(tag => cleanedTags.includes(tag)) : true;
+            const withinPageRange = (!isNaN(preferredPagesMin) ? pages >= preferredPagesMin : true) && 
+                                    (!isNaN(preferredPagesMax) ? pages <= preferredPagesMax : true);
+
+            return hasPreferredLanguage && hasPreferredTags && withinPageRange;
+        } catch (error) {
+            console.error('Error checking user preferences:', error);
+            return false;
+        }
+    }
+
+})();
+//----------------------------**Random Hentai Prefrences**----------------------------
+
