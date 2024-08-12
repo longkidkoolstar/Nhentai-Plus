@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      4.0
+// @version      4.1
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -1101,6 +1101,10 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
                         <label>Tags: <input type="text" id="pref-tags"></label>
                         <label>Minimum Pages: <input type="number" id="pref-pages-min"></label>
                         <label>Maximum Pages: <input type="number" id="pref-pages-max"></label>
+                        <label>
+                            <input type="checkbox" id="matchAllTags">
+                            Match All Tags (unchecked = match any)
+                        </label>
                     </div>
                     <button type="submit">Save Settings</button>
                 </form>
@@ -1185,6 +1189,7 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
             const tags = await GM.getValue('randomPrefTags', []);
             const pagesMin = await GM.getValue('randomPrefPagesMin', '');
             const pagesMax = await GM.getValue('randomPrefPagesMax', '');
+            const matchAllTags = await GM.getValue('matchAllTags', true);
 
             $('#findSimilarEnabled').prop('checked', findSimilarEnabled);
             $('#englishFilterEnabled').prop('checked', englishFilterEnabled);
@@ -1198,6 +1203,7 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
             $('#pref-pages-min').val(pagesMin);
             $('#pref-pages-max').val(pagesMax);
             $('#autoLoginCredentials').toggle(autoLoginEnabled);
+            $('#matchAllTags').prop('checked', matchAllTags);
         })();
 
         // Save settings
@@ -1216,6 +1222,7 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
             tags = tags.map(tag => tag.replace(/-/g, ' ')); // Replace hyphens with spaces
             const pagesMin = $('#pref-pages-min').val();
             const pagesMax = $('#pref-pages-max').val();
+            const matchAllTags = $('#matchAllTags').prop('checked');
 
             await GM.setValue('findSimilarEnabled', findSimilarEnabled);
             await GM.setValue('englishFilterEnabled', englishFilterEnabled);
@@ -1228,6 +1235,7 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
             await GM.setValue('randomPrefTags', tags);
             await GM.setValue('randomPrefPagesMin', pagesMin);
             await GM.setValue('randomPrefPagesMax', pagesMax);
+            await GM.setValue('matchAllTags', matchAllTags);
 
     // Show custom popup instead of alert
     showPopup('Settings saved!');
@@ -1245,143 +1253,172 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
 
 
 //----------------------------**Random Hentai Prefrences**----------------------------
-    // Intercept random button clicks only if preferences are set
-    document.addEventListener('click', async function(event) {
-        const target = event.target;
-        if (target.tagName === 'A' && target.getAttribute('href') === '/random/') {
-            event.preventDefault(); // Prevent the default navigation
+// Intercept random button clicks only if preferences are set
+document.addEventListener('click', async function(event) {
+    const target = event.target;
+    if (target.tagName === 'A' && target.getAttribute('href') === '/random/') {
+        event.preventDefault(); // Prevent the default navigation
 
-            // Check if user preferences are set
-            const preferencesSet = await arePreferencesSet();
+        // Show the loading popup immediately
+        showLoadingPopup();
 
-            if (preferencesSet) {
-                showLoadingPopup();
-                // Set a flag to stop the search if needed
-                window.searchInProgress = true;
-                fetchRandomHentai();
-            } else {
-                // Proceed with the default action
-                window.location.href = '/random/';
-            }
+        // Check if user preferences are set
+        const preferencesSet = await arePreferencesSet();
+
+        if (preferencesSet) {
+            // Set a flag to stop the search if needed
+            window.searchInProgress = true;
+            fetchRandomHentai();
+        } else {
+            // Close the popup and proceed with the default action
+            hideLoadingPopup();
+            window.location.href = '/random/';
         }
+    }
+});
+
+async function arePreferencesSet() {
+    try {
+        const language = await GM.getValue('randomPrefLanguage', '');
+        const tags = await GM.getValue('randomPrefTags', []);
+        const pagesMin = parseInt(await GM.getValue('randomPrefPagesMin', ''), 10);
+        const pagesMax = parseInt(await GM.getValue('randomPrefPagesMax', ''), 10);
+
+        return language || tags.length > 0 || !isNaN(pagesMin) || !isNaN(pagesMax);
+    } catch (error) {
+        console.error('Error checking preferences:', error);
+        return false;
+    }
+}
+
+function showLoadingPopup() {
+    // Create and display the popup
+    const popup = document.createElement('div');
+    popup.id = 'loading-popup';
+    popup.style.position = 'fixed'; // Ensures the popup stays in place during scrolling
+    popup.style.top = '50%'; // Center vertically
+    popup.style.left = '50%'; // Center horizontally
+    popup.style.transform = 'translate(-50%, -50%)'; // Center the popup
+    popup.style.backgroundColor = 'rgba(0, 0, 0, 0.8)'; // Semi-transparent background
+    popup.style.color = 'white'; // Text color
+    popup.style.padding = '20px'; // Padding inside the popup
+    popup.style.borderRadius = '8px'; // Rounded corners
+    popup.style.zIndex = '9999'; // Ensure it's above other elements
+    popup.style.display = 'flex'; // Use flexbox for layout
+    popup.style.alignItems = 'center'; // Center items vertically
+    popup.style.justifyContent = 'center'; // Center items horizontally
+
+    // Popup content
+    popup.innerHTML = `
+        <span>Searching for random hentai...</span>
+        <button class="close" style="margin-left: 20px; background: none; border: none; font-size: 20px; color: white; cursor: pointer;">&times;</button>
+    `;
+
+    document.body.appendChild(popup);
+
+    // Add event listener to close button
+    const closeButton = popup.querySelector('.close');
+    closeButton.addEventListener('click', function() {
+        hideLoadingPopup();
+        window.searchInProgress = false; // Stop the search
     });
 
-    async function arePreferencesSet() {
-        try {
-            const language = await GM.getValue('randomPrefLanguage', '');
-            const tags = await GM.getValue('randomPrefTags', []);
-            const pagesMin = parseInt(await GM.getValue('randomPrefPagesMin', ''), 10);
-            const pagesMax = parseInt(await GM.getValue('randomPrefPagesMax', ''), 10);
+    // Add hover effect for the close button
+    closeButton.addEventListener('mouseenter', function() {
+        closeButton.style.color = 'red';
+        closeButton.style.opacity = '0.7';
+    });
 
-            return language || tags.length > 0 || !isNaN(pagesMin) || !isNaN(pagesMax);
-        } catch (error) {
-            console.error('Error checking preferences:', error);
-            return false;
-        }
-    }
-
-    function showLoadingPopup() {
-        // Create and display the popup
-        const popup = document.createElement('div');
-        popup.id = 'loading-popup';
-        popup.innerHTML = `
-            <span>Searching for random hentai...</span>
-            <button class="close">&times;</button>
-        `;
-        document.body.appendChild(popup);
-    
-        // Add event listener to close button
-        const closeButton = popup.querySelector('.close');
-        closeButton.addEventListener('click', function() {
-            hideLoadingPopup();
-            window.searchInProgress = false; // Stop the search
-        });
-    
-        // Add CSS styles to the close button
-        closeButton.style.transition = 'color 0.3s, opacity 0.3s';
+    closeButton.addEventListener('mouseleave', function() {
         closeButton.style.color = 'white';
-    
-        // Add hover effect
-        closeButton.addEventListener('mouseenter', function() {
-            closeButton.style.color = 'red';
-            closeButton.style.opacity = '0.7';
-        });
-    
-        closeButton.addEventListener('mouseleave', function() {
-            closeButton.style.color = 'white';
-            closeButton.style.opacity = '1';
-        });
-    }
+        closeButton.style.opacity = '1';
+    });
+}
 
-    function hideLoadingPopup() {
-        const popup = document.getElementById('loading-popup');
-        if (popup) {
-            document.body.removeChild(popup);
+
+function hideLoadingPopup() {
+    const popup = document.getElementById('loading-popup');
+    if (popup) {
+        document.body.removeChild(popup);
+    }
+}
+
+async function fetchRandomHentai() {
+    try {
+        if (!window.searchInProgress) return; // Stop if search was canceled
+        const response = await fetch('https://nhentai.net/random/', { method: 'HEAD' });
+        await analyzeURL(response.url);
+    } catch (error) {
+        console.error('Error fetching random URL:', error);
+    }
+}
+
+async function analyzeURL(url) {
+    try {
+        if (!window.searchInProgress) return; // Stop if search was canceled
+        const response = await fetch(url);
+        const html = await response.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+
+        // Extract title, tags, pages, and upload date
+        const title = doc.querySelector('#info h1')?.textContent.trim();
+        const tags = Array.from(doc.querySelectorAll('#tags .tag')).map(tag => tag.textContent.trim());
+        const pages = parseInt(doc.querySelector('#tags .tag-container:nth-last-child(2) .name')?.textContent.trim(), 10);
+        const uploadDate = doc.querySelector('#tags .tag-container:last-child time')?.getAttribute('datetime');
+
+        console.log('Title:', title);
+        console.log('Tags:', tags);
+        console.log('Pages:', pages);
+        console.log('Upload Date:', uploadDate);
+
+        if (await meetsUserPreferences(tags, pages)) {
+            hideLoadingPopup();
+            window.location.href = url;
+        } else {
+            console.log('Does not meet user preferences, fetching another random hentai.');
+            fetchRandomHentai();
         }
+    } catch (error) {
+        console.error('Error analyzing page:', error);
     }
+}
 
-    async function fetchRandomHentai() {
-        try {
-            if (!window.searchInProgress) return; // Stop if search was canceled
-            const response = await fetch('https://nhentai.net/random/', { method: 'HEAD' });
-            await analyzeURL(response.url);
-        } catch (error) {
-            console.error('Error fetching random URL:', error);
-        }
-    }
+async function meetsUserPreferences(tags, pages) {
+    try {
+        const preferredLanguage = (await GM.getValue('randomPrefLanguage', '')).toLowerCase();
+        const preferredTags = (await GM.getValue('randomPrefTags', [])).map(tag => tag.toLowerCase());
+        const preferredPagesMin = parseInt(await GM.getValue('randomPrefPagesMin', ''), 10);
+        const preferredPagesMax = parseInt(await GM.getValue('randomPrefPagesMax', ''), 10);
+        const matchAllTags = await GM.getValue('matchAllTags', true);
 
-    async function analyzeURL(url) {
-        try {
-            if (!window.searchInProgress) return; // Stop if search was canceled
-            const response = await fetch(url);
-            const html = await response.text();
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(html, 'text/html');
+        // Strip tag counts and only keep the tag names
+        const cleanedTags = tags.map(tag => tag.replace(/\d+K?$/, '').trim().toLowerCase());
 
-            // Extract title, tags, pages, and upload date
-            const title = doc.querySelector('#info h1')?.textContent.trim();
-            const tags = Array.from(doc.querySelectorAll('#tags .tag')).map(tag => tag.textContent.trim());
-            const pages = parseInt(doc.querySelector('#tags .tag-container:nth-last-child(2) .name')?.textContent.trim(), 10);
-            const uploadDate = doc.querySelector('#tags .tag-container:last-child time')?.getAttribute('datetime');
-
-            console.log('Title:', title);
-            console.log('Tags:', tags);
-            console.log('Pages:', pages);
-            console.log('Upload Date:', uploadDate);
-
-            if (await meetsUserPreferences(tags, pages)) {
-                hideLoadingPopup();
-                window.location.href = url;
+        const hasPreferredLanguage = preferredLanguage ? cleanedTags.includes(preferredLanguage) : true;
+        
+        let hasPreferredTags;
+        if (preferredTags.length > 0) {
+            if (matchAllTags) {
+                hasPreferredTags = preferredTags.every(tag => cleanedTags.includes(tag));
             } else {
-                console.log('Does not meet user preferences, fetching another random hentai.');
-                fetchRandomHentai();
+                hasPreferredTags = preferredTags.some(tag => cleanedTags.includes(tag));
             }
-        } catch (error) {
-            console.error('Error analyzing page:', error);
+        } else {
+            hasPreferredTags = true;
         }
+
+        const withinPageRange = (!isNaN(preferredPagesMin) ? pages >= preferredPagesMin : true) && 
+                                (!isNaN(preferredPagesMax) ? pages <= preferredPagesMax : true);
+
+        return hasPreferredLanguage && hasPreferredTags && withinPageRange;
+    } catch (error) {
+        console.error('Error checking user preferences:', error);
+        return false;
     }
+}
 
-    async function meetsUserPreferences(tags, pages) {
-        try {
-            const preferredLanguage = await GM.getValue('randomPrefLanguage', '');
-            const preferredTags = await GM.getValue('randomPrefTags', []);
-            const preferredPagesMin = parseInt(await GM.getValue('randomPrefPagesMin', ''), 10);
-            const preferredPagesMax = parseInt(await GM.getValue('randomPrefPagesMax', ''), 10);
-
-            // Strip tag counts and only keep the tag names
-            const cleanedTags = tags.map(tag => tag.replace(/\d+K?$/, '').trim());
-
-            const hasPreferredLanguage = preferredLanguage ? cleanedTags.includes(preferredLanguage) : true;
-            const hasPreferredTags = preferredTags.length > 0 ? preferredTags.every(tag => cleanedTags.includes(tag)) : true;
-            const withinPageRange = (!isNaN(preferredPagesMin) ? pages >= preferredPagesMin : true) && 
-                                    (!isNaN(preferredPagesMax) ? pages <= preferredPagesMax : true);
-
-            return hasPreferredLanguage && hasPreferredTags && withinPageRange;
-        } catch (error) {
-            console.error('Error checking user preferences:', error);
-            return false;
-        }
-    }
+    
 
 })();
 //----------------------------**Random Hentai Prefrences**----------------------------
