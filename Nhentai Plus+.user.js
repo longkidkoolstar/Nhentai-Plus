@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      4.2
+// @version      4.3
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -1252,7 +1252,7 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
 
 
 
-//----------------------------**Random Hentai Preferences with Image Storage and Links**----------------------------
+//----------------------------**Random Hentai Preferences**----------------------------
 // Intercept random button clicks only if preferences are set
 document.addEventListener('click', async function(event) {
     const target = event.target;
@@ -1311,9 +1311,12 @@ function showLoadingPopup() {
 
     // Popup content with image container and buttons
     popup.innerHTML = `
-        <span>Searching for random content...</span>
-        <div id="cover-preview-container" style="margin-top: 10px; width: 350px; height: 192px; display: flex; align-items: center; justify-content: center; overflow: hidden; border-radius: 8px;">
-            <img id="cover-preview" style="max-width: 100%; max-height: 100%; object-fit: contain; display: none; cursor: pointer;" />
+    <span>Searching for random content...</span>
+    <div id="cover-preview-container" style="margin-top: 10px; width: 350px; height: 192px; display: flex; align-items: center; justify-content: center; overflow: hidden; border-radius: 8px;">
+        <img id="cover-preview" style="max-width: 100%; max-height: 100%; object-fit: contain; display: none; cursor: pointer;" />
+    </div>
+    <div id="preview-notes" style="margin-top: 10px; color: white; text-align: center;">
+        <!-- Notes will be inserted here -->
         </div>
         <div style="margin-top: 20px; display: flex; gap: 15px;">
             <button id="previous-image" class="control-button" style="background: none; border: none; color: white; cursor: pointer; font-size: 20px; transition: color 0.3s ease, transform 0.3s ease;">
@@ -1404,25 +1407,46 @@ async function analyzeURL(url) {
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
 
-        // Corrected selector for the cover image
         const coverImage = doc.querySelector('#cover img.lazyload');
         const coverImageUrl = coverImage ? (coverImage.getAttribute('data-src') || coverImage.src) : null;
 
-        if (coverImageUrl) {
-            saveImageToLocalStorage(coverImageUrl, url);
-            showNextImage(); // Automatically show the next image if not paused
-        }
-
-        // Extract title, tags, pages, and upload date
         const title = doc.querySelector('#info h1')?.textContent.trim();
         const tags = Array.from(doc.querySelectorAll('#tags .tag')).map(tag => tag.textContent.trim());
         const pages = parseInt(doc.querySelector('#tags .tag-container:nth-last-child(2) .name')?.textContent.trim(), 10);
         const uploadDate = doc.querySelector('#tags .tag-container:last-child time')?.getAttribute('datetime');
 
-        console.log('Title:', title);
-        console.log('Tags:', tags);
-        console.log('Pages:', pages);
-        console.log('Upload Date:', uploadDate);
+        // Extract and handle languages
+        let languages = [];
+        const tagContainers = doc.querySelectorAll('.tag-container.field-name');
+        tagContainers.forEach(container => {
+            if (container.textContent.includes('Languages:')) {
+                const languageElements = container.querySelectorAll('.tags .tag .name');
+                languageElements.forEach(languageElement => {
+                    let language = languageElement.textContent.trim().toLowerCase();
+                    languages.push(language);
+                });
+            }
+        });
+
+        // Determine which language to display
+        let languageDisplay = 'Unknown';
+
+        if (languages.includes('english')) {
+            languageDisplay = 'English';
+        } else if (languages.includes('translated') && languages.length === 1) {
+            languageDisplay = 'English';
+        } else if (languages.includes('translated') && languages.length > 1) {
+            // Exclude 'translated' and show other language(s)
+            const otherLanguages = languages.filter(lang => lang !== 'translated');
+            languageDisplay = otherLanguages.length > 0 ? otherLanguages.map(lang => lang.charAt(0).toUpperCase() + lang.slice(1)).join(', ') : 'Unknown';
+        } else {
+            languageDisplay = languages.map(lang => lang.charAt(0).toUpperCase() + lang.slice(1)).join(', ');
+        }
+
+        if (coverImageUrl) {
+            saveImageToLocalStorage(coverImageUrl, url, languageDisplay, pages);
+            showNextImage(); // Automatically show the next image if not paused
+        }
 
         if (await meetsUserPreferences(tags, pages)) {
             hideLoadingPopup();
@@ -1435,6 +1459,10 @@ async function analyzeURL(url) {
         console.error('Error analyzing page:', error);
     }
 }
+
+
+
+
 
 async function meetsUserPreferences(tags, pages) {
     try {
@@ -1470,9 +1498,9 @@ async function meetsUserPreferences(tags, pages) {
     }
 }
 
-function saveImageToLocalStorage(imageUrl, hentaiUrl) {
+function saveImageToLocalStorage(imageUrl, hentaiUrl, language, pages) {
     let images = JSON.parse(localStorage.getItem('hentaiImages') || '[]');
-    images.push({ imageUrl, url: hentaiUrl });
+    images.push({ imageUrl, url: hentaiUrl, language, pages });
 
     if (images.length > 5) {
         images.shift(); // Remove the oldest image if more than 5 images are stored
@@ -1493,7 +1521,8 @@ function showNextImage() {
     currentIndex = (currentIndex + 1) % images.length; // Move to the next image
     localStorage.setItem('currentImageIndex', currentIndex.toString());
 
-    updatePreviewImage(images[currentIndex].imageUrl);
+    const currentImage = images[currentIndex];
+    updatePreviewImage(currentImage.imageUrl, currentImage.language, currentImage.pages);
 }
 
 function showPreviousImage() {
@@ -1504,14 +1533,24 @@ function showPreviousImage() {
     currentIndex = (currentIndex - 1 + images.length) % images.length; // Move to the previous image
     localStorage.setItem('currentImageIndex', currentIndex.toString());
 
-    updatePreviewImage(images[currentIndex].imageUrl);
+    const currentImage = images[currentIndex];
+    updatePreviewImage(currentImage.imageUrl, currentImage.language, currentImage.pages);
 }
 
-function updatePreviewImage(imageUrl) {
+function updatePreviewImage(imageUrl, language = '', pages = '') {
     const coverPreview = document.getElementById('cover-preview');
+    const notesContainer = document.getElementById('preview-notes');
+
     if (coverPreview) {
         coverPreview.src = imageUrl;
         coverPreview.style.display = 'block'; // Show the image
+    }
+
+    if (notesContainer) {
+        notesContainer.innerHTML = `
+            <div>Language: ${language || 'N/A'}</div>
+            <div>Pages: ${pages || 'N/A'}</div>
+        `;
     }
 }
 
@@ -1535,4 +1574,4 @@ document.head.appendChild(link);
 localStorage.setItem('currentImageIndex', '0');
 
 })();
-//----------------------------**Random Hentai Preferences with Image Storage**----------------------------
+//----------------------------**Random Hentai Preferences**----------------------------
