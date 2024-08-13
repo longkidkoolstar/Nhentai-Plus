@@ -1295,23 +1295,25 @@ function showLoadingPopup() {
     // Create and display the popup
     const popup = document.createElement('div');
     popup.id = 'loading-popup';
-    popup.style.position = 'fixed'; // Ensures the popup stays in place during scrolling
-    popup.style.top = '50%'; // Center vertically
-    popup.style.left = '50%'; // Center horizontally
-    popup.style.transform = 'translate(-50%, -50%)'; // Center the popup
-    popup.style.backgroundColor = 'rgba(0, 0, 0, 0.8)'; // Semi-transparent background
-    popup.style.color = 'white'; // Text color
-    popup.style.padding = '20px'; // Padding inside the popup
-    popup.style.borderRadius = '8px'; // Rounded corners
-    popup.style.zIndex = '9999'; // Ensure it's above other elements
-    popup.style.display = 'flex'; // Use flexbox for layout
-    popup.style.alignItems = 'center'; // Center items vertically
-    popup.style.justifyContent = 'center'; // Center items horizontally
+    popup.style.position = 'fixed';
+    popup.style.top = '50%';
+    popup.style.left = '50%';
+    popup.style.transform = 'translate(-50%, -50%)';
+    popup.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+    popup.style.color = 'white';
+    popup.style.padding = '20px';
+    popup.style.borderRadius = '8px';
+    popup.style.zIndex = '9999';
+    popup.style.display = 'flex';
+    popup.style.flexDirection = 'column';
+    popup.style.alignItems = 'center';
+    popup.style.justifyContent = 'center';
 
-    // Popup content
+    // Popup content with image container
     popup.innerHTML = `
         <span>Searching for random hentai...</span>
-        <button class="close" style="margin-left: 20px; background: none; border: none; font-size: 20px; color: white; cursor: pointer;">&times;</button>
+        <img id="cover-preview" style="margin-top: 10px; width: 350px; height: 192px; object-fit: cover; display: none;" />
+        <button class="close" style="margin-top: 20px; background: none; border: none; font-size: 20px; color: white; cursor: pointer;">&times;</button>
     `;
 
     document.body.appendChild(popup);
@@ -1334,6 +1336,7 @@ function showLoadingPopup() {
         closeButton.style.opacity = '1';
     });
 }
+
 
 
 function hideLoadingPopup() {
@@ -1361,6 +1364,40 @@ async function analyzeURL(url) {
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
 
+        // Corrected selector for the cover image
+        const coverImage = doc.querySelector('#cover img.lazyload');
+        const coverImageUrl = coverImage ? (coverImage.getAttribute('data-src') || coverImage.src) : null;
+
+        if (coverImageUrl) {
+            let coverPreview = document.getElementById('cover-preview');
+
+            if (!coverPreview) {
+                // Create the preview image element if it doesn't exist
+                const previewContainer = document.createElement('div');
+                previewContainer.style.position = 'fixed'; // Keeps the preview in place during scrolling
+                previewContainer.style.top = '10px'; // Adjust position as needed
+                previewContainer.style.right = '10px'; // Adjust position as needed
+                previewContainer.style.zIndex = '10000'; // Ensure it's above other elements
+
+                coverPreview = document.createElement('img');
+                coverPreview.id = 'cover-preview';
+                coverPreview.style.maxWidth = '350px';
+                coverPreview.style.maxHeight = '494px';
+                coverPreview.style.cursor = 'pointer';
+                previewContainer.appendChild(coverPreview);
+                document.body.appendChild(previewContainer);
+            }
+
+            // Update the image preview
+            coverPreview.src = coverImageUrl;
+            coverPreview.style.display = 'block'; // Show the image
+
+            // Attach click event listener to navigate to the hentai URL
+            coverPreview.onclick = function() {
+                window.location.href = url;
+            };
+        }
+
         // Extract title, tags, pages, and upload date
         const title = doc.querySelector('#info h1')?.textContent.trim();
         const tags = Array.from(doc.querySelectorAll('#tags .tag')).map(tag => tag.textContent.trim());
@@ -1383,6 +1420,8 @@ async function analyzeURL(url) {
         console.error('Error analyzing page:', error);
     }
 }
+
+
 
 async function meetsUserPreferences(tags, pages) {
     try {
