@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      4.3
+// @version      4.3.1
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -1502,8 +1502,8 @@ function saveImageToLocalStorage(imageUrl, hentaiUrl, language, pages) {
     let images = JSON.parse(localStorage.getItem('hentaiImages') || '[]');
     images.push({ imageUrl, url: hentaiUrl, language, pages });
 
-    if (images.length > 5) {
-        images.shift(); // Remove the oldest image if more than 5 images are stored
+    if (images.length > 10) {
+        images.shift(); // Remove the oldest image if more than 10 images are stored
     }
 
     localStorage.setItem('hentaiImages', JSON.stringify(images));
