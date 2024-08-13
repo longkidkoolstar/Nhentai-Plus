@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      4.1
+// @version      4.2
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -1312,7 +1312,9 @@ function showLoadingPopup() {
     // Popup content with image container and buttons
     popup.innerHTML = `
         <span>Searching for random content...</span>
-        <img id="cover-preview" style="margin-top: 10px; width: 350px; height: 192px; object-fit: cover; display: none; cursor: pointer;" />
+        <div id="cover-preview-container" style="margin-top: 10px; width: 350px; height: 192px; display: flex; align-items: center; justify-content: center; overflow: hidden; border-radius: 8px;">
+            <img id="cover-preview" style="max-width: 100%; max-height: 100%; object-fit: contain; display: none; cursor: pointer;" />
+        </div>
         <div style="margin-top: 20px; display: flex; gap: 15px;">
             <button id="previous-image" class="control-button" style="background: none; border: none; color: white; cursor: pointer; font-size: 20px; transition: color 0.3s ease, transform 0.3s ease;">
                 <i class="fas fa-arrow-left"></i>
