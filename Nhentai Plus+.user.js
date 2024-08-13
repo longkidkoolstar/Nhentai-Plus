@@ -1252,7 +1252,7 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
 
 
 
-//----------------------------**Random Hentai Prefrences**----------------------------
+//----------------------------**Random Hentai Preferences with Image Storage and Links**----------------------------
 // Intercept random button clicks only if preferences are set
 document.addEventListener('click', async function(event) {
     const target = event.target;
@@ -1309,11 +1309,22 @@ function showLoadingPopup() {
     popup.style.alignItems = 'center';
     popup.style.justifyContent = 'center';
 
-    // Popup content with image container
+    // Popup content with image container and buttons
     popup.innerHTML = `
-        <span>Searching for random hentai...</span>
-        <img id="cover-preview" style="margin-top: 10px; width: 350px; height: 192px; object-fit: cover; display: none;" />
-        <button class="close" style="margin-top: 20px; background: none; border: none; font-size: 20px; color: white; cursor: pointer;">&times;</button>
+        <span>Searching for random content...</span>
+        <img id="cover-preview" style="margin-top: 10px; width: 350px; height: 192px; object-fit: cover; display: none; cursor: pointer;" />
+        <div style="margin-top: 20px; display: flex; gap: 15px;">
+            <button id="previous-image" class="control-button" style="background: none; border: none; color: white; cursor: pointer; font-size: 20px; transition: color 0.3s ease, transform 0.3s ease;">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+            <button id="pause-search" class="control-button" style="background: none; border: none; color: white; cursor: pointer; font-size: 20px; transition: color 0.3s ease, transform 0.3s ease;">
+                <i class="fas fa-pause"></i>
+            </button>
+            <button id="next-image" class="control-button" style="background: none; border: none; color: white; cursor: pointer; font-size: 20px; transition: color 0.3s ease, transform 0.3s ease;">
+                <i class="fas fa-arrow-right"></i>
+            </button>
+        </div>
+        <button class="close" style="margin-top: 20px; background: none; border: none; font-size: 24px; color: white; cursor: pointer;">&times;</button>
     `;
 
     document.body.appendChild(popup);
@@ -1335,8 +1346,35 @@ function showLoadingPopup() {
         closeButton.style.color = 'white';
         closeButton.style.opacity = '1';
     });
-}
 
+    // Add hover effect for control buttons
+    const controlButtons = document.querySelectorAll('.control-button');
+    controlButtons.forEach(button => {
+        button.addEventListener('mouseenter', function() {
+            button.style.color = '#ddd'; // Light color on hover
+            button.style.transform = 'scale(1.1)'; // Slightly enlarge button
+        });
+
+        button.addEventListener('mouseleave', function() {
+            button.style.color = 'white'; // Original color
+            button.style.transform = 'scale(1)'; // Return to original size
+        });
+    });
+
+    // Add event listeners for control buttons
+    document.getElementById('previous-image').addEventListener('click', showPreviousImage);
+    document.getElementById('pause-search').addEventListener('click', togglePause);
+    document.getElementById('next-image').addEventListener('click', showNextImage);
+
+    // Add click event listener to the preview image to navigate to the content URL
+    document.getElementById('cover-preview').addEventListener('click', function() {
+        const currentImageIndex = parseInt(localStorage.getItem('currentImageIndex') || '0', 10);
+        const images = getImagesFromLocalStorage();
+        if (images[currentImageIndex] && images[currentImageIndex].url) {
+            window.location.href = images[currentImageIndex].url;
+        }
+    });
+}
 
 
 function hideLoadingPopup() {
@@ -1369,33 +1407,8 @@ async function analyzeURL(url) {
         const coverImageUrl = coverImage ? (coverImage.getAttribute('data-src') || coverImage.src) : null;
 
         if (coverImageUrl) {
-            let coverPreview = document.getElementById('cover-preview');
-
-            if (!coverPreview) {
-                // Create the preview image element if it doesn't exist
-                const previewContainer = document.createElement('div');
-                previewContainer.style.position = 'fixed'; // Keeps the preview in place during scrolling
-                previewContainer.style.top = '10px'; // Adjust position as needed
-                previewContainer.style.right = '10px'; // Adjust position as needed
-                previewContainer.style.zIndex = '10000'; // Ensure it's above other elements
-
-                coverPreview = document.createElement('img');
-                coverPreview.id = 'cover-preview';
-                coverPreview.style.maxWidth = '350px';
-                coverPreview.style.maxHeight = '494px';
-                coverPreview.style.cursor = 'pointer';
-                previewContainer.appendChild(coverPreview);
-                document.body.appendChild(previewContainer);
-            }
-
-            // Update the image preview
-            coverPreview.src = coverImageUrl;
-            coverPreview.style.display = 'block'; // Show the image
-
-            // Attach click event listener to navigate to the hentai URL
-            coverPreview.onclick = function() {
-                window.location.href = url;
-            };
+            saveImageToLocalStorage(coverImageUrl, url);
+            showNextImage(); // Automatically show the next image if not paused
         }
 
         // Extract title, tags, pages, and upload date
@@ -1420,8 +1433,6 @@ async function analyzeURL(url) {
         console.error('Error analyzing page:', error);
     }
 }
-
-
 
 async function meetsUserPreferences(tags, pages) {
     try {
@@ -1457,8 +1468,69 @@ async function meetsUserPreferences(tags, pages) {
     }
 }
 
-    
+function saveImageToLocalStorage(imageUrl, hentaiUrl) {
+    let images = JSON.parse(localStorage.getItem('hentaiImages') || '[]');
+    images.push({ imageUrl, url: hentaiUrl });
+
+    if (images.length > 5) {
+        images.shift(); // Remove the oldest image if more than 5 images are stored
+    }
+
+    localStorage.setItem('hentaiImages', JSON.stringify(images));
+}
+
+function getImagesFromLocalStorage() {
+    return JSON.parse(localStorage.getItem('hentaiImages') || '[]');
+}
+
+function showNextImage() {
+    const images = getImagesFromLocalStorage();
+    if (images.length === 0) return;
+
+    let currentIndex = parseInt(localStorage.getItem('currentImageIndex') || '0', 10);
+    currentIndex = (currentIndex + 1) % images.length; // Move to the next image
+    localStorage.setItem('currentImageIndex', currentIndex.toString());
+
+    updatePreviewImage(images[currentIndex].imageUrl);
+}
+
+function showPreviousImage() {
+    const images = getImagesFromLocalStorage();
+    if (images.length === 0) return;
+
+    let currentIndex = parseInt(localStorage.getItem('currentImageIndex') || '0', 10);
+    currentIndex = (currentIndex - 1 + images.length) % images.length; // Move to the previous image
+    localStorage.setItem('currentImageIndex', currentIndex.toString());
+
+    updatePreviewImage(images[currentIndex].imageUrl);
+}
+
+function updatePreviewImage(imageUrl) {
+    const coverPreview = document.getElementById('cover-preview');
+    if (coverPreview) {
+        coverPreview.src = imageUrl;
+        coverPreview.style.display = 'block'; // Show the image
+    }
+}
+
+function togglePause() {
+    window.searchInProgress = !window.searchInProgress;
+    const pauseButtonIcon = document.querySelector('#pause-search i');
+    pauseButtonIcon.className = window.searchInProgress ? 'fas fa-pause' : 'fas fa-play';
+
+    if (window.searchInProgress) {
+        fetchRandomHentai();
+    }
+}
+
+// Preload FontAwesome icons
+const link = document.createElement('link');
+link.rel = 'stylesheet';
+link.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css';
+document.head.appendChild(link);
+
+// Initialize the current image index
+localStorage.setItem('currentImageIndex', '0');
 
 })();
-//----------------------------**Random Hentai Prefrences**----------------------------
-
+//----------------------------**Random Hentai Preferences with Image Storage**----------------------------
