@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      4.3.1
+// @version      4.3.2
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -1445,7 +1445,7 @@ async function analyzeURL(url) {
 
         if (coverImageUrl) {
             saveImageToLocalStorage(coverImageUrl, url, languageDisplay, pages);
-            showNextImage(); // Automatically show the next image if not paused
+            showPreviousImage(); // Automatically show the next image if not paused. Says the showPreviousImage because I flipped the way images are saved in local storage so I had to flip everything
         }
 
         if (await meetsUserPreferences(tags, pages)) {
@@ -1500,14 +1500,19 @@ async function meetsUserPreferences(tags, pages) {
 
 function saveImageToLocalStorage(imageUrl, hentaiUrl, language, pages) {
     let images = JSON.parse(localStorage.getItem('hentaiImages') || '[]');
-    images.push({ imageUrl, url: hentaiUrl, language, pages });
+    images.unshift({ imageUrl, url: hentaiUrl, language, pages }); // Add new image to the beginning
 
     if (images.length > 10) {
-        images.shift(); // Remove the oldest image if more than 10 images are stored
+        images.pop(); // Remove the oldest image if more than 10 images are stored
     }
 
     localStorage.setItem('hentaiImages', JSON.stringify(images));
+
+    // Reset the current image index to 0 to show the new image
+    localStorage.setItem('currentImageIndex', '0');
+    updatePreviewImage(imageUrl, language, pages); // Update preview immediately
 }
+
 
 function getImagesFromLocalStorage() {
     return JSON.parse(localStorage.getItem('hentaiImages') || '[]');
@@ -1518,7 +1523,7 @@ function showNextImage() {
     if (images.length === 0) return;
 
     let currentIndex = parseInt(localStorage.getItem('currentImageIndex') || '0', 10);
-    currentIndex = (currentIndex + 1) % images.length; // Move to the next image
+    currentIndex = (currentIndex - 1 + images.length) % images.length; // Move to the next image
     localStorage.setItem('currentImageIndex', currentIndex.toString());
 
     const currentImage = images[currentIndex];
@@ -1530,12 +1535,14 @@ function showPreviousImage() {
     if (images.length === 0) return;
 
     let currentIndex = parseInt(localStorage.getItem('currentImageIndex') || '0', 10);
-    currentIndex = (currentIndex - 1 + images.length) % images.length; // Move to the previous image
+    currentIndex = (currentIndex + 1) % images.length; // Move to the previous image
     localStorage.setItem('currentImageIndex', currentIndex.toString());
 
     const currentImage = images[currentIndex];
     updatePreviewImage(currentImage.imageUrl, currentImage.language, currentImage.pages);
+   
 }
+
 
 function updatePreviewImage(imageUrl, language = '', pages = '') {
     const coverPreview = document.getElementById('cover-preview');
@@ -1553,6 +1560,7 @@ function updatePreviewImage(imageUrl, language = '', pages = '') {
         `;
     }
 }
+
 
 function togglePause() {
     window.searchInProgress = !window.searchInProgress;
