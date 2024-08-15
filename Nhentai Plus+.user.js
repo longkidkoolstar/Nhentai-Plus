@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      4.3.2
+// @version      4.4
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -925,9 +925,6 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
 
 //----------------------------**Settings**-----------------------------
 
-(function() {
-    'use strict';
-
     // Function to add the settings button to the menu
     function addSettingsButton() {
         // Create the settings button
@@ -1096,21 +1093,23 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
                         Enable Bookmarks Button
                     </label>
                     <div id="random-settings">
-                        <h3>Random Hentai Preferences</h3>
-                        <label>Language: <input type="text" id="pref-language"></label>
-                        <label>Tags: <input type="text" id="pref-tags"></label>
-                        <label>Minimum Pages: <input type="number" id="pref-pages-min"></label>
-                        <label>Maximum Pages: <input type="number" id="pref-pages-max"></label>
-                        <label>
-                            <input type="checkbox" id="matchAllTags">
-                            Match All Tags (unchecked = match any)
-                        </label>
-                    </div>
-                    <button type="submit">Save Settings</button>
-                </form>
-            </div>
-        `;
+                    <h3>Random Hentai Preferences</h3>
+                    <label>Language: <input type="text" id="pref-language"></label>
+                    <label>Tags: <input type="text" id="pref-tags"></label>
+                    <label>Blacklisted Tags: <input type="text" id="blacklisted-tags"></label>
+                    <label>Minimum Pages: <input type="number" id="pref-pages-min"></label>
+                    <label>Maximum Pages: <input type="number" id="pref-pages-max"></label>
+                    <label>
+                        <input type="checkbox" id="matchAllTags">
+                        Match All Tags (unchecked = match any)
+                    </label>
+                </div>
+                <button type="submit">Save Settings</button>
+            </form>
+        </div>
+    `;
         $('div.container').append(settingsHtml);
+        
         function showPopup(message) {
             const popup = document.createElement('div');
             popup.id = 'popup';
@@ -1133,7 +1132,7 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
                     background: rgba(0, 0, 0, 0.9);
                     color: #fff;
                     border-radius: 5px;
-                    z-index: 1000;
+                    z-index: 9999;
                     padding: 15px;
                     width: 250px; /* Make the popup smaller */
                     text-align: center;
@@ -1190,6 +1189,7 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
             const pagesMin = await GM.getValue('randomPrefPagesMin', '');
             const pagesMax = await GM.getValue('randomPrefPagesMax', '');
             const matchAllTags = await GM.getValue('matchAllTags', true);
+            const blacklistedTags = await GM.getValue('blacklistedTags', []);
 
             $('#findSimilarEnabled').prop('checked', findSimilarEnabled);
             $('#englishFilterEnabled').prop('checked', englishFilterEnabled);
@@ -1204,6 +1204,7 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
             $('#pref-pages-max').val(pagesMax);
             $('#autoLoginCredentials').toggle(autoLoginEnabled);
             $('#matchAllTags').prop('checked', matchAllTags);
+            $('#blacklisted-tags').val(blacklistedTags.join(', '));
         })();
 
         // Save settings
@@ -1220,6 +1221,8 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
             const language = $('#pref-language').val();
             let tags = $('#pref-tags').val().split(',').map(tag => tag.trim());
             tags = tags.map(tag => tag.replace(/-/g, ' ')); // Replace hyphens with spaces
+            let blacklistedTags = $('#blacklisted-tags').val().split(',').map(tag => tag.trim());
+            blacklistedTags = blacklistedTags.map(tag => tag.replace(/-/g, ' ')); // Replace hyphens with spaces
             const pagesMin = $('#pref-pages-min').val();
             const pagesMax = $('#pref-pages-max').val();
             const matchAllTags = $('#matchAllTags').prop('checked');
@@ -1232,6 +1235,7 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
             await GM.setValue('findAltmangaEnabled', findAltmangaEnabled);
             await GM.setValue('bookmarksEnabled', bookmarksEnabled);
             await GM.setValue('randomPrefLanguage', language);
+            await GM.setValue('blacklistedTags', blacklistedTags);
             await GM.setValue('randomPrefTags', tags);
             await GM.setValue('randomPrefPagesMin', pagesMin);
             await GM.setValue('randomPrefPagesMax', pagesMax);
@@ -1292,6 +1296,11 @@ async function arePreferencesSet() {
 }
 
 function showLoadingPopup() {
+    if (window.searchInProgress) {
+        showPopup('Already searching for random content!');
+        return;
+    }
+
     // Create and display the popup
     const popup = document.createElement('div');
     popup.id = 'loading-popup';
@@ -1311,12 +1320,12 @@ function showLoadingPopup() {
 
     // Popup content with image container and buttons
     popup.innerHTML = `
-    <span>Searching for random content...</span>
-    <div id="cover-preview-container" style="margin-top: 10px; width: 350px; height: 192px; display: flex; align-items: center; justify-content: center; overflow: hidden; border-radius: 8px;">
-        <img id="cover-preview" style="max-width: 100%; max-height: 100%; object-fit: contain; display: none; cursor: pointer;" />
-    </div>
-    <div id="preview-notes" style="margin-top: 10px; color: white; text-align: center;">
-        <!-- Notes will be inserted here -->
+        <span>Searching for random content...</span>
+        <div id="cover-preview-container" style="margin-top: 10px; width: 350px; height: 192px; display: flex; align-items: center; justify-content: center; overflow: hidden; border-radius: 8px;">
+            <img id="cover-preview" style="max-width: 100%; max-height: 100%; object-fit: contain; display: none; cursor: pointer;" />
+        </div>
+        <div id="preview-notes" style="margin-top: 10px; color: white; text-align: center;">
+            <!-- Notes will be inserted here -->
         </div>
         <div style="margin-top: 20px; display: flex; gap: 15px;">
             <button id="previous-image" class="control-button" style="background: none; border: none; color: white; cursor: pointer; font-size: 20px; transition: color 0.3s ease, transform 0.3s ease;">
@@ -1380,6 +1389,7 @@ function showLoadingPopup() {
         }
     });
 }
+
 
 
 function hideLoadingPopup() {
@@ -1468,6 +1478,7 @@ async function meetsUserPreferences(tags, pages) {
     try {
         const preferredLanguage = (await GM.getValue('randomPrefLanguage', '')).toLowerCase();
         const preferredTags = (await GM.getValue('randomPrefTags', [])).map(tag => tag.toLowerCase());
+        const blacklistedTags = (await GM.getValue('blacklistedTags', [])).map(tag => tag.toLowerCase());
         const preferredPagesMin = parseInt(await GM.getValue('randomPrefPagesMin', ''), 10);
         const preferredPagesMax = parseInt(await GM.getValue('randomPrefPagesMax', ''), 10);
         const matchAllTags = await GM.getValue('matchAllTags', true);
@@ -1491,12 +1502,15 @@ async function meetsUserPreferences(tags, pages) {
         const withinPageRange = (!isNaN(preferredPagesMin) ? pages >= preferredPagesMin : true) && 
                                 (!isNaN(preferredPagesMax) ? pages <= preferredPagesMax : true);
 
-        return hasPreferredLanguage && hasPreferredTags && withinPageRange;
+        const hasBlacklistedTags = blacklistedTags.some(tag => cleanedTags.includes(tag));
+
+        return hasPreferredLanguage && hasPreferredTags && withinPageRange && !hasBlacklistedTags;
     } catch (error) {
         console.error('Error checking user preferences:', error);
         return false;
     }
 }
+
 
 function saveImageToLocalStorage(imageUrl, hentaiUrl, language, pages) {
     let images = JSON.parse(localStorage.getItem('hentaiImages') || '[]');
@@ -1581,5 +1595,5 @@ document.head.appendChild(link);
 // Initialize the current image index
 localStorage.setItem('currentImageIndex', '0');
 
-})();
+
 //----------------------------**Random Hentai Preferences**----------------------------
