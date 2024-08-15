@@ -12,6 +12,8 @@ Nhentai Plus+ is a userscript that enhances the functionality of the Nhentai web
 
 4. **Settings**: Provides a settings page where users can enable or disable specific features and configure their preferences.
 
+5. **Random Tag Preferences**: Allow users to select specific tags for random Hentais.
+
 ## Installation
 
 To use Nhentai Plus+, you need to install a userscript manager extension in your browser. Here are the steps to install the script:
