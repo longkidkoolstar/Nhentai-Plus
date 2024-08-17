@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      4.4
+// @version      4.5
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -306,324 +306,314 @@ addFindAltButton();
 
 //------------------------  **Find Alternative Manga Button(Thumbnail Version)**  ------------------
 
+(async function() {
+    const findAltMangaThumbnailEnabled = await GM.getValue('findAltMangaThumbnailEnabled', true); // Default to true if not set
+    if (!findAltMangaThumbnailEnabled) return; // Exit if the feature is not enabled
 
-const flagEn = "https://i.imgur.com/vSnHmmi.gif";
-const flagJp = "https://i.imgur.com/GlArpuS.gif";
-const flagCh = "https://i.imgur.com/7B55DYm.gif";
-const non_english_fade_opacity = 0.3;  // Default value, adjust as necessary
-const partially_fade_all_non_english = true;  // Default value, adjust as necessary
-const mark_as_read_system_enabled = true;  // Default value, adjust as necessary
-const marked_as_read_fade_opacity = 0.3;  // Default value, adjust as necessary
-const auto_group_on_page_comics = true;  // Default value, adjust as necessary
-const version_grouping_filter_brackets = false;  // Default value, adjust as necessary
+    const flagEn = "https://i.imgur.com/vSnHmmi.gif";
+    const flagJp = "https://i.imgur.com/GlArpuS.gif";
+    const flagCh = "https://i.imgur.com/7B55DYm.gif";
+    const non_english_fade_opacity = 0.3;
+    const partially_fade_all_non_english = true;
+    const mark_as_read_system_enabled = true;
+    const marked_as_read_fade_opacity = 0.3;
+    const auto_group_on_page_comics = true;
+    const version_grouping_filter_brackets = false;
 
-// Initialize MARArray from local storage or as an empty array
-let MARArray = [];
-GM.getValue("MARArray", "[]").then((value) => {
-    if (typeof value === 'string') {
-        MARArray = JSON.parse(value);
-    }
-
-    // Add necessary styles
-    GM.addStyle(`
-        .overlayFlag {
-            position: absolute;
-            display: inline-block;
-            top: 3px;
-            left: 3px;
-            z-index: 3;
-            width: 18px;
-            height: 12px;
+    let MARArray = [];
+    GM.getValue("MARArray", "[]").then((value) => {
+        if (typeof value === 'string') {
+            MARArray = JSON.parse(value);
         }
-        .numOfVersions {
-            border-radius: 10px;
-            padding: 5px 10px;
-            position: absolute;
-            background-color: rgba(0,0,0,.7);
-            color: rgba(255,255,255,.8);
-            top: 7.5px;
-            left: 105px;
-            font-size: 12px;
-            font-weight: 900;
-            opacity: 1;
-            width: 40px;
-            z-index: 2;
-            display: none;
-        }
-        .findVersionButton {
-            border-radius: 10px;
-            padding: 5px 10px;
-            position: absolute;
-            background-color: rgba(0,0,0,.4);
-            color: rgba(255,255,255,.8);
-            bottom: 7.5px;
-            left: 7.5px;
-            font-size: 12px;
-            font-weight: 900;
-            opacity: 1;
-            width: 125px;
-            z-index: 2;
-            cursor: pointer;
-        }
-        .versionNextButton {
-            border-radius: 10px;
-            padding: 5px 10px;
-            position: absolute;
-            background-color: rgba(0,0,0,.7);
-            color: rgba(255,255,255,.8);
-            top: 7.5px;
-            right: 7.5px;
-            font-size: 12px;
-            font-weight: 900;
-            opacity: 1;
-            display: none;
-            z-index: 2;
-            cursor: pointer;
-        }
-        .versionPrevButton {
-            border-radius: 10px;
-            padding: 5px 10px;
-            position: absolute;
-            background-color: rgba(0,0,0,.7);
-            color: rgba(255,255,255,.8);
-            top: 7.5px;
-            left: 7.5px;
-            font-size: 12px;
-            font-weight: 900;
-            opacity: 1;
-            z-index: 2;
-            display: none;
-            cursor: pointer;
-        }
-    `);
 
-    function IncludesAll(string, search) {
-        string = CleanupSearchString(string);
-        search = CleanupSearchString(search);
-        if (string.length == 0 || search.length == 0)
-            return false;
-
-        let searches = search.split(" ");
-        for (let i = 0; i < searches.length; i++)
-            if (!!searches[i] && searches[i].length > 0 && !string.includes(searches[i]))
-                return false;
-        return true;
-    }
-
-    function AddAltVersionsToThis(target) {
-        let place = target;
-        let title = place.parent().find(".cover:visible > .caption").text();
-        $.get(BuildUrl(title), function(data) {
-            let found = $(data).find(".container > .gallery");
-            if (!found || found.length <= 0) {
-                alert("error reading data");
-                return;
+        GM.addStyle(`
+            .overlayFlag {
+                position: absolute;
+                display: inline-block;
+                top: 3px;
+                left: 3px;
+                z-index: 3;
+                width: 18px;
+                height: 12px;
             }
-            place.parent().find(".cover").remove();
-            try {
-                for (let i = 0; i < found.length; i++) {
-                    if (partially_fade_all_non_english)
-                        $(found[i]).find(".cover > img, .cover > .caption").css("opacity", non_english_fade_opacity);
+            .numOfVersions {
+                border-radius: 10px;
+                padding: 5px 10px;
+                position: absolute;
+                background-color: rgba(0,0,0,.7);
+                color: rgba(255,255,255,.8);
+                top: 7.5px;
+                left: 105px;
+                font-size: 12px;
+                font-weight: 900;
+                opacity: 1;
+                width: 40px;
+                z-index: 2;
+                display: none;
+            }
+            .findVersionButton {
+                border-radius: 10px;
+                padding: 5px 10px;
+                position: absolute;
+                background-color: rgba(0,0,0,.4);
+                color: rgba(255,255,255,.8);
+                bottom: 7.5px;
+                left: 7.5px;
+                font-size: 12px;
+                font-weight: 900;
+                opacity: 1;
+                width: 125px;
+                z-index: 2;
+                cursor: pointer;
+            }
+            .versionNextButton {
+                border-radius: 10px;
+                padding: 5px 10px;
+                position: absolute;
+                background-color: rgba(0,0,0,.7);
+                color: rgba(255,255,255,.8);
+                top: 7.5px;
+                right: 7.5px;
+                font-size: 12px;
+                font-weight: 900;
+                opacity: 1;
+                display: none;
+                z-index: 2;
+                cursor: pointer;
+            }
+            .versionPrevButton {
+                border-radius: 10px;
+                padding: 5px 10px;
+                position: absolute;
+                background-color: rgba(0,0,0,.7);
+                color: rgba(255,255,255,.8);
+                top: 7.5px;
+                left: 7.5px;
+                font-size: 12px;
+                font-weight: 900;
+                opacity: 1;
+                z-index: 2;
+                display: none;
+                cursor: pointer;
+            }
+        `);
 
-                    if ($(found[i]).attr("data-tags").includes("12227")) //en
-                    {
-                        $(found[i]).find(".caption").append(`<img class="overlayFlag" src="` + flagEn + `">`);
-                        $(found[i]).find(".cover > img, .cover > .caption").css("opacity", "1");
-                    } else {
-                        if ($(found[i]).attr("data-tags").includes("6346")) //jp
-                            $(found[i]).find(".caption").append(`<img class="overlayFlag" src="` + flagJp + `">`);
-                        else if ($(found[i]).attr("data-tags").includes("29963")) //ch
-                            $(found[i]).find(".caption").append(`<img class="overlayFlag" src="` + flagCh + `">`);
+        function IncludesAll(string, search) {
+            string = CleanupSearchString(string);
+            search = CleanupSearchString(search);
+            if (string.length == 0 || search.length == 0) return false;
+            let searches = search.split(" ");
+            for (let i = 0; i < searches.length; i++) {
+                if (!!searches[i] && searches[i].length > 0 && !string.includes(searches[i])) return false;
+            }
+            return true;
+        }
 
-                        if (!partially_fade_all_non_english)
+        function AddAltVersionsToThis(target) {
+            let place = target;
+            let title = place.parent().find(".cover:visible > .caption").text();
+            $.get(BuildUrl(title), function(data) {
+                let found = $(data).find(".container > .gallery");
+                if (!found || found.length <= 0) {
+                    alert("error reading data");
+                    return;
+                }
+                place.parent().find(".cover").remove();
+                try {
+                    for (let i = 0; i < found.length; i++) {
+                        if (partially_fade_all_non_english) {
+                            $(found[i]).find(".cover > img, .cover > .caption").css("opacity", non_english_fade_opacity);
+                        }
+
+                        if ($(found[i]).attr("data-tags").includes("12227")) {
+                            $(found[i]).find(".caption").append(`<img class="overlayFlag" src="` + flagEn + `">`);
                             $(found[i]).find(".cover > img, .cover > .caption").css("opacity", "1");
+                        } else {
+                            if ($(found[i]).attr("data-tags").includes("6346")) {
+                                $(found[i]).find(".caption").append(`<img class="overlayFlag" src="` + flagJp + `">`);
+                            } else if ($(found[i]).attr("data-tags").includes("29963")) {
+                                $(found[i]).find(".caption").append(`<img class="overlayFlag" src="` + flagCh + `">`);
+                            }
+                            if (!partially_fade_all_non_english) {
+                                $(found[i]).find(".cover > img, .cover > .caption").css("opacity", "1");
+                            }
+                        }
+
+                        if (mark_as_read_system_enabled) {
+                            let MARArraySelector = MARArray.join("'], .cover[href='");
+                            $(found[i]).find(".cover[href='" + MARArraySelector + "']").append("<div class='readTag'>READ</div>");
+                            let readTag = $(found[i]).find(".readTag");
+                            if (!!readTag && readTag.length > 0) {
+                                readTag.parent().parent().find(".cover > img, .cover > .caption").css("opacity", marked_as_read_fade_opacity);
+                            }
+                        }
+
+                        let thumbnailReplacement;
+                        if (!!$(found[i]).find(".cover > img").attr("data-src")) {
+                            thumbnailReplacement = $(found[i]).find(".cover > img").attr("data-src").replace(/\/\/.+?\.nhentai/g, "//i.nhentai").replace("thumb.jpg", "1.jpg").replace("thumb.png", "1.png");
+                        } else {
+                            thumbnailReplacement = $(found[i]).find(".cover > img").attr("src").replace(/\/\/.+?\.nhentai/g, "//i.nhentai").replace("thumb.jpg", "1.jpg").replace("thumb.png", "1.png");
+                        }
+
+                        $(found[i]).find(".cover > img").attr("src", thumbnailReplacement);
+                        place.parent().append($(found[i]).find(".cover"));
                     }
-
-                    if (mark_as_read_system_enabled) {
-                        let MARArraySelector = MARArray.join("'], .cover[href='");
-                        $(found[i]).find(".cover[href='" + MARArraySelector + "']").append("<div class='readTag'>READ</div>");
-                        let readTag = $(found[i]).find(".readTag");
-                        if (!!readTag && readTag.length > 0)
-                            readTag.parent().parent().find(".cover > img, .cover > .caption").css("opacity", marked_as_read_fade_opacity);
-                    }
-
-                    let thumbnailReplacement;
-                    if (!!$(found[i]).find(".cover > img").attr("data-src"))
-                        thumbnailReplacement = $(found[i]).find(".cover > img").attr("data-src").replace(/\/\/.+?\.nhentai/g, "//i.nhentai").replace("thumb.jpg", "1.jpg").replace("thumb.png", "1.png");
-                    else
-                        thumbnailReplacement = $(found[i]).find(".cover > img").attr("src").replace(/\/\/.+?\.nhentai/g, "//i.nhentai").replace("thumb.jpg", "1.jpg").replace("thumb.png", "1.png");
-
-                    $(found[i]).find(".cover > img").attr("src", thumbnailReplacement);
-                    place.parent().append($(found[i]).find(".cover"));
+                } catch (er) {
+                    alert("error modifying data: " + er);
+                    return;
                 }
-            } catch (er) {
-                alert("error modifying data: " + er);
-                return;
-            }
-            place.parent().find(".cover:not(:first)").css("display", "none");
-            place.parent().find(".versionPrevButton, .versionNextButton, .numOfVersions").show(200);
-            place.parent().find(".numOfVersions").text("1/" + (found.length));
-            place.hide(200);
-        }).fail(function(e) {
-            alert("error getting data: " + e);
-        });
-    }
-
-    function CleanupSearchString(title) {
-        title = title.replace(/\[.*?\]/g, "");
-        title = title.replace(/\【.*?\】/g, "");
-        if (version_grouping_filter_brackets)
-            title = title.replace(/\(.*?\)/g, "");
-        return title.trim();
-    }
-
-    function BuildUrl(title) {
-        let url = CleanupSearchString(title);
-
-        url = url.trim();
-        url = url.replace(/(^|\s){1}[^\w\s\d]{1}(\s|$){1}/g, " "); //remove all instances of a lone symbol character
-        url = url.replace(/\s+/g, '" "'); //wrap all terms with ""
-        url = '"' + url + '"';
-
-        url = encodeURIComponent(url);
-        url = "https://nhentai.net/search/?q=" + url;
-        return url;
-    }
-
-    function GroupAltVersionsOnPage() {
-        let i = 0;
-        let found = $(".container > .gallery");
-        while (!!found && i < found.length) {
-            AddAltVersionsToThisFromPage(found[i]);
-            i++;
-            found = $(".container > .gallery");
+                place.parent().find(".cover:not(:first)").css("display", "none");
+                place.parent().find(".versionPrevButton, .versionNextButton, .numOfVersions").show(200);
+                place.parent().find(".numOfVersions").text("1/" + (found.length));
+                place.hide(200);
+            }).fail(function(e) {
+                alert("error getting data: " + e);
+            });
         }
-    }
 
-    function AddAltVersionsToThisFromPage(target) {
-        let place = $(target);
-        place.addClass("ignoreThis");
-        let title = place.find(".cover > .caption").text();
-        if (!title || title.length <= 0)
-            return;
-        let found = $(".container > .gallery:not(.ignoreThis)");
-        let numOfValid = 0;
-        for (let i = 0; i < found.length; i++) {
-            let cap = $(found[i]).find(".caption");
-            if (cap.length == 1) {
-                if (IncludesAll(cap.text(), title)) {
-                    if (partially_fade_all_non_english)
-                        $(found[i]).find(".cover > img, .cover > .caption").css("opacity", non_english_fade_opacity);
+        function CleanupSearchString(title) {
+            title = title.replace(/\[.*?\]/g, "");
+            title = title.replace(/\【.*?\】/g, "");
+            if (version_grouping_filter_brackets) title = title.replace(/\(.*?\)/g, "");
+            return title.trim();
+        }
 
-                    if ($(found[i]).attr("data-tags").includes("12227")) {
-                        $(found[i]).find(".caption").append(`<img class="overlayFlag" src="` + flagEn + `">`);
-                        $(found[i]).find(".cover > img, .cover > .caption").css("opacity", "1");
-                    } else {
-                        if ($(found[i]).attr("data-tags").includes("6346"))
-                            $(found[i]).find(".caption").append(`<img class="overlayFlag" src="` + flagJp + `">`);
-                        else if ($(found[i]).attr("data-tags").includes("29963"))
-                            $(found[i]).find(".caption").append(`<img class="overlayFlag" src="` + flagCh + `">`);
+        function BuildUrl(title) {
+            let url = CleanupSearchString(title);
+            url = url.trim();
+            url = url.replace(/(^|\s){1}[^\w\s\d]{1}(\s|$){1}/g, " "); // remove all instances of a lone symbol character
+            url = url.replace(/\s+/g, '" "'); // wrap all terms with ""
+            url = '"' + url + '"';
+            url = encodeURIComponent(url);
+            url = "https://nhentai.net/search/?q=" + url;
+            return url;
+        }
 
-                        if (!partially_fade_all_non_english)
+        function GroupAltVersionsOnPage() {
+            let i = 0;
+            let found = $(".container > .gallery");
+            while (!!found && i < found.length) {
+                AddAltVersionsToThisFromPage(found[i]);
+                i++;
+                found = $(".container > .gallery");
+            }
+        }
+
+        function AddAltVersionsToThisFromPage(target) {
+            let place = $(target);
+            place.addClass("ignoreThis");
+            let title = place.find(".cover > .caption").text();
+            if (!title || title.length <= 0) return;
+            let found = $(".container > .gallery:not(.ignoreThis)");
+            let numOfValid = 0;
+            for (let i = 0; i < found.length; i++) {
+                let cap = $(found[i]).find(".caption");
+                if (cap.length == 1) {
+                    if (IncludesAll(cap.text(), title)) {
+                        if (partially_fade_all_non_english) {
+                            $(found[i]).find(".cover > img, .cover > .caption").css("opacity", non_english_fade_opacity);
+                        }
+
+                        if ($(found[i]).attr("data-tags").includes("12227")) {
+                            $(found[i]).find(".caption").append(`<img class="overlayFlag" src="` + flagEn + `">`);
                             $(found[i]).find(".cover > img, .cover > .caption").css("opacity", "1");
+                        } else {
+                            if ($(found[i]).attr("data-tags").includes("6346")) {
+                                $(found[i]).find(".caption").append(`<img class="overlayFlag" src="` + flagJp + `">`);
+                            } else if ($(found[i]).attr("data-tags").includes("29963")) {
+                                $(found[i]).find(".caption").append(`<img class="overlayFlag" src="` + flagCh + `">`);
+                            }
+                            if (!partially_fade_all_non_english) {
+                                $(found[i]).find(".cover > img, .cover > .caption").css("opacity", "1");
+                            }
+                        }
+
+                        if (mark_as_read_system_enabled) {
+                            let MARArraySelector = MARArray.join("'], .cover[href='");
+                            $(found[i]).find(".cover[href='" + MARArraySelector + "']").append("<div class='readTag'>READ</div>");
+                            let readTag = $(found[i]).find(".readTag");
+                            if (!!readTag && readTag.length > 0) {
+                                readTag.parent().parent().find(".cover > img, .cover > .caption").css("opacity", marked_as_read_fade_opacity);
+                            }
+                        }
+
+                        place.append($(found[i]).find(".cover"));
+                        $(found[i]).addClass("deleteThis");
+                        numOfValid++;
+                    }
+                } else {
+                    let addThese = false;
+                    for (let j = 0; j < cap.length; j++) {
+                        if (IncludesAll($(cap[j]).text(), title)) {
+                            addThese = true;
+                            break;
+                        }
                     }
 
-                    if (mark_as_read_system_enabled) {
-                        let MARArraySelector = MARArray.join("'], .cover[href='");
-                        $(found[i]).find(".cover[href='" + MARArraySelector + "']").append("<div class='readTag'>READ</div>");
-                        let readTag = $(found[i]).find(".readTag");
-                        if (!!readTag && readTag.length > 0)
-                            readTag.parent().parent().find(".cover > img, .cover > .caption").css("opacity", marked_as_read_fade_opacity);
+                    if (addThese) {
+                        for (let j = 0; j < cap.length; j++) {
+                            place.append($(cap[j]).parent());
+                        }
+                        $(found[i]).addClass("deleteThis");
+                        numOfValid += cap.length;
                     }
-
-                    place.append($(found[i]).find(".cover"));
-                    $(found[i]).addClass("deleteThis");
-                    numOfValid++;
-                }
-            } else {
-                let addThese = false;
-                for (let j = 0; j < cap.length; j++) {
-                    if (IncludesAll($(cap[j]).text(), title)) {
-                        addThese = true;
-                        break;
-                    }
-                }
-
-                if (addThese) {
-                    for (let j = 0; j < cap.length; j++)
-                        place.append($(cap[j]).parent());
-                    $(found[i]).addClass("deleteThis");
-                    numOfValid += cap.length;
                 }
             }
+            numOfValid++;
+            place.removeClass("deleteThis");
+            place.removeClass("ignoreThis");
+            $(".deleteThis").remove();
+            if (numOfValid > 1) {
+                place.find(".cover:not(:first)").css("display", "none");
+                place.find(".versionPrevButton, .versionNextButton, .numOfVersions").show(200);
+                place.find(".numOfVersions").text("1/" + numOfValid);
+            }
         }
-        numOfValid++;
-        place.removeClass("deleteThis");
-        place.removeClass("ignoreThis");
-        $(".deleteThis").remove();
-        if (numOfValid > 1) {
-            place.find(".cover:not(:first)").css("display", "none");
-            place.find(".versionPrevButton, .versionNextButton, .numOfVersions").show(200);
-            place.find(".numOfVersions").text("1/" + numOfValid);
+
+        if ($(".container.index-container, #favcontainer.container, #recent-favorites-container, #related-container").length !== 0) {
+            $(".cover").parent().append("<div class='findVersionButton'>Find Alt Versions</div>");
+            $(".cover").parent().append("<div class='numOfVersions'>1/1</div>");
+            $(".cover").parent().append("<div class='versionNextButton'>►</div>");
+            $(".cover").parent().append("<div class='versionPrevButton'>◄</div>");
+
+            $(".findVersionButton").click(function(e) {
+                e.preventDefault();
+                AddAltVersionsToThis($(this));
+            });
+
+            if (auto_group_on_page_comics) GroupAltVersionsOnPage();
+
+            $(".versionPrevButton").click(function(e) {
+                e.preventDefault();
+                let toHide = $(this).parent().find(".cover").filter(":visible");
+                let toShow = toHide.prev();
+                if (!toShow || toShow.length <= 0) return;
+                if (!toShow.is(".cover")) toShow = toHide.prevUntil(".cover", ":last").prev();
+                if (!toShow || toShow.length <= 0) return;
+                toHide.hide(100);
+                toShow.show(100);
+                let n = $(this).parent().find(".numOfVersions");
+                n.text((Number(n.text().split("/")[0]) - 1) + "/" + n.text().split("/")[1]);
+            });
+            $(".versionNextButton").click(function(e) {
+                e.preventDefault();
+                let toHide = $(this).parent().find(".cover").filter(":visible");
+                let toShow = toHide.next();
+                if (!toShow || toShow.length <= 0) return;
+                if (!toShow.is(".cover")) toShow = toHide.nextUntil(".cover", ":last").next();
+                if (!toShow || toShow.length <= 0) return;
+                toHide.hide(100);
+                toShow.show(100);
+                let n = $(this).parent().find(".numOfVersions");
+                n.text((Number(n.text().split("/")[0]) + 1) + "/" + n.text().split("/")[1]);
+            });
         }
-    }
+    });
 
-    if ($(".container.index-container, #favcontainer.container, #recent-favorites-container, #related-container").length !== 0) {
-        $(".cover").parent().append("<div class='findVersionButton'>Find Alt Versions</div>");
-        $(".cover").parent().append("<div class='numOfVersions'>1/1</div>");
-        $(".cover").parent().append("<div class='versionNextButton'>►</div>");
-        $(".cover").parent().append("<div class='versionPrevButton'>◄</div>");
-
-        $(".findVersionButton").click(function(e) {
-            e.preventDefault();
-            AddAltVersionsToThis($(this));
-        });
-
-        if (auto_group_on_page_comics)
-            GroupAltVersionsOnPage();
-
-        $(".versionPrevButton").click(function(e) {
-            e.preventDefault();
-            let toHide = $(this).parent().find(".cover").filter(":visible");
-            let toShow = toHide.prev();
-            if (!toShow || toShow.length <= 0)
-                return;
-            if (!toShow.is(".cover"))
-                toShow = toHide.prevUntil(".cover", ":last").prev();
-            if (!toShow || toShow.length <= 0)
-                return;
-            toHide.hide(100);
-            toShow.show(100);
-            let n = $(this).parent().find(".numOfVersions");
-            n.text((Number(n.text().split("/")[0]) - 1) + "/" + n.text().split("/")[1]);
-        });
-        $(".versionNextButton").click(function(e) {
-            e.preventDefault();
-            let toHide = $(this).parent().find(".cover").filter(":visible");
-            let toShow = toHide.next();
-            if (!toShow || toShow.length <= 0)
-                return;
-            if (!toShow.is(".cover"))
-                toShow = toHide.nextUntil(".cover", ":last").next();
-            if (!toShow || toShow.length <= 0)
-                return;
-            toHide.hide(100);
-            toShow.show(100);
-            let n = $(this).parent().find(".numOfVersions");
-            n.text((Number(n.text().split("/")[0]) + 1) + "/" + n.text().split("/")[1]);
-        });
-    }
-});
-
-
-
-
-
-
-
-
+})(); // Self-invoking function for the toggle check
 
 //------------------------  **Find Alternative Manga Button(Thumbnail Version)**  ------------------
+
 
 // ------------------------  *Bookmarks**  ------------------
 
@@ -1088,6 +1078,10 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
                         <input type="checkbox" id="findAltmangaEnabled">
                         Enable Find Altmanga Button
                     </label>
+                        <label>
+                     <input type="checkbox" id="findAltMangaThumbnailEnabled">
+                       Enable Find Alt Manga (Thumbnail Version)
+                     </label>
                     <label>
                         <input type="checkbox" id="bookmarksEnabled">
                         Enable Bookmarks Button
@@ -1110,71 +1104,7 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
     `;
         $('div.container').append(settingsHtml);
         
-        function showPopup(message) {
-            const popup = document.createElement('div');
-            popup.id = 'popup';
-            popup.innerHTML = `
-                <div class="popup-content">
-                    <button class="close-btn">&times;</button>
-                    <p>${message}</p>
-                </div>
-            `;
-            document.body.appendChild(popup);
-        
-            // Add CSS styling for the popup
-            const style = document.createElement('style');
-            style.textContent = `
-                #popup {
-                    position: fixed;
-                    top: 50%;
-                    left: 50%;
-                    transform: translate(-50%, -50%);
-                    background: rgba(0, 0, 0, 0.9);
-                    color: #fff;
-                    border-radius: 5px;
-                    z-index: 9999;
-                    padding: 15px;
-                    width: 250px; /* Make the popup smaller */
-                    text-align: center;
-                }
-                .popup-content {
-                    position: relative;
-                    padding: 10px; /* Adjust padding for a smaller popup */
-                }
-                .close-btn {
-                    position: absolute;
-                    top: 5px; /* Position closer to the top */
-                    right: 10px; /* Position closer to the right */
-                    background: none;
-                    border: none;
-                    color: #fff;
-                    font-size: 18px; /* Adjust font size for a smaller popup */
-                    cursor: pointer;
-                    transition: color 0.3s, opacity 0.3s;
-                }
-                .close-btn:hover {
-                    color: #ff0000;
-                    opacity: 0.7;
-                }
-            `;
-            document.head.appendChild(style);
-        
-            // Close the popup when the close button is clicked
-            document.querySelector('.close-btn').addEventListener('click', function() {
-                document.body.removeChild(popup);
-                document.head.removeChild(style); // Remove the styling
-            });
-        
-        
 
-    // Optionally remove the popup after a few seconds
-    setTimeout(() => {
-        if (document.body.contains(popup)) {
-            document.body.removeChild(popup);
-            document.head.removeChild(style); // Remove the styling
-        }
-    }, 3000); // Adjust the time as needed
-}
         // Load settings
         (async function() {
             const findSimilarEnabled = await GM.getValue('findSimilarEnabled', true);
@@ -1190,6 +1120,7 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
             const pagesMax = await GM.getValue('randomPrefPagesMax', '');
             const matchAllTags = await GM.getValue('matchAllTags', true);
             const blacklistedTags = await GM.getValue('blacklistedTags', []);
+            const findAltMangaThumbnailEnabled = await GM.getValue('findAltMangaThumbnailEnabled', true);
 
             $('#findSimilarEnabled').prop('checked', findSimilarEnabled);
             $('#englishFilterEnabled').prop('checked', englishFilterEnabled);
@@ -1205,6 +1136,7 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
             $('#autoLoginCredentials').toggle(autoLoginEnabled);
             $('#matchAllTags').prop('checked', matchAllTags);
             $('#blacklisted-tags').val(blacklistedTags.join(', '));
+            $('#findAltMangaThumbnailEnabled').prop('checked', findAltMangaThumbnailEnabled);
         })();
 
         // Save settings
@@ -1226,6 +1158,7 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
             const pagesMin = $('#pref-pages-min').val();
             const pagesMax = $('#pref-pages-max').val();
             const matchAllTags = $('#matchAllTags').prop('checked');
+            const findAltMangaThumbnailEnabled = $('#findAltMangaThumbnailEnabled').prop('checked');
 
             await GM.setValue('findSimilarEnabled', findSimilarEnabled);
             await GM.setValue('englishFilterEnabled', englishFilterEnabled);
@@ -1240,6 +1173,7 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
             await GM.setValue('randomPrefPagesMin', pagesMin);
             await GM.setValue('randomPrefPagesMax', pagesMax);
             await GM.setValue('matchAllTags', matchAllTags);
+            await GM.setValue('findAltMangaThumbnailEnabled', findAltMangaThumbnailEnabled);
 
     // Show custom popup instead of alert
     showPopup('Settings saved!');
@@ -1250,6 +1184,72 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
             $('#autoLoginCredentials').toggle(this.checked);
         });
     }
+
+    function showPopup(message) {
+        const popup = document.createElement('div');
+        popup.id = 'popup';
+        popup.innerHTML = `
+            <div class="popup-content">
+                <button class="close-btn">&times;</button>
+                <p>${message}</p>
+            </div>
+        `;
+        document.body.appendChild(popup);
+    
+        // Add CSS styling for the popup
+        const style = document.createElement('style');
+        style.textContent = `
+            #popup {
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: rgba(0, 0, 0, 0.9);
+                color: #fff;
+                border-radius: 5px;
+                z-index: 9999;
+                padding: 15px;
+                width: 250px; /* Make the popup smaller */
+                text-align: center;
+            }
+            .popup-content {
+                position: relative;
+                padding: 10px; /* Adjust padding for a smaller popup */
+            }
+            .close-btn {
+                position: absolute;
+                top: 5px; /* Position closer to the top */
+                right: 10px; /* Position closer to the right */
+                background: none;
+                border: none;
+                color: #fff;
+                font-size: 18px; /* Adjust font size for a smaller popup */
+                cursor: pointer;
+                transition: color 0.3s, opacity 0.3s;
+            }
+            .close-btn:hover {
+                color: #ff0000;
+                opacity: 0.7;
+            }
+        `;
+        document.head.appendChild(style);
+    
+        // Close the popup when the close button is clicked
+        document.querySelector('.close-btn').addEventListener('click', function() {
+            document.body.removeChild(popup);
+            document.head.removeChild(style); // Remove the styling
+        });
+    
+    
+
+// Optionally remove the popup after a few seconds
+setTimeout(() => {
+    if (document.body.contains(popup)) {
+        document.body.removeChild(popup);
+        document.head.removeChild(style); // Remove the styling
+    }
+}, 3000); // Adjust the time as needed
+}
 //----------------------------**Settings**--------------------------------------------
 
 
