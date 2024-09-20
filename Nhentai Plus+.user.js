@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      4.5
+// @version      4.6
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -1024,31 +1024,31 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
                 margin-bottom: 10px; /* Add spacing between fields */
             }
             
-            #loading-popup {
-                position: fixed;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                padding: 20px;
-                background-color: rgba(0, 0, 0, 0.8);
-                color: #fff;
-                border-radius: 5px;
-                z-index: 1000;
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-            }
-            
-            #loading-popup button.close {
-                position: absolute;
-                top: 10px;
-                right: 10px;
-                background: none;
-                border: none;
-                color: #fff;
-                font-size: 20px;
-                cursor: pointer;
-            }
+       /* Bookmark Import/Export Buttons */
+        .bookmark-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .bookmark-actions button {
+            padding: 10px;
+            background-color: #007bff;
+            border: none;
+            color: white;
+            cursor: pointer;
+        }
+
+        .bookmark-actions button:hover {
+            background-color: #0056b3;
+        }
+
+        #importBookmarksFile {
+            display: none;
+        }
+    </style>
+
+
             
             </style>
             <div id="content">
@@ -1083,8 +1083,16 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
                        Enable Find Alt Manga (Thumbnail Version)
                      </label>
                     <label>
-                        <input type="checkbox" id="bookmarksEnabled">
-                        Enable Bookmarks Button
+                                    <!-- Bookmark Section -->
+            <label>
+                <input type="checkbox" id="bookmarksEnabled">
+                Enable Bookmarks Button
+            </label>
+            <div class="bookmark-actions">
+                <button type="button" id="exportBookmarks">Export Bookmarks</button>
+                <button type="button" id="importBookmarks">Import Bookmarks</button>
+                <input type="file" id="importBookmarksFile" accept=".json">
+            </div>
                     </label>
                     <div id="random-settings">
                     <h3>Random Hentai Preferences</h3>
@@ -1097,6 +1105,7 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
                         <input type="checkbox" id="matchAllTags">
                         Match All Tags (unchecked = match any)
                     </label>
+                    
                 </div>
                 <button type="submit">Save Settings</button>
             </form>
@@ -1250,6 +1259,64 @@ setTimeout(() => {
     }
 }, 3000); // Adjust the time as needed
 }
+
+// Export Bookmarked Pages
+function exportBookmarkedPages() {
+    GM.getValue('bookmarkedPages', []).then(bookmarkedPages => {
+        const blob = new Blob([JSON.stringify(bookmarkedPages, null, 2)], { type: 'application/json' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'bookmarked_pages.json';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    });
+}
+
+// Import Bookmarked Pages
+function importBookmarkedPages(file) {
+    const reader = new FileReader();
+    reader.onload = async function(event) {
+        try {
+            const importedPages = JSON.parse(event.target.result);
+            if (Array.isArray(importedPages)) {
+                const existingPages = await GM.getValue('bookmarkedPages', []);
+                const mergedPages = [...new Set([...existingPages, ...importedPages])]; // Merge without duplicates
+                await GM.setValue('bookmarkedPages', mergedPages);
+                alert('Bookmarks imported successfully!');
+            } else {
+                throw new Error('Invalid file format');
+            }
+        } catch (error) {
+            alert('Failed to import bookmarks: ' + error.message);
+        }
+    };
+    reader.readAsText(file);
+}
+
+// Add event listeners to buttons on the settings page
+function setupBookmarkButtons() {
+    // Export Button
+    document.getElementById('exportBookmarks').addEventListener('click', exportBookmarkedPages);
+
+    // Import Button
+    document.getElementById('importBookmarks').addEventListener('click', () => {
+        document.getElementById('importBookmarksFile').click();
+    });
+
+    // Handle file selection for import
+    document.getElementById('importBookmarksFile').addEventListener('change', function() {
+        const file = this.files[0];
+        if (file) {
+            importBookmarkedPages(file);
+        }
+    });
+}
+
+// Call this function after settings form is rendered
+setupBookmarkButtons();
+
+
 //----------------------------**Settings**--------------------------------------------
 
 
