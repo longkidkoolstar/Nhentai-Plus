@@ -952,167 +952,167 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
             notFoundMessage.remove();
         }
 
-        // Add settings form and random hentai preferences
-        const settingsHtml = `
-            <style>
-            #content {
-                padding: 20px;
-                background: #1a1a1a;
-                color: #fff;
-                border-radius: 5px;
-            }
-            
-            #settingsForm {
-                display: flex;
-                flex-direction: column;
-                gap: 10px;
-            }
-            
-            #settingsForm label {
-                display: flex;
-                align-items: center;
-                gap: 10px;
-            }
-            
-            #settingsForm input[type="text"],
-            #settingsForm input[type="password"],
-            #settingsForm input[type="number"] {
-                width: calc(100% - 12px); /* Adjust for padding and borders */
-                padding: 5px;
-                border-radius: 3px;
-                border: 1px solid #333;
-                background: #333;
-                color: #fff;
-            }
-            
-            #settingsForm button {
-                padding: 10px;
-                background: #2a2a2a;
-                border: 1px solid #333;
-                border-radius: 3px;
-                color: #fff;
-                cursor: pointer;
-            }
-            
-            #settingsForm button:hover {
-                background: #333;
-            }
-            
-            #autoLoginCredentials {
-                display: block;
-                margin-top: 10px;
-            }
-            
-            #random-settings {
-                margin-top: 20px;
-            }
-            
-            #random-settings label {
-                display: flex;
-                align-items: center;
-                gap: 10px;
-            }
-            
-            #random-settings input[type="text"],
-            #random-settings input[type="number"] {
-                width: calc(100% - 12px); /* Adjust for padding and borders */
-                padding: 5px;
-                border-radius: 3px;
-                border: 1px solid #333;
-                background: #333;
-                color: #fff;
-                margin-bottom: 10px; /* Add spacing between fields */
-            }
-            
-       /* Bookmark Import/Export Buttons */
-        .bookmark-actions {
-            display: flex;
-            gap: 10px;
-            margin-top: 10px;
-        }
+       // Add settings form and random hentai preferences
+const settingsHtml = `
+<style>
+    #content {
+        padding: 20px;
+        background: #1a1a1a;
+        color: #fff;
+        border-radius: 5px;
+    }
 
-        .bookmark-actions button {
-            padding: 10px;
-            background-color: #007bff;
-            border: none;
-            color: white;
-            cursor: pointer;
-        }
+    #settingsForm {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
 
-        .bookmark-actions button:hover {
-            background-color: #0056b3;
-        }
+    #settingsForm label {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
 
-        #importBookmarksFile {
-            display: none;
-        }
-    </style>
+    #settingsForm input[type="text"],
+    #settingsForm input[type="password"],
+    #settingsForm input[type="number"] {
+        width: calc(100% - 12px); /* Adjust for padding and borders */
+        padding: 5px;
+        border-radius: 3px;
+        border: 1px solid #333;
+        background: #333;
+        color: #fff;
+    }
 
+    #settingsForm button {
+        padding: 10px;
+        background: #2a2a2a;
+        border: 1px solid #333;
+        border-radius: 3px;
+        color: #fff;
+        cursor: pointer;
+    }
 
-            
-            </style>
-            <div id="content">
-                <h1>Settings</h1>
-                <form id="settingsForm">
-                    <label>
-                        <input type="checkbox" id="findSimilarEnabled">
-                        Enable Find Similar Button
-                    </label>
-                    <label>
-                        <input type="checkbox" id="englishFilterEnabled">
-                        Enable English Filter Button
-                    </label>
-                    <label>
-                        <input type="checkbox" id="autoLoginEnabled">
-                        Enable Auto Login
-                    </label>
-                    <div id="autoLoginCredentials">
-                        <label>
-                            Email: <input type="text" id="email">
-                        </label>
-                        <label>
-                            Password: <input type="password" id="password">
-                        </label>
-                    </div>
-                    <label>
-                        <input type="checkbox" id="findAltmangaEnabled">
-                        Enable Find Altmanga Button
-                    </label>
-                        <label>
-                     <input type="checkbox" id="findAltMangaThumbnailEnabled">
-                       Enable Find Alt Manga (Thumbnail Version)
-                     </label>
-                    <label>
-                                    <!-- Bookmark Section -->
+    #settingsForm button:hover {
+        background: #333;
+    }
+
+    #autoLoginCredentials {
+        display: block;
+        margin-top: 10px;
+    }
+
+    #random-settings {
+        margin-top: 20px;
+    }
+
+    #random-settings label {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    #random-settings input[type="text"],
+    #random-settings input[type="number"] {
+        width: calc(100% - 12px); /* Adjust for padding and borders */
+        padding: 5px;
+        border-radius: 3px;
+        border: 1px solid #333;
+        background: #333;
+        color: #fff;
+        margin-bottom: 10px; /* Add spacing between fields */
+    }
+
+    /* Bookmark Import/Export Buttons */
+    .bookmark-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 10px;
+    }
+
+    .bookmark-actions button {
+        padding: 10px;
+        background-color: #007bff;
+        border: none;
+        color: white;
+        cursor: pointer;
+    }
+
+    .bookmark-actions button:hover {
+        background-color: #0056b3;
+    }
+
+    #importBookmarksFile {
+        display: none;
+    }
+</style>
+
+<div id="content">
+    <h1>Settings</h1>
+    <form id="settingsForm">
+        <label>
+            <input type="checkbox" id="findSimilarEnabled">
+            Enable Find Similar Button
+        </label>
+        <label>
+            <input type="checkbox" id="englishFilterEnabled">
+            Enable English Filter Button
+        </label>
+        <label>
+            <input type="checkbox" id="autoLoginEnabled">
+            Enable Auto Login
+        </label>
+        <div id="autoLoginCredentials">
             <label>
-                <input type="checkbox" id="bookmarksEnabled">
-                Enable Bookmarks Button
+                Email: <input type="text" id="email">
             </label>
-            <div class="bookmark-actions">
-                <button type="button" id="exportBookmarks">Export Bookmarks</button>
-                <button type="button" id="importBookmarks">Import Bookmarks</button>
-                <input type="file" id="importBookmarksFile" accept=".json">
-            </div>
-                    </label>
-                    <div id="random-settings">
-                    <h3>Random Hentai Preferences</h3>
-                    <label>Language: <input type="text" id="pref-language"></label>
-                    <label>Tags: <input type="text" id="pref-tags"></label>
-                    <label>Blacklisted Tags: <input type="text" id="blacklisted-tags"></label>
-                    <label>Minimum Pages: <input type="number" id="pref-pages-min"></label>
-                    <label>Maximum Pages: <input type="number" id="pref-pages-max"></label>
-                    <label>
-                        <input type="checkbox" id="matchAllTags">
-                        Match All Tags (unchecked = match any)
-                    </label>
-                    
-                </div>
-                <button type="submit">Save Settings</button>
-            </form>
+            <label>
+                Password: <input type="password" id="password">
+            </label>
         </div>
-    `;
-        $('div.container').append(settingsHtml);
-        
+        <label>
+            <input type="checkbox" id="findAltmangaEnabled">
+            Enable Find Altmanga Button
+        </label>
+        <label>
+            <input type="checkbox" id="findAltMangaThumbnailEnabled">
+            Enable Find Alt Manga (Thumbnail Version)
+        </label>
+
+        <!-- Bookmark Section -->
+        <label>
+            <input type="checkbox" id="bookmarksEnabled">
+            Enable Bookmarks Button
+        </label>
+        <div class="bookmark-actions">
+            <button type="button" id="exportBookmarks">Export Bookmarks</button>
+            <button type="button" id="importBookmarks">Import Bookmarks</button>
+            <input type="file" id="importBookmarksFile" accept=".json">
+        </div>
+
+        <div id="random-settings">
+            <h3>Random Hentai Preferences</h3>
+            <label>Language: <input type="text" id="pref-language"></label>
+            <label>Tags: <input type="text" id="pref-tags"></label>
+            <label>Blacklisted Tags: <input type="text" id="blacklisted-tags"></label>
+            <label>Minimum Pages: <input type="number" id="pref-pages-min"></label>
+            <label>Maximum Pages: <input type="number" id="pref-pages-max"></label>
+            <label>
+                <input type="checkbox" id="matchAllTags">
+                Match All Tags (unchecked = match any)
+            </label>
+        </div>
+
+        <button type="submit">Save Settings</button>
+    </form>
+</div>
+`;
+
+// Append settings form to the container
+$('div.container').append(settingsHtml);
+
+
 
         // Load settings
         (async function() {
