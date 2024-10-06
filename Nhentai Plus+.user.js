@@ -1,13 +1,14 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      4.6.1
+// @version      4.6.2
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
 // @require      https://code.jquery.com/jquery-3.6.0.min.js
 // @icon         https://i.imgur.com/4zMY2VD.png
 // @license      MIT
+// @require      https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/js/all.min.js
 // @grant        GM.setValue
 // @grant        GM.getValue
 // @grant        GM.addStyle
@@ -633,7 +634,7 @@ async function createBookmarkButton() {
     // Bookmark button HTML
     const bookmarkButtonHtml = `
         <a class="btn btn-primary bookmark-btn" style="margin-left: 10px;">
-            <i class="fa ${isBookmarked ? 'fa-bookmark' : 'fa-bookmark-o'}"></i>
+            <i class="fas fa-bookmark${isBookmarked ? '' : ' far'}"></i>
         </a>
     `;
     const bookmarkButton = $(bookmarkButtonHtml);
@@ -646,19 +647,19 @@ async function createBookmarkButton() {
         const bookmarkedPages = await GM.getValue('bookmarkedPages', []);
         const currentPage = window.location.href;
         const isBookmarked = bookmarkedPages.includes(currentPage);
-
+      
         if (isBookmarked) {
-            // Remove the bookmark
-            const updatedBookmarkedPages = bookmarkedPages.filter(page => page !== currentPage);
-            await GM.setValue('bookmarkedPages', updatedBookmarkedPages);
-            $(this).find('i').removeClass('fa-bookmark').addClass('fa-bookmark-o');
+          // Remove the bookmark
+          const updatedBookmarkedPages = bookmarkedPages.filter(page => page !== currentPage);
+          await GM.setValue('bookmarkedPages', updatedBookmarkedPages);
+          $(this).find('svg').addClass('far').removeClass('fas');
         } else {
-            // Add the bookmark
-            bookmarkedPages.push(currentPage);
-            await GM.setValue('bookmarkedPages', bookmarkedPages);
-            $(this).find('i').removeClass('fa-bookmark-o').addClass('fa-bookmark');
+          // Add the bookmark
+          bookmarkedPages.push(currentPage);
+          await GM.setValue('bookmarkedPages', bookmarkedPages);
+          $(this).find('svg').addClass('fas').removeClass('far');
         }
-    });
+      });
 }
 // Only execute if not on the settings page or favorites page
 if (window.location.href.indexOf('nhentai.net/settings') === -1 && window.location.href.indexOf('nhentai.net/favorites') === -1) {
@@ -1658,12 +1659,6 @@ function togglePause() {
         fetchRandomHentai();
     }
 }
-
-// Preload FontAwesome icons
-const link = document.createElement('link');
-link.rel = 'stylesheet';
-link.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css';
-document.head.appendChild(link);
 
 // Initialize the current image index
 localStorage.setItem('currentImageIndex', '0');
