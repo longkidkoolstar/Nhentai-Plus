@@ -1,14 +1,13 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      4.6.2
+// @version      4.6.3
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
 // @require      https://code.jquery.com/jquery-3.6.0.min.js
 // @icon         https://i.imgur.com/4zMY2VD.png
 // @license      MIT
-// @require      https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/js/all.min.js
 // @grant        GM.setValue
 // @grant        GM.getValue
 // @grant        GM.addStyle
@@ -617,6 +616,33 @@ addFindAltButton();
 
 
 // ------------------------  *Bookmarks**  ------------------
+function injectCSS() {
+    const css = `
+        /* Bookmark animation */
+        @keyframes bookmark-animation {
+            0% {
+                transform: scale(1) rotate(0deg);
+            }
+            50% {
+                transform: scale(1.2) rotate(20deg);
+            }
+            100% {
+                transform: scale(1) rotate(0deg);
+            }
+        }
+
+        /* Add a class for the animation */
+        .bookmark-animating {
+            animation: bookmark-animation 0.4s ease-in-out;
+        }
+    `;
+    const style = document.createElement('style');
+    style.type = 'text/css';
+    style.appendChild(document.createTextNode(css));
+    document.head.appendChild(style);
+}
+
+injectCSS(); // Inject the CSS when the userscript runs
 
 // Function to create and insert bookmark button
 async function createBookmarkButton() {
@@ -631,10 +657,10 @@ async function createBookmarkButton() {
     const currentPage = window.location.href;
     const isBookmarked = bookmarkedPages.includes(currentPage);
 
-    // Bookmark button HTML
+    // Bookmark button HTML using Font Awesome 5.13.0
     const bookmarkButtonHtml = `
         <a class="btn btn-primary bookmark-btn" style="margin-left: 10px;">
-            <i class="fas fa-bookmark${isBookmarked ? '' : ' far'}"></i>
+            <i class="bookmark-icon ${isBookmarked ? 'fas' : 'far'} fa-bookmark"></i>
         </a>
     `;
     const bookmarkButton = $(bookmarkButtonHtml);
@@ -644,23 +670,36 @@ async function createBookmarkButton() {
 
     // Handle click event for the bookmark button
     bookmarkButton.click(async function() {
+        const bookmarkIcon = $(this).find('i.bookmark-icon');
         const bookmarkedPages = await GM.getValue('bookmarkedPages', []);
         const currentPage = window.location.href;
         const isBookmarked = bookmarkedPages.includes(currentPage);
-      
+
+        // Add animation class
+        bookmarkIcon.addClass('bookmark-animating');
+
         if (isBookmarked) {
-          // Remove the bookmark
-          const updatedBookmarkedPages = bookmarkedPages.filter(page => page !== currentPage);
-          await GM.setValue('bookmarkedPages', updatedBookmarkedPages);
-          $(this).find('svg').addClass('far').removeClass('fas');
+            // Remove the bookmark
+            const updatedBookmarkedPages = bookmarkedPages.filter(page => page !== currentPage);
+            await GM.setValue('bookmarkedPages', updatedBookmarkedPages);
+            bookmarkIcon.addClass('far').removeClass('fas');
         } else {
-          // Add the bookmark
-          bookmarkedPages.push(currentPage);
-          await GM.setValue('bookmarkedPages', bookmarkedPages);
-          $(this).find('svg').addClass('fas').removeClass('far');
+            // Add the bookmark
+            bookmarkedPages.push(currentPage);
+            await GM.setValue('bookmarkedPages', bookmarkedPages);
+            bookmarkIcon.addClass('fas').removeClass('far');
         }
-      });
+
+        // Remove animation class after animation ends
+        setTimeout(() => {
+            bookmarkIcon.removeClass('bookmark-animating');
+        }, 400); // Match the duration of the CSS animation (0.4s)
+    });
 }
+
+
+
+
 // Only execute if not on the settings page or favorites page
 if (window.location.href.indexOf('nhentai.net/settings') === -1 && window.location.href.indexOf('nhentai.net/favorites') === -1) {
     createBookmarkButton();
