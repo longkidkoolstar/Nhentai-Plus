@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      4.6.3
+// @version      4.7
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -16,8 +16,13 @@
 //------------------------  **Nhentai Related Manga Button**  ------------------
 
 // Initialize maxTagsToSelect from localStorage or default to 5
-let maxTagsToSelect = localStorage.getItem('maxTagsToSelect') || 5;
-maxTagsToSelect = parseInt(maxTagsToSelect); // Ensure it's parsed as an integer
+let maxTagsToSelect = await GM.getValue('maxTagsToSelect');
+if (maxTagsToSelect === undefined) {
+    maxTagsToSelect = 5;
+    await GM.setValue('maxTagsToSelect', maxTagsToSelect);
+} else {
+    maxTagsToSelect = parseInt(maxTagsToSelect); // Ensure it's parsed as an integer
+}
 
 // Array to store locked tags
 const lockedTags = [];
@@ -145,7 +150,7 @@ async function createFindSimilarButton() {
 }
 
 // Function to create and display the slider
-function createSlider() {
+async function createSlider() {
     const sliderHtml = `
         <div style="position: fixed; bottom: 20px; right: 20px; z-index: 9999;">
             <input type="range" min="1" max="10" value="${maxTagsToSelect}" id="tagSlider">
@@ -154,21 +159,21 @@ function createSlider() {
     `;
     $(document.body).append(sliderHtml);
 
-    // Retrieve saved maxTagsToSelect value from localStorage (if available)
-    const savedMaxTags = localStorage.getItem('maxTagsToSelect');
-    if (savedMaxTags) {
+    // Retrieve saved maxTagsToSelect value from GM storage (if available)
+    const savedMaxTags = await GM.getValue('maxTagsToSelect');
+    if (savedMaxTags !== undefined) {
         maxTagsToSelect = parseInt(savedMaxTags);
         $('#tagSlider').val(maxTagsToSelect);
         $('#tagSliderValue').text(maxTagsToSelect);
     }
 
-    // Update maxTagsToSelect based on slider value and save to localStorage
-    $('#tagSlider').on('input', function() {
+    // Update maxTagsToSelect based on slider value and save to GM storage
+    $('#tagSlider').on('input', async function() {
         maxTagsToSelect = parseInt($(this).val());
         $('#tagSliderValue').text(maxTagsToSelect);
 
-        // Store the updated maxTagsToSelect value in localStorage
-        localStorage.setItem('maxTagsToSelect', maxTagsToSelect);
+        // Store the updated maxTagsToSelect value in GM storage
+        await GM.setValue('maxTagsToSelect', maxTagsToSelect);
     });
 }
 
