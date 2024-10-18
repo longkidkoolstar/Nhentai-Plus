@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      4.7.1
+// @version      4.7.2
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -15,14 +15,18 @@
 
 //------------------------  **Nhentai Related Manga Button**  ------------------
 
-// Initialize maxTagsToSelect from localStorage or default to 5
-let maxTagsToSelect = GM.getValue('maxTagsToSelect');
-if (maxTagsToSelect === undefined) {
-    maxTagsToSelect = 5;
-    GM.setValue('maxTagsToSelect', maxTagsToSelect);
+
+// Initialize maxTagsToSelect from localStorage or default to 5 if invalid
+let maxTagsToSelect = await GM.getValue('maxTagsToSelect'); // Fetch the value from storage
+
+// Check if it's undefined or not a valid number
+if (maxTagsToSelect === undefined || isNaN(parseInt(maxTagsToSelect))) {
+    maxTagsToSelect = 5; // Default to 5 if the value is not set or invalid
+    GM.setValue('maxTagsToSelect', maxTagsToSelect); // Save the default value if it was undefined
 } else {
-    maxTagsToSelect = parseInt(maxTagsToSelect); // Ensure it's parsed as an integer
+    maxTagsToSelect = parseInt(maxTagsToSelect); // Parse the valid value into an integer
 }
+
 
 // Array to store locked tags
 const lockedTags = [];
