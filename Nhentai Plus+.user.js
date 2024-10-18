@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      4.7.2
+// @version      4.7.3
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -16,25 +16,30 @@
 //------------------------  **Nhentai Related Manga Button**  ------------------
 
 
-// Initialize maxTagsToSelect from localStorage or default to 5 if invalid
-let maxTagsToSelect = await GM.getValue('maxTagsToSelect'); // Fetch the value from storage
-
-// Check if it's undefined or not a valid number
-if (maxTagsToSelect === undefined || isNaN(parseInt(maxTagsToSelect))) {
-    maxTagsToSelect = 5; // Default to 5 if the value is not set or invalid
-    GM.setValue('maxTagsToSelect', maxTagsToSelect); // Save the default value if it was undefined
+// Initialize maxTagsToSelect from localStorage or default to 5
+let maxTagsToSelect = GM.getValue('maxTagsToSelect');
+if (maxTagsToSelect === undefined) {
+    maxTagsToSelect = 5;
+    GM.setValue('maxTagsToSelect', maxTagsToSelect);
 } else {
-    maxTagsToSelect = parseInt(maxTagsToSelect); // Parse the valid value into an integer
+    maxTagsToSelect = parseInt(maxTagsToSelect); // Ensure it's parsed as an integer
 }
-
 
 // Array to store locked tags
 const lockedTags = [];
 
 // Function to create and insert 'Find Similar' button
-async function createFindSimilarButton() {
+async function createFindSimilarButton() { 
     const findSimilarEnabled = await GM.getValue('findSimilarEnabled', true);
     if (!findSimilarEnabled) return;
+
+    if (isNaN(maxTagsToSelect)) {
+        maxTagsToSelect = await GM.getValue('maxTagsToSelect');
+        if (maxTagsToSelect === undefined) {
+            maxTagsToSelect = 5;
+            GM.setValue('maxTagsToSelect', maxTagsToSelect);
+        }
+    }
 
     const downloadButton = document.getElementById('download');
     if (!downloadButton) {
@@ -53,7 +58,15 @@ async function createFindSimilarButton() {
     const findSimilarButton = $(findSimilarButtonHtml);
 
     // Insert 'Find Similar' button next to the download button
-    $(downloadButton).after(findSimilarButton);
+    // Find the "Find Alt." button
+    const findAltButton = document.querySelector('a.btn.btn-primary.btn-disabled.tooltip.find-similar');
+
+    // Insert 'Find Similar' button next to the "Find Alt." button
+    if (findAltButton && downloadButton) {
+        $(findAltButton).after(findSimilarButton);
+    } else {
+        console.log('Download button or Find Alt. button not found.');
+    }
 
     $('#lockedTagsCount').hide();
 
@@ -674,8 +687,11 @@ async function createBookmarkButton() {
     `;
     const bookmarkButton = $(bookmarkButtonHtml);
 
-    // Append the bookmark button as a child of the h1 element
-    document.querySelector("#content > h1").append(bookmarkButton[0]);
+    // Append the bookmark button as a child of the h1 element if it exists
+    const h1Element = document.querySelector("#content > h1");
+    if (h1Element) {
+        h1Element.append(bookmarkButton[0]);
+    }
 
     // Handle click event for the bookmark button
     bookmarkButton.click(async function() {
