@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      4.7
+// @version      4.7.1
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -16,10 +16,10 @@
 //------------------------  **Nhentai Related Manga Button**  ------------------
 
 // Initialize maxTagsToSelect from localStorage or default to 5
-let maxTagsToSelect = await GM.getValue('maxTagsToSelect');
+let maxTagsToSelect = GM.getValue('maxTagsToSelect');
 if (maxTagsToSelect === undefined) {
     maxTagsToSelect = 5;
-    await GM.setValue('maxTagsToSelect', maxTagsToSelect);
+    GM.setValue('maxTagsToSelect', maxTagsToSelect);
 } else {
     maxTagsToSelect = parseInt(maxTagsToSelect); // Ensure it's parsed as an integer
 }
