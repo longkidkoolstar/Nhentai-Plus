@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      4.7.3
+// @version      4.8
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -1458,26 +1458,28 @@ function showLoadingPopup() {
 
     // Popup content with image container and buttons
     popup.innerHTML = `
-        <span>Searching for random content...</span>
-        <div id="cover-preview-container" style="margin-top: 10px; width: 350px; height: 192px; display: flex; align-items: center; justify-content: center; overflow: hidden; border-radius: 8px;">
+    <span>Searching for random content...</span>
+    <div id="cover-preview-container" style="margin-top: 10px; width: 350px; height: 192px; display: flex; align-items: center; justify-content: center; overflow: hidden; border-radius: 8px;">
+        <a id="cover-preview-link" href="#" style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; text-decoration: none;">
             <img id="cover-preview" style="max-width: 100%; max-height: 100%; object-fit: contain; display: none; cursor: pointer;" />
-        </div>
-        <div id="preview-notes" style="margin-top: 10px; color: white; text-align: center;">
-            <!-- Notes will be inserted here -->
-        </div>
-        <div style="margin-top: 20px; display: flex; gap: 15px;">
-            <button id="previous-image" class="control-button" style="background: none; border: none; color: white; cursor: pointer; font-size: 20px; transition: color 0.3s ease, transform 0.3s ease;">
-                <i class="fas fa-arrow-left"></i>
-            </button>
-            <button id="pause-search" class="control-button" style="background: none; border: none; color: white; cursor: pointer; font-size: 20px; transition: color 0.3s ease, transform 0.3s ease;">
-                <i class="fas fa-pause"></i>
-            </button>
-            <button id="next-image" class="control-button" style="background: none; border: none; color: white; cursor: pointer; font-size: 20px; transition: color 0.3s ease, transform 0.3s ease;">
-                <i class="fas fa-arrow-right"></i>
-            </button>
-        </div>
-        <button class="close" style="margin-top: 20px; background: none; border: none; font-size: 24px; color: white; cursor: pointer;">&times;</button>
-    `;
+        </a>
+    </div>
+    <div id="preview-notes" style="margin-top: 10px; color: white; text-align: center;">
+        <!-- Notes will be inserted here -->
+    </div>
+    <div style="margin-top: 20px; display: flex; gap: 15px;">
+        <button id="previous-image" class="control-button" style="background: none; border: none; color: white; cursor: pointer; font-size: 20px; transition: color 0.3s ease, transform 0.3s ease;">
+            <i class="fas fa-arrow-left"></i>
+        </button>
+        <button id="pause-search" class="control-button" style="background: none; border: none; color: white; cursor: pointer; font-size: 20px; transition: color 0.3s ease, transform 0.3s ease;">
+            <i class="fas fa-pause"></i>
+        </button>
+        <button id="next-image" class="control-button" style="background: none; border: none; color: white; cursor: pointer; font-size: 20px; transition: color 0.3s ease, transform 0.3s ease;">
+            <i class="fas fa-arrow-right"></i>
+        </button>
+    </div>
+    <button class="close" style="margin-top: 20px; background: none; border: none; font-size: 24px; color: white; cursor: pointer;">&times;</button>
+`;
 
     document.body.appendChild(popup);
 
@@ -1592,7 +1594,7 @@ async function analyzeURL(url) {
         }
 
         if (coverImageUrl) {
-            saveImageToLocalStorage(coverImageUrl, url, languageDisplay, pages);
+            saveImageToLocalStorage(coverImageUrl, url, languageDisplay, pages, title);
             showPreviousImage(); // Automatically show the next image if not paused. Says the showPreviousImage because I flipped the way images are saved in local storage so I had to flip everything
         }
 
@@ -1650,19 +1652,17 @@ async function meetsUserPreferences(tags, pages) {
 }
 
 
-function saveImageToLocalStorage(imageUrl, hentaiUrl, language, pages) {
+function saveImageToLocalStorage(imageUrl, hentaiUrl, language, pages, title) {
     let images = JSON.parse(localStorage.getItem('hentaiImages') || '[]');
-    images.unshift({ imageUrl, url: hentaiUrl, language, pages }); // Add new image to the beginning
+    images.unshift({ imageUrl, url: hentaiUrl, language, pages, title }); // Add title to stored data
 
     if (images.length > 10) {
-        images.pop(); // Remove the oldest image if more than 10 images are stored
+        images.pop();
     }
 
     localStorage.setItem('hentaiImages', JSON.stringify(images));
-
-    // Reset the current image index to 0 to show the new image
     localStorage.setItem('currentImageIndex', '0');
-    updatePreviewImage(imageUrl, language, pages); // Update preview immediately
+    updatePreviewImage(imageUrl, language, pages, title);
 }
 
 
@@ -1675,11 +1675,11 @@ function showNextImage() {
     if (images.length === 0) return;
 
     let currentIndex = parseInt(localStorage.getItem('currentImageIndex') || '0', 10);
-    currentIndex = (currentIndex - 1 + images.length) % images.length; // Move to the next image
+    currentIndex = (currentIndex - 1 + images.length) % images.length;
     localStorage.setItem('currentImageIndex', currentIndex.toString());
 
     const currentImage = images[currentIndex];
-    updatePreviewImage(currentImage.imageUrl, currentImage.language, currentImage.pages);
+    updatePreviewImage(currentImage.imageUrl, currentImage.language, currentImage.pages, currentImage.title);
 }
 
 function showPreviousImage() {
@@ -1687,37 +1687,70 @@ function showPreviousImage() {
     if (images.length === 0) return;
 
     let currentIndex = parseInt(localStorage.getItem('currentImageIndex') || '0', 10);
-    currentIndex = (currentIndex + 1) % images.length; // Move to the previous image
+    currentIndex = (currentIndex + 1) % images.length;
     localStorage.setItem('currentImageIndex', currentIndex.toString());
 
     const currentImage = images[currentIndex];
-    updatePreviewImage(currentImage.imageUrl, currentImage.language, currentImage.pages);
-   
+    updatePreviewImage(currentImage.imageUrl, currentImage.language, currentImage.pages, currentImage.title);
 }
 
 
-function updatePreviewImage(imageUrl, language = '', pages = '') {
+function updatePreviewImage(imageUrl, language = '', pages = '', title = '') {
     const coverPreview = document.getElementById('cover-preview');
+    const coverPreviewLink = document.getElementById('cover-preview-link');
     const notesContainer = document.getElementById('preview-notes');
+    const isPaused = !window.searchInProgress;
 
     if (coverPreview) {
         coverPreview.src = imageUrl;
-        coverPreview.style.display = 'block'; // Show the image
+        coverPreview.style.display = 'block';
+    }
+
+    // Update the link URL
+    if (coverPreviewLink) {
+        const images = getImagesFromLocalStorage();
+        const currentIndex = parseInt(localStorage.getItem('currentImageIndex') || '0', 10);
+        if (images[currentIndex] && images[currentIndex].url) {
+            coverPreviewLink.href = images[currentIndex].url;
+        }
     }
 
     if (notesContainer) {
         notesContainer.innerHTML = `
+            ${isPaused ? `<div style="margin-bottom: 5px;"><span style="font-weight: bold;">Title:</span> ${title || 'Title Not Available'}</div>` : ''}
             <div>Language: ${language || 'N/A'}</div>
             <div>Pages: ${pages || 'N/A'}</div>
         `;
     }
 }
 
+// Remove the old click event listener from the image and add it to the link instead (Not necessary may remove later)
+document.addEventListener('DOMContentLoaded', function() {
+    const coverPreviewLink = document.getElementById('cover-preview-link');
+    if (coverPreviewLink) {
+        coverPreviewLink.addEventListener('click', function(event) {
+            event.preventDefault();
+            const currentImageIndex = parseInt(localStorage.getItem('currentImageIndex') || '0', 10);
+            const images = getImagesFromLocalStorage();
+            if (images[currentImageIndex] && images[currentImageIndex].url) {
+                window.location.href = images[currentImageIndex].url;
+            }
+        });
+    }
+});
 
 function togglePause() {
     window.searchInProgress = !window.searchInProgress;
     const pauseButtonIcon = document.querySelector('#pause-search i');
     pauseButtonIcon.className = window.searchInProgress ? 'fas fa-pause' : 'fas fa-play';
+
+    // Update the current image display with the new pause state
+    const images = getImagesFromLocalStorage();
+    const currentIndex = parseInt(localStorage.getItem('currentImageIndex') || '0', 10);
+    if (images[currentIndex]) {
+        const currentImage = images[currentIndex];
+        updatePreviewImage(currentImage.imageUrl, currentImage.language, currentImage.pages, currentImage.title);
+    }
 
     if (window.searchInProgress) {
         fetchRandomHentai();
