@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      4.8
+// @version      4.9
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -821,8 +821,10 @@ async function displayBookmarkedPages() {
         const bookmarksContainer = $('<div id="bookmarksContainer" class="container">');
         const bookmarksTitle = $('<h2 class="bookmarks-title">Bookmarked Pages</h2>');
         const bookmarksList = $('<ul class="bookmarks-list">');
+        const searchInput = $('<input type="text" id="searchBookmarks" placeholder="Search bookmarks..." class="search-input">');
 
         bookmarksContainer.append(bookmarksTitle);
+        bookmarksContainer.append(searchInput);
         bookmarksContainer.append(bookmarksList);
         $('body').append(bookmarksContainer);
 
@@ -842,9 +844,19 @@ async function displayBookmarkedPages() {
                 margin-bottom: 10px;
                 color: #e63946;
             }
+            .search-input {
+                width: calc(100% - 20px);
+                padding: 10px;
+                margin-bottom: 20px;
+                border-radius: 5px;
+                border: 1px solid #ccc;
+                font-size: 16px;
+            }
             .bookmarks-list {
                 list-style: none;
                 padding: 0;
+                max-height: 400px;
+                overflow-y: auto;
             }
             .bookmark-link {
                 display: block;
@@ -858,7 +870,19 @@ async function displayBookmarkedPages() {
                 background-color: #e63946;
                 color: #1d3557;
             }
-
+            .delete-button {
+                position: relative;
+                top: -32px;
+                float: right;
+                background: none;
+                border: none;
+                color: #e63946;
+                cursor: pointer;
+                font-size: 14px;
+            }
+            .delete-button:hover {
+                color: #f1faee;
+            }
             @media only screen and (max-width: 600px) {
                 #bookmarksContainer {
                     width: 90%;
@@ -872,7 +896,7 @@ async function displayBookmarkedPages() {
                 }
             }
         `;
-
+        
         const styleSheet = document.createElement("style");
         styleSheet.type = "text/css";
         styleSheet.innerText = styles;
@@ -881,19 +905,34 @@ async function displayBookmarkedPages() {
         // Fetch titles for each bookmark and update dynamically
         for (const page of bookmarkedPages) {
             // Append a loading list item first
-            const listItem = $(`<li><a href="${page}" class="bookmark-link">Loading...</a></li>`);
+            const listItem = $(`<li><a href="${page}" class="bookmark-link">Loading...</a><button class="delete-button">✖</button></li>`);
             bookmarksList.append(listItem);
 
             fetchTitleWithCacheAndRetry(page).then(title => {
                 // Update the list item with the fetched title
-                const updatedListItem = $(`<li><a href="${page}" class="bookmark-link">${title}</a></li>`);
+                const updatedListItem = $(`<li><a href="${page}" class="bookmark-link">${title}</a><button class="delete-button">✖</button></li>`);
                 listItem.replaceWith(updatedListItem);
+
+                // Add delete functionality
+                updatedListItem.find('.delete-button').click(async function() {
+                    const updatedBookmarkedPages = bookmarkedPages.filter(p => p !== page);
+                    await GM.setValue('bookmarkedPages', updatedBookmarkedPages);
+                    updatedListItem.remove();
+                });
             }).catch(error => {
                 console.error(`Error fetching title for: ${page}`, error);
                 listItem.text("Failed to fetch title");
             });
         }
 
+        // Implement search functionality
+        searchInput.on('input', function() {
+            const query = $(this).val().toLowerCase();
+            bookmarksList.children('li').each(function() {
+                const title = $(this).find('.bookmark-link').text().toLowerCase();
+                $(this).toggle(title.includes(query));
+            });
+        });
     } else {
         console.error('Bookmarked pages is not an array');
     }
