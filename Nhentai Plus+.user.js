@@ -11,6 +11,7 @@
 // @grant        GM.setValue
 // @grant        GM.getValue
 // @grant        GM.addStyle
+// @grant        GM.deleteValue
 // ==/UserScript==
 
 //------------------------  **Nhentai Related Manga Button**  ------------------
