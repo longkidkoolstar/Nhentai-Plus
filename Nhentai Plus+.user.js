@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      4.10.1
+// @version      4.10.2
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -856,7 +856,7 @@ async function displayBookmarkedPages() {
             .bookmarks-list {
                 list-style: none;
                 padding: 0;
-                max-height: 400px;
+                max-height: calc(100vh - 100px); /* Adjust for other elements' height */
                 overflow-y: auto;
             }
             .bookmark-link {
