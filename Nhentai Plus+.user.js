@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      4.9
+// @version      4.10.0
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -707,11 +707,13 @@ async function createBookmarkButton() {
             // Remove the bookmark
             const updatedBookmarkedPages = bookmarkedPages.filter(page => page !== currentPage);
             await GM.setValue('bookmarkedPages', updatedBookmarkedPages);
+            await GM.deleteValue(currentPage);
             bookmarkIcon.addClass('far').removeClass('fas');
         } else {
             // Add the bookmark
             bookmarkedPages.push(currentPage);
             await GM.setValue('bookmarkedPages', bookmarkedPages);
+            await fetchTitleWithCacheAndRetry(currentPage);
             bookmarkIcon.addClass('fas').removeClass('far');
         }
 
@@ -883,6 +885,33 @@ async function displayBookmarkedPages() {
             .delete-button:hover {
                 color: #f1faee;
             }
+            .undo-popup {
+                position: fixed;
+                bottom: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                padding: 15px;
+                background-color: #333;
+                color: #fff;
+                border-radius: 5px;
+                box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                z-index: 1000;
+            }
+            .undo-button {
+                background-color: #f1faee;
+                color: #333;
+                border: none;
+                padding: 5px 10px;
+                border-radius: 3px;
+                cursor: pointer;
+            }
+            .undo-button:hover {
+                background-color: #e63946;
+                color: #1d3557;
+            }
             @media only screen and (max-width: 600px) {
                 #bookmarksContainer {
                     width: 90%;
@@ -917,7 +946,30 @@ async function displayBookmarkedPages() {
                 updatedListItem.find('.delete-button').click(async function() {
                     const updatedBookmarkedPages = bookmarkedPages.filter(p => p !== page);
                     await GM.setValue('bookmarkedPages', updatedBookmarkedPages);
+                    await GM.deleteValue(page); // Remove the title from GM storage
                     updatedListItem.remove();
+
+                    const undoPopup = $(`
+                        <div class="undo-popup">
+                            <span>Bookmark deleted.</span>
+                            <button class="undo-button">Undo</button>
+                        </div>
+                    `);
+                    $('body').append(undoPopup);
+
+                    const timeout = setTimeout(() => {
+                        undoPopup.remove();
+                    }, 5000);
+
+                    undoPopup.find('.undo-button').click(async function() {
+                        clearTimeout(timeout);
+                        const restoredBookmarkedPages = [...updatedBookmarkedPages, page];
+                        await GM.setValue('bookmarkedPages', restoredBookmarkedPages);
+                        await fetchTitleWithCacheAndRetry(page); // Re-fetch and store the title
+                        undoPopup.remove();
+                        $('#bookmarksContainer').remove();
+                        displayBookmarkedPages();
+                    });
                 });
             }).catch(error => {
                 console.error(`Error fetching title for: ${page}`, error);
