@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      4.10.0
+// @version      4.10.1
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -713,7 +713,6 @@ async function createBookmarkButton() {
             // Add the bookmark
             bookmarkedPages.push(currentPage);
             await GM.setValue('bookmarkedPages', bookmarkedPages);
-            await fetchTitleWithCacheAndRetry(currentPage);
             bookmarkIcon.addClass('fas').removeClass('far');
         }
 
