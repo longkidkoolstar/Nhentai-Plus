@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      4.10.1
+// @version      4.10.2
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -11,6 +11,7 @@
 // @grant        GM.setValue
 // @grant        GM.getValue
 // @grant        GM.addStyle
+// @grant        GM.deleteValue
 // ==/UserScript==
 
 //------------------------  **Nhentai Related Manga Button**  ------------------
