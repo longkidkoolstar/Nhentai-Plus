@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      4.10.4
+// @version      5.0
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -12,6 +12,7 @@
 // @grant        GM.getValue
 // @grant        GM.addStyle
 // @grant        GM.deleteValue
+// @grant        GM.openInTab
 // ==/UserScript==
 
 //------------------------  **Nhentai Related Manga Button**  ------------------
@@ -418,6 +419,27 @@ addFindAltButton();
                 z-index: 2;
                 display: none;
                 cursor: pointer;
+            }
+            .newTabButton {
+                border-radius: 10px;
+                padding: 5px 10px;
+                position: absolute;
+                background-color: rgba(0,0,0,.4);
+                color: rgba(255,255,255,.8);
+                bottom: 7.5px;
+                right: 7.5px;  /* Position on the right side */
+                font-size: 12px;
+                font-weight: 900;
+                opacity: 1;
+                width: auto;  /* Smaller width since text is shorter */
+                z-index: 2;
+                cursor: pointer;
+                text-align: center;
+            }
+
+            /* Add hover effect */
+            .newTabButton:hover {
+                background-color: rgba(0,0,0,.7);
             }
         `);
 
@@ -1236,6 +1258,12 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
                    Enable Find Alt Manga (Thumbnail Version)
                </label>
        
+               <!-- Add the new checkbox here -->
+               <label>
+                   <input type="checkbox" id="openInNewTabEnabled">
+                   Enable Open in New Tab Button
+               </label>
+       
                <!-- Bookmark Section -->
                <label>
                    <input type="checkbox" id="bookmarksEnabled">
@@ -1285,6 +1313,7 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
             const matchAllTags = await GM.getValue('matchAllTags', true);
             const blacklistedTags = await GM.getValue('blacklistedTags', []);
             const findAltMangaThumbnailEnabled = await GM.getValue('findAltMangaThumbnailEnabled', true);
+            const openInNewTabEnabled = await GM.getValue('openInNewTabEnabled', true); // Add this line
 
             $('#findSimilarEnabled').prop('checked', findSimilarEnabled);
             $('#englishFilterEnabled').prop('checked', englishFilterEnabled);
@@ -1301,6 +1330,7 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
             $('#matchAllTags').prop('checked', matchAllTags);
             $('#blacklisted-tags').val(blacklistedTags.join(', '));
             $('#findAltMangaThumbnailEnabled').prop('checked', findAltMangaThumbnailEnabled);
+            $('#openInNewTabEnabled').prop('checked', openInNewTabEnabled); 
         })();
 
         // Save settings
@@ -1323,6 +1353,7 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
             const pagesMax = $('#pref-pages-max').val();
             const matchAllTags = $('#matchAllTags').prop('checked');
             const findAltMangaThumbnailEnabled = $('#findAltMangaThumbnailEnabled').prop('checked');
+            const openInNewTabEnabled = $('#openInNewTabEnabled').prop('checked'); 
 
             await GM.setValue('findSimilarEnabled', findSimilarEnabled);
             await GM.setValue('englishFilterEnabled', englishFilterEnabled);
@@ -1338,6 +1369,7 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
             await GM.setValue('randomPrefPagesMax', pagesMax);
             await GM.setValue('matchAllTags', matchAllTags);
             await GM.setValue('findAltMangaThumbnailEnabled', findAltMangaThumbnailEnabled);
+            await GM.setValue('openInNewTabEnabled', openInNewTabEnabled); 
 
     // Show custom popup instead of alert
     showPopup('Settings saved!');
@@ -1853,3 +1885,59 @@ localStorage.setItem('currentImageIndex', '0');
 
 
 //----------------------------**Random Hentai Preferences**----------------------------
+
+//---------------------------**Open In New Tab Button**---------------------------------
+
+// Add this code after the existing findVersionButton code in the same section
+async function addNewTabButtons() {
+    // Check if the feature is enabled
+    const openInNewTabEnabled = await GM.getValue('openInNewTabEnabled', true);
+    if (!openInNewTabEnabled) return;
+
+    const baseUrl = 'https://nhentai.net';
+    const covers = document.querySelectorAll('.cover');
+    covers.forEach(cover => {
+        // Check if the button doesn't already exist for this cover
+        if (!cover.querySelector('.newTabButton')) {
+            const newTabButton = document.createElement('div');
+            newTabButton.className = 'newTabButton';
+            newTabButton.innerHTML = '<i class="fas fa-external-link-alt"></i>'; // Updated to include icon
+            
+            // Add click event listener
+            newTabButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation(); // Prevent the click from bubbling up to the cover
+
+                // Get the href from the cover
+                const mangaUrl = cover.getAttribute('href');
+                console.log('Opening manga URL:', mangaUrl); // Debugging log
+
+                if (mangaUrl) {
+                    const fullUrl = baseUrl + mangaUrl; // Construct the full URL
+                    GM.openInTab(fullUrl, { active: true }); // Open in new tab using GM_openInTab
+                } else {
+                    console.error('No URL found for this cover.'); // Error log if no URL
+                }
+            });
+            
+            cover.appendChild(newTabButton);
+        }
+    });
+}
+
+// Add observer to handle dynamically loaded content
+const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+        if (mutation.addedNodes.length) {
+            addNewTabButtons();
+        }
+    });
+});
+
+// Start observing the document with the configured parameters
+observer.observe(document.body, { childList: true, subtree: true });
+
+// Initial call to add buttons to existing covers
+addNewTabButtons();
+
+//---------------------------**Open In New Tab Button**---------------------------------

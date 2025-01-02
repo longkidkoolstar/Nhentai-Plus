@@ -1,49 +1,62 @@
 # Nhentai Plus+
 
-Nhentai Plus+ is a userscript that enhances the functionality of the Nhentai website. It provides several features to improve the user experience.
+**Script Name**: Nhentai Plus+
 
-## Features
+[**Namespace**: github.com/longkidkoolstar](https://github.com/longkidkoolstar)
 
-1. **Nhentai Related Manga Button**: Adds a "Find Similar" button to the manga page, allowing users to quickly find similar hentai based on the tags of the current manga.
+**Version**: 5.0
 
-2. **Nhentai English Filter**: Adds an "English Only" button to various pages (e.g., parody, artist, tag, group, category, and search pages) to filter the results and display only English hentai.
+**Description**: Enhances the functionality of the Nhentai website.
 
-3. **Nhentai Auto Login**: Automatically fills in the login form with the user's email and password, making it easier to log in to the website.
+**Author**: longkidkoolstar
 
-4. **Settings**: Provides a settings page where users can enable or disable specific features and configure their preferences.
+**License**: None
 
-5. **Random Tag Preferences**: Allow users to select specific tags for random Hentais.
+### Features
 
-## Installation
+- **Open in New Tab**: Added a new button for covers that allows users to open manga links in a new tab.
+- **Find Similar Button**: Adds a "Find Similar" button next to the download button on manga pages to find similar hentai based on tags.
+- **Tag Locking**: Allows users to lock tags to be included in the "Find Similar" search.
+- **Random Tag Preferences**: When clicking the random button to find random hentais, users can choose specific tags they want the random hentais to include.
+- **English Filter**: Adds "English Only" filter links to various pages to easily find English content.
+- **Auto Login**: Automatically logs in users using stored credentials.
+- **Settings Page**: Adds a settings page to enable/disable features, update login credentials, and manage random tag preferences.
+- **Alternative Versions**: Adds support for finding and displaying alternative versions of the manga you are on.
+- **Bookmarking Pages**: Allows users to bookmark entire pages for later viewing.
 
-To use Nhentai Plus+, you need to install a userscript manager extension in your browser. Here are the steps to install the script:
+### Usage
 
-1. Install a userscript manager extension such as Tampermonkey or Greasemonkey in your browser.
+1. **Open in New Tab**: Use the new button on covers to open manga links in a new tab.
+1. **Find Similar Button**: Click the "Find Similar" button to initiate a search based on tags. Adjust the maximum number of tags to select using the slider.
+2. **Tag Locking**: Click the plus/minus icon next to a tag to lock/unlock it for searches.
+3. **Random Tag Preferences**: Configure your random tag preferences in the settings page to choose specific tags you want in random hentais.
+4. **English Filter**: Use the "English Only" links on various pages to filter content.
+5. **Auto Login**: Enter your email and password in the settings to enable auto-login.
 
-2. Open the [Nhentai Plus+ script](Nhentai%20Plus%2B.user.js).
+### Future Updates
 
-3. Click on the "Raw" button to view the raw script.
+- **Request New Updates in the Feedback Section**.
 
-4. The userscript manager extension should detect the script and prompt you to install it. Click on the "Install" button to proceed.
+### Changelog
 
-5. The script is now installed and ready to use on the Nhentai website.
+#### Version 5.0
 
-## Usage
+- Added **Open in New Tab** feature with a new button for covers.
+- Introduced a settings checkbox to enable/disable the new feature.
+- Enhanced styling for the new button and updated user script metadata.
 
-Once the script is installed, you can start using the enhanced features on the Nhentai website. Here is a brief overview of each feature:
+#### Version 4.0
 
-- **Nhentai Related Manga Button**: On the manga page, you will find a "Find Similar" button next to the download button. Clicking on this button will search for similar hentai based on the tags of the current manga.
+- Added **Random Tag Preferences** to allow users to select specific tags for random Hentais.
 
-- **Nhentai English Filter**: On various pages (parody, artist, tag, group, category, and search pages), you will find an "English Only" button. Clicking on this button will filter the results and display only English hentai.
+#### Version 3.0
 
-- **Nhentai Auto Login**: If enabled in the settings, the script will automatically fill in the login form with your email and password when you visit the login page.
+- Added features for **Alternative Versions** and **Bookmarking Pages**.
 
-- **Settings**: You can access the settings page by clicking on the "Settings" button in the dropdown menu or the menu on the left side. In the settings page, you can enable or disable specific features and configure your preferences.
+#### Version 2.0
 
-## Contributing
+- Improved **Tag Locking** and added **English Filter** links.
 
-Contributions to Nhentai Plus+ are welcome! If you have any ideas, suggestions, or bug reports, please open an issue or submit a pull request on the [GitHub repository](https://github.com/longkidkoolstar/Nhentai-Plus).
+#### Version 1.0
 
-## License
-
-Nhentai Plus+ is released under the [MIT License](LICENSE).
+- Initial release with **Find Similar Button**, **Tag Locking**, **Auto Login**, and **Settings Page**.
