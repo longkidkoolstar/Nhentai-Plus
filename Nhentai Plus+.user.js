@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      6.0
+// @version      6.0.1
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -2230,6 +2230,8 @@ addNewTabButtons();
 
 //----------------------------**Manga BookMark**---------------------------------
 
+
+
 // Get the download button
 const downloadButton = document.getElementById('download');
 if (!downloadButton) {
@@ -2238,77 +2240,89 @@ if (!downloadButton) {
 }
 
 // Check if the manga bookmarking button is enabled in settings
-const mangaBookMarkingButtonEnabled = await GM.getValue('mangaBookMarkingButtonEnabled', true);
-if (!mangaBookMarkingButtonEnabled) return;
-
-// Get the current URL
-const currentUrl = window.location.href;
-
-// Check if the current manga is already bookmarked
-let bookmarkText = 'Bookmark';
-let bookmarkClass = 'btn-enabled';
-try {
-    const bookmarkedMangas = await GM.getValue('bookmarkedMangas', []);
-    if (bookmarkedMangas.some(manga => manga.url === currentUrl)) {
-        bookmarkText = 'Bookmarked';
-        bookmarkClass = 'btn-disabled';
-    }
-} catch (error) {
-    console.error('Error checking bookmarks:', error);
+async function getMangaBookMarkingButtonEnabled() {
+    return await GM.getValue('mangaBookMarkingButtonEnabled', true);
 }
 
-const MangaBookMarkHtml = `
-    <a class="btn btn-primary ${bookmarkClass} tooltip bookmark" id="bookmark-button">
-        <i class="fas fa-bookmark"></i>
-        <span>${bookmarkText}</span>
-        <div class="top">Click to save this manga for later<i></i></div>
-    </a>
-`;
+getMangaBookMarkingButtonEnabled().then(mangaBookMarkingButtonEnabled => {
+    if (!mangaBookMarkingButtonEnabled) return;
 
-// Insert 'Find Similar' button next to the download button
-$(downloadButton).after(MangaBookMarkHtml);
-
-// Add event listener to the bookmark button
-document.getElementById('bookmark-button').addEventListener('click', async function() {
     // Get the current URL
     const currentUrl = window.location.href;
 
-    // Get the cover image URL
-    const coverImageContainer = document.getElementById('cover');
-    const coverImage = coverImageContainer.querySelector('img');
-    const coverImageUrl = coverImage.dataset.src || coverImage.src;
+    // Check if the current manga is already bookmarked
+    async function getBookmarkedMangas() {
+        try {
+            const bookmarkedMangas = await GM.getValue('bookmarkedMangas', []);
+            return bookmarkedMangas;
+        } catch (error) {
+            console.error('Error checking bookmarks:', error);
+            return [];
+        }
+    }
 
-    try {
-        // Get the bookmarked mangas (asynchronously)
-        const bookmarkedMangas = await GM.getValue('bookmarkedMangas', []);
-
-        const existingManga = bookmarkedMangas.find(manga => manga.url === currentUrl);
-        if (existingManga) {
-            // If already bookmarked, remove it
-            const index = bookmarkedMangas.indexOf(existingManga);
-            bookmarkedMangas.splice(index, 1);
-            this.querySelector('span').textContent = 'Bookmark';
-            this.classList.remove('btn-disabled');
-            this.classList.add('btn-enabled');
-        } else {
-            // If not bookmarked, add it
-            bookmarkedMangas.push({
-                url: currentUrl,
-                coverImageUrl: coverImageUrl
-            });
-            this.querySelector('span').textContent = 'Bookmarked';
-            this.classList.remove('btn-enabled');
-            this.classList.add('btn-disabled');
+    getBookmarkedMangas().then(bookmarkedMangas => {
+        let bookmarkText = 'Bookmark';
+        let bookmarkClass = 'btn-enabled';
+        if (bookmarkedMangas.some(manga => manga.url === currentUrl)) {
+            bookmarkText = 'Bookmarked';
+            bookmarkClass = 'btn-disabled';
         }
 
-        // Save the updated list (asynchronously)
-        await GM.setValue('bookmarkedMangas', bookmarkedMangas);
+        const MangaBookMarkHtml = `
+            <a class="btn btn-primary ${bookmarkClass} tooltip bookmark" id="bookmark-button">
+                <i class="fas fa-bookmark"></i>
+                <span>${bookmarkText}</span>
+                <div class="top">Click to save this manga for later<i></i></div>
+            </a>
+        `;
 
-    } catch (error) {
-        console.error('Error handling bookmarks:', error);
-        // Optionally display an error to the user
-        alert('An error occurred while saving your bookmark.');
-    }
+        // Insert 'Find Similar' button next to the download button
+        $(downloadButton).after(MangaBookMarkHtml);
+
+        // Add event listener to the bookmark button
+        document.getElementById('bookmark-button').addEventListener('click', async function() {
+            // Get the current URL
+            const currentUrl = window.location.href;
+
+            // Get the cover image URL
+            const coverImageContainer = document.getElementById('cover');
+            const coverImage = coverImageContainer.querySelector('img');
+            const coverImageUrl = coverImage.dataset.src || coverImage.src;
+
+            try {
+                // Get the bookmarked mangas (asynchronously)
+                const bookmarkedMangas = await GM.getValue('bookmarkedMangas', []);
+
+                const existingManga = bookmarkedMangas.find(manga => manga.url === currentUrl);
+                if (existingManga) {
+                    // If already bookmarked, remove it
+                    const index = bookmarkedMangas.indexOf(existingManga);
+                    bookmarkedMangas.splice(index, 1);
+                    this.querySelector('span').textContent = 'Bookmark';
+                    this.classList.remove('btn-disabled');
+                    this.classList.add('btn-enabled');
+                } else {
+                    // If not bookmarked, add it
+                    bookmarkedMangas.push({
+                        url: currentUrl,
+                        coverImageUrl: coverImageUrl
+                    });
+                    this.querySelector('span').textContent = 'Bookmarked';
+                    this.classList.remove('btn-enabled');
+                    this.classList.add('btn-disabled');
+                }
+
+                // Save the updated list (asynchronously)
+                await GM.setValue('bookmarkedMangas', bookmarkedMangas);
+
+            } catch (error) {
+                console.error('Error handling bookmarks:', error);
+                // Optionally display an error to the user
+                alert('An error occurred while saving your bookmark.');
+            }
+        });
+    });
 });
 
 
