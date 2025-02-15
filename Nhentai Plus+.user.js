@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      6.1.0
+// @version      6.1.1
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -1187,7 +1187,7 @@ const additionalStyles = `
     /* Styles for mobile devices */
     @media only screen and (max-width: 768px) {
     .bookmarks-grid {
-        grid-template-columns: repeat(auto-fill, minmax(171px, 1fr)); /* adjust the grid item width for mobile */
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); /* adjust the grid item width for mobile */
         gap: 5px; /* adjust the gap between grid items for mobile */
     }
     }
