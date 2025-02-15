@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      5.0.1
+// @version      6.0
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -840,16 +840,21 @@ async function fetchTitleWithCacheAndRetry(url, retries = 3) {
 // Function to display bookmarked pages with active loading for unfetched bookmarks
 async function displayBookmarkedPages() {
     const bookmarkedPages = await GM.getValue('bookmarkedPages', []);
+    const bookmarkedMangas = await GM.getValue('bookmarkedMangas', []);
 
-    if (Array.isArray(bookmarkedPages)) {
+    if (Array.isArray(bookmarkedPages) && Array.isArray(bookmarkedMangas)) {
         const bookmarksContainer = $('<div id="bookmarksContainer" class="container">');
         const bookmarksTitle = $('<h2 class="bookmarks-title">Bookmarked Pages</h2>');
         const bookmarksList = $('<ul class="bookmarks-list">');
         const searchInput = $('<input type="text" id="searchBookmarks" placeholder="Search bookmarks..." class="search-input">');
+        const mangaBookmarksTitle = $('<h2 class="bookmarks-title">Bookmarked Mangas</h2>');
+        const mangaBookmarksList = $('<ul class="bookmarks-grid">');
 
         bookmarksContainer.append(bookmarksTitle);
         bookmarksContainer.append(searchInput);
         bookmarksContainer.append(bookmarksList);
+        bookmarksContainer.append(mangaBookmarksTitle);
+        bookmarksContainer.append(mangaBookmarksList);
         $('body').append(bookmarksContainer);
 
         // Add CSS styles
@@ -947,7 +952,7 @@ async function displayBookmarkedPages() {
                 }
             }
         `;
-        
+
         const styleSheet = document.createElement("style");
         styleSheet.type = "text/css";
         styleSheet.innerText = styles;
@@ -999,16 +1004,246 @@ async function displayBookmarkedPages() {
             });
         }
 
-        // Implement search functionality
-        searchInput.on('input', function() {
-            const query = $(this).val().toLowerCase();
-            bookmarksList.children('li').each(function() {
-                const title = $(this).find('.bookmark-link').text().toLowerCase();
-                $(this).toggle(title.includes(query));
+// Modified version with better cover organization
+for (const manga of bookmarkedMangas) {
+    const listItem = $(`<li class="bookmark-item"><a href="${manga.url}" class="bookmark-link">Loading...</a><button class="delete-button">✖</button></li>`);
+    mangaBookmarksList.append(listItem);
+
+    (async () => {  // Immediately invoked async function
+        const mangaBookMarkingType = await GM.getValue('mangaBookMarkingType', 'cover');
+        let title = manga.title;
+        let coverImage = manga.coverImageUrl;
+
+        if (!title || !coverImage) {
+            try {
+                const info = await fetchMangaInfoWithCacheAndRetry(manga.url);
+                title = info.title;
+                
+            } catch (error) {
+                console.error(`Error fetching info for: ${manga.url}`, error);
+                listItem.html(`<span class="error-text">Failed to fetch data</span>`);
+                return; // Stop processing this item if fetching fails
+            }
+        }
+
+        let content = "";
+        if (mangaBookMarkingType === 'cover') {
+            content = `
+                <div class="cover-container">
+                    <img src="${coverImage}" alt="${title}" class="cover-image">
+                    <div class="title-overlay">${title}</div>
+                </div>`;
+        } else if (mangaBookMarkingType === 'title') {
+            content = `<span class="title-only">${title}</span>`;
+        } else if (mangaBookMarkingType === 'both') {
+            content = `
+                <div class="cover-with-title">
+                    <img src="${coverImage}" alt="${title}" class="cover-image-small">
+                    <span class="title-text">${title}</span>
+                </div>`;
+        }
+
+        const updatedListItem = $(`<li class="bookmark-item ${mangaBookMarkingType}-mode"><a href="${manga.url}" class="bookmark-link">${content}</a><button class="delete-button">✖</button></li>`);
+        listItem.replaceWith(updatedListItem);
+
+        // Add delete functionality
+        updatedListItem.find('.delete-button').click(async function() {
+            const updatedBookmarkedMangas = bookmarkedMangas.filter(m => m.url !== manga.url);
+            await GM.setValue('bookmarkedMangas', updatedBookmarkedMangas);
+            updatedListItem.remove();
+
+            const undoPopup = $(`
+                <div class="undo-popup">
+                    <span>Bookmark deleted.</span>
+                    <button class="undo-button">Undo</button>
+                </div>
+            `);
+            $('body').append(undoPopup);
+
+            const timeout = setTimeout(() => {
+                undoPopup.remove();
+            }, 5000);
+
+            undoPopup.find('.undo-button').click(async function() {
+                clearTimeout(timeout);
+                const restoredBookmarkedMangas = [...updatedBookmarkedMangas, manga];
+                await GM.setValue('bookmarkedMangas', restoredBookmarkedMangas);
+                undoPopup.remove();
+                $('#bookmarksContainer').remove();
+                displayBookmarkedPages();
             });
         });
+    })(); // Execute the async function immediately
+}
+
+// Add this CSS to your styles
+const additionalStyles = `
+    #mangaBookmarksList {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 15px;
+        list-style-type: none;
+        padding: 0;
+    }
+
+    .bookmark-item {
+        position: relative;
+    }
+
+    .bookmark-item.cover-mode {
+        text-align: center;
+    }
+
+    .cover-container {
+        position: relative;
+        width: 100%;
+        height: 0;
+        padding-bottom: 140%; /* Aspect ratio for typical manga covers */
+        overflow: hidden;
+        border-radius: 5px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+
+    .cover-image {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.3s ease;
+    }
+
+    .cover-container:hover .cover-image {
+        transform: scale(1.05);
+    }
+
+    .title-overlay {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: rgba(0,0,0,0.7);
+        color: white;
+        padding: 5px;
+        font-size: 12px;
+        text-align: center;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .delete-button {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        background: rgba(0,0,0,0.5);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 20px;
+        height: 20px;
+        font-size: 12px;
+        cursor: pointer;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+    }
+
+    .bookmark-item:hover .delete-button {
+        opacity: 1;
+    }
+
+    .title-only {
+        display: block;
+        padding: 5px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .cover-with-title {
+        display: flex;
+        align-items: center;
+    }
+
+    .cover-image-small {
+        width: 50px;
+        height: 70px;
+        object-fit: cover;
+        margin-right: 10px;
+        border-radius: 3px;
+    }
+    .bookmarks-grid {
+    list-style: none;
+    padding: 0;
+    max-height: 100%;
+    overflow-y: hidden;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); /* adjust the min and max widths as needed */
+    gap: 10px; /* adjust the gap between grid items as needed */
+    }
+    .title-text {
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+    }
+
+    /* Modified search to work with new layout */
+    .bookmark-item.hidden {
+        display: none;
+    }
+`;
+
+// Add the CSS to the page
+$('<style>').text(additionalStyles).appendTo('head');
+
+// Modified search functionality to work with the new layout
+searchInput.on('input', function() {
+    const query = $(this).val().toLowerCase();
+    
+    function filterBookmarks(list) {
+        list.children('li').each(function() {
+            const linkElement = $(this).find('.bookmark-link');
+            const textContent = linkElement.text().toLowerCase();
+            const imageSrc = linkElement.find('img').attr('src') || '';
+            
+            const match = textContent.includes(query) || imageSrc.toLowerCase().includes(query);
+            $(this).toggleClass('hidden', !match);
+        });
+    }
+    
+    filterBookmarks(bookmarksList);
+    filterBookmarks(mangaBookmarksList);
+});
     } else {
-        console.error('Bookmarked pages is not an array');
+        console.error('Bookmarked pages or mangas is not an array');
+    }
+}
+
+// Function to fetch manga info (title and cover image) with cache and retry
+async function fetchMangaInfoWithCacheAndRetry(manga) {
+    const cacheKey = `manga-info-${manga}`;
+    const cachedInfo = await GM.getValue(cacheKey);
+    if (cachedInfo) {
+        return cachedInfo;
+    }
+
+    try {
+        const response = await fetch(manga);
+        const html = await response.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const title = doc.querySelector('h1.title').textContent;
+        const coverImage = doc.querySelector('#cover img').src;
+        const info = { title, coverImage };
+        await GM.setValue(cacheKey, info);
+        return info;
+    } catch (error) {
+        console.error(`Error fetching manga info for: ${manga}`, error);
+        throw error;
     }
 }
 
@@ -1264,6 +1499,27 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
                    <input type="checkbox" id="openInNewTabEnabled">
                    Enable Open in New Tab Button
                </label>
+       <label>
+            <input type="checkbox" id="mangaBookMarkingButtonEnabled">
+            Enable Manga BookMarking Button
+        </label>
+
+        <div id="manga-bookmarking-options" style="display: none;">
+            <label>
+                <input type="radio" id="manga-bookmarking-cover" name="manga-bookmarking-type" value="cover">
+                Show Cover
+            </label>
+            <label>
+                <input type="radio" id="manga-bookmarking-title" name="manga-bookmarking-type" value="title">
+                Show Title
+            </label>
+            <label>
+                <input type="radio" id="manga-bookmarking-both" name="manga-bookmarking-type" value="both">
+                Show Both
+            </label>
+        </div>
+
+
        
                <!-- Bookmark Section -->
                <label>
@@ -1314,7 +1570,9 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
             const matchAllTags = await GM.getValue('matchAllTags', true);
             const blacklistedTags = await GM.getValue('blacklistedTags', []);
             const findAltMangaThumbnailEnabled = await GM.getValue('findAltMangaThumbnailEnabled', true);
-            const openInNewTabEnabled = await GM.getValue('openInNewTabEnabled', true); // Add this line
+            const openInNewTabEnabled = await GM.getValue('openInNewTabEnabled', true); 
+            const mangaBookMarkingButtonEnabled = await GM.getValue('mangaBookMarkingButtonEnabled', true);
+            const mangaBookMarkingType = await GM.getValue('mangaBookMarkingType', 'cover');
 
             $('#findSimilarEnabled').prop('checked', findSimilarEnabled);
             $('#englishFilterEnabled').prop('checked', englishFilterEnabled);
@@ -1331,7 +1589,28 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
             $('#matchAllTags').prop('checked', matchAllTags);
             $('#blacklisted-tags').val(blacklistedTags.join(', '));
             $('#findAltMangaThumbnailEnabled').prop('checked', findAltMangaThumbnailEnabled);
-            $('#openInNewTabEnabled').prop('checked', openInNewTabEnabled); 
+            $('#openInNewTabEnabled').prop('checked', openInNewTabEnabled);
+            $('#mangaBookMarkingButtonEnabled').prop('checked', mangaBookMarkingButtonEnabled);
+
+            if (mangaBookMarkingButtonEnabled) {
+                $('#manga-bookmarking-options').show();
+            }
+
+            if (mangaBookMarkingType === 'cover') {
+                $('#manga-bookmarking-cover').prop('checked', true);
+            } else if (mangaBookMarkingType === 'title') {
+                $('#manga-bookmarking-title').prop('checked', true);
+            } else if (mangaBookMarkingType === 'both') {
+                $('#manga-bookmarking-both').prop('checked', true);
+            }
+
+            $('#mangaBookMarkingButtonEnabled').on('change', function() {
+                if ($(this).prop('checked')) {
+                    $('#manga-bookmarking-options').show();
+                } else {
+                    $('#manga-bookmarking-options').hide();
+                }
+            });
         })();
 
         // Save settings
@@ -1355,6 +1634,8 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
             const matchAllTags = $('#matchAllTags').prop('checked');
             const findAltMangaThumbnailEnabled = $('#findAltMangaThumbnailEnabled').prop('checked');
             const openInNewTabEnabled = $('#openInNewTabEnabled').prop('checked'); 
+            const mangaBookMarkingButtonEnabled = $('#mangaBookMarkingButtonEnabled').prop('checked');
+            const mangaBookMarkingType = $('input[name="manga-bookmarking-type"]:checked').val();
 
             await GM.setValue('findSimilarEnabled', findSimilarEnabled);
             await GM.setValue('englishFilterEnabled', englishFilterEnabled);
@@ -1371,6 +1652,10 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
             await GM.setValue('matchAllTags', matchAllTags);
             await GM.setValue('findAltMangaThumbnailEnabled', findAltMangaThumbnailEnabled);
             await GM.setValue('openInNewTabEnabled', openInNewTabEnabled); 
+            await GM.setValue('mangaBookMarkingButtonEnabled', mangaBookMarkingButtonEnabled);
+            await GM.setValue('mangaBookMarkingType', mangaBookMarkingType);
+
+
 
     // Show custom popup instead of alert
     showPopup('Settings saved!');
@@ -1942,3 +2227,90 @@ observer.observe(document.body, { childList: true, subtree: true });
 addNewTabButtons();
 
 //---------------------------**Open In New Tab Button**---------------------------------
+
+//----------------------------**Manga BookMark**---------------------------------
+
+// Get the download button
+const downloadButton = document.getElementById('download');
+if (!downloadButton) {
+    console.log('Download button not found.');
+    return;
+}
+
+// Check if the manga bookmarking button is enabled in settings
+const mangaBookMarkingButtonEnabled = await GM.getValue('mangaBookMarkingButtonEnabled', true);
+if (!mangaBookMarkingButtonEnabled) return;
+
+// Get the current URL
+const currentUrl = window.location.href;
+
+// Check if the current manga is already bookmarked
+let bookmarkText = 'Bookmark';
+let bookmarkClass = 'btn-enabled';
+try {
+    const bookmarkedMangas = await GM.getValue('bookmarkedMangas', []);
+    if (bookmarkedMangas.some(manga => manga.url === currentUrl)) {
+        bookmarkText = 'Bookmarked';
+        bookmarkClass = 'btn-disabled';
+    }
+} catch (error) {
+    console.error('Error checking bookmarks:', error);
+}
+
+const MangaBookMarkHtml = `
+    <a class="btn btn-primary ${bookmarkClass} tooltip bookmark" id="bookmark-button">
+        <i class="fas fa-bookmark"></i>
+        <span>${bookmarkText}</span>
+        <div class="top">Click to save this manga for later<i></i></div>
+    </a>
+`;
+
+// Insert 'Find Similar' button next to the download button
+$(downloadButton).after(MangaBookMarkHtml);
+
+// Add event listener to the bookmark button
+document.getElementById('bookmark-button').addEventListener('click', async function() {
+    // Get the current URL
+    const currentUrl = window.location.href;
+
+    // Get the cover image URL
+    const coverImageContainer = document.getElementById('cover');
+    const coverImage = coverImageContainer.querySelector('img');
+    const coverImageUrl = coverImage.dataset.src || coverImage.src;
+
+    try {
+        // Get the bookmarked mangas (asynchronously)
+        const bookmarkedMangas = await GM.getValue('bookmarkedMangas', []);
+
+        const existingManga = bookmarkedMangas.find(manga => manga.url === currentUrl);
+        if (existingManga) {
+            // If already bookmarked, remove it
+            const index = bookmarkedMangas.indexOf(existingManga);
+            bookmarkedMangas.splice(index, 1);
+            this.querySelector('span').textContent = 'Bookmark';
+            this.classList.remove('btn-disabled');
+            this.classList.add('btn-enabled');
+        } else {
+            // If not bookmarked, add it
+            bookmarkedMangas.push({
+                url: currentUrl,
+                coverImageUrl: coverImageUrl
+            });
+            this.querySelector('span').textContent = 'Bookmarked';
+            this.classList.remove('btn-enabled');
+            this.classList.add('btn-disabled');
+        }
+
+        // Save the updated list (asynchronously)
+        await GM.setValue('bookmarkedMangas', bookmarkedMangas);
+
+    } catch (error) {
+        console.error('Error handling bookmarks:', error);
+        // Optionally display an error to the user
+        alert('An error occurred while saving your bookmark.');
+    }
+});
+
+
+//----------------------------**Manga BookMark**---------------------------------
+
