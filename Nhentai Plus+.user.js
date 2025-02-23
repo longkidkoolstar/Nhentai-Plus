@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      6.1.1
+// @version      6.1.2
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -912,6 +912,20 @@ async function displayBookmarkedPages() {
             .delete-button:hover {
                 color: #f1faee;
             }
+                .delete-button-pages {
+                position: relative;
+                top: -32px;
+                float: right;
+                background: none;
+                border: none;
+                color: #e63946;
+                cursor: pointer;
+                font-size: 14px;
+            }
+
+            .delete-button-pages:hover {
+                color: #f1faee;
+            }
             .undo-popup {
                 position: fixed;
                 bottom: 20px;
@@ -961,12 +975,12 @@ async function displayBookmarkedPages() {
         // Fetch titles for each bookmark and update dynamically
         for (const page of bookmarkedPages) {
             // Append a loading list item first
-            const listItem = $(`<li><a href="${page}" class="bookmark-link">Loading...</a><button class="delete-button">✖</button></li>`);
+            const listItem = $(`<li><a href="${page}" class="bookmark-link">Loading...</a><button class="delete-button-pages">✖</button></li>`);
             bookmarksList.append(listItem);
 
             fetchTitleWithCacheAndRetry(page).then(title => {
                 // Update the list item with the fetched title
-                const updatedListItem = $(`<li><a href="${page}" class="bookmark-link">${title}</a><button class="delete-button">✖</button></li>`);
+                const updatedListItem = $(`<li><a href="${page}" class="bookmark-link">${title}</a><button class="delete-button-pages">✖</button></li>`);
                 listItem.replaceWith(updatedListItem);
 
                 // Add delete functionality
