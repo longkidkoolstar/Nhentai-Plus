@@ -25,6 +25,8 @@
 - **Settings Page**: Adds a settings page to enable/disable features, update login credentials, and manage random tag preferences.  
 - **Alternative Versions**: Adds support for finding and displaying alternative versions of the manga you are on.  
 - **Bookmarking Pages**: Allows users to bookmark entire pages for later viewing.  
+- **Month Filter** *(New in v6.0!)*: Adds "Month Only" filter links to various pages to easily find content from a specific month.  
+
 - **Manga Bookmarking** *(New in v6.0!)*: Introduces a full bookmarking system for individual manga with multiple display options.  
 
 ---
@@ -42,6 +44,7 @@
    - Choose between different display options (cover, title, or both).  
    - Access a dedicated bookmarks page with a dynamic grid layout, search functionality, and enhanced styling.  
    - Enable/disable the bookmarking feature in the settings.  
+8. **Month Filter** *(New in v6.0!)*: Use the "Month" links on various pages to filter content by month.  
 
 ---
 

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      6.1.2
+// @version      6.2
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -1522,6 +1522,10 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
                    <input type="checkbox" id="openInNewTabEnabled">
                    Enable Open in New Tab Button
                </label>
+         <label>
+            <input type="checkbox" id="monthFilterEnabled">
+            Enable Month Filter Button
+        </label>
        <label>
             <input type="checkbox" id="mangaBookMarkingButtonEnabled">
             Enable Manga BookMarking Button
@@ -1541,6 +1545,7 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
                 Show Both
             </label>
         </div>
+
 
 
        
@@ -1596,6 +1601,7 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
             const openInNewTabEnabled = await GM.getValue('openInNewTabEnabled', true); 
             const mangaBookMarkingButtonEnabled = await GM.getValue('mangaBookMarkingButtonEnabled', true);
             const mangaBookMarkingType = await GM.getValue('mangaBookMarkingType', 'cover');
+            const monthFilterEnabled = await GM.getValue('monthFilterEnabled', true);
 
             $('#findSimilarEnabled').prop('checked', findSimilarEnabled);
             $('#englishFilterEnabled').prop('checked', englishFilterEnabled);
@@ -1614,6 +1620,7 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
             $('#findAltMangaThumbnailEnabled').prop('checked', findAltMangaThumbnailEnabled);
             $('#openInNewTabEnabled').prop('checked', openInNewTabEnabled);
             $('#mangaBookMarkingButtonEnabled').prop('checked', mangaBookMarkingButtonEnabled);
+            $('#monthFilterEnabled').prop('checked', monthFilterEnabled);
 
             if (mangaBookMarkingButtonEnabled) {
                 $('#manga-bookmarking-options').show();
@@ -1659,6 +1666,8 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
             const openInNewTabEnabled = $('#openInNewTabEnabled').prop('checked'); 
             const mangaBookMarkingButtonEnabled = $('#mangaBookMarkingButtonEnabled').prop('checked');
             const mangaBookMarkingType = $('input[name="manga-bookmarking-type"]:checked').val();
+            const monthFilterEnabled = $('#monthFilterEnabled').prop('checked');
+
 
             await GM.setValue('findSimilarEnabled', findSimilarEnabled);
             await GM.setValue('englishFilterEnabled', englishFilterEnabled);
@@ -1677,6 +1686,7 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
             await GM.setValue('openInNewTabEnabled', openInNewTabEnabled); 
             await GM.setValue('mangaBookMarkingButtonEnabled', mangaBookMarkingButtonEnabled);
             await GM.setValue('mangaBookMarkingType', mangaBookMarkingType);
+            await GM.setValue('monthFilterEnabled', monthFilterEnabled);
 
 
 
@@ -2255,6 +2265,7 @@ addNewTabButtons();
 
 
 
+function mangaBookmarking() {
 // Get the download button
 const downloadButton = document.getElementById('download');
 if (!downloadButton) {
@@ -2347,7 +2358,44 @@ getMangaBookMarkingButtonEnabled().then(mangaBookMarkingButtonEnabled => {
         });
     });
 });
+}
+
+mangaBookmarking();
 
 
 //----------------------------**Manga BookMark**---------------------------------
+
+
+//---------------------------**Month Filter**------------------------------------
+async function addMonthFilter() {
+    // Check if the feature is enabled
+    const monthFilterEnabled = await GM.getValue('monthFilterEnabled', true);
+    if (!monthFilterEnabled) return;
+
+    // Get current path
+    const path = window.location.pathname;
+
+    // Check if the page is a search or tag-related page
+    if (/^\/(search|tag|artist|character|parody)\//.test(path)) {
+        console.log("Path:", path); //Added console log for debugging
+        const sortTypes = document.getElementsByClassName("sort-type");
+        if (sortTypes.length > 1) {
+            const q = new URLSearchParams(window.location.search).get("q") || "";
+            console.log("Query:", q); //Added console log for debugging
+            const monthFilterHtml = `
+                <span class="sort-name">Popular:</span>
+                <a href="/search/?q=${q}&sort=popular-today">today</a>
+                <a href="/search/?q=${q}&sort=popular-week">week</a>
+                <a href="/search/?q=${q}&sort=popular-month">month</a>
+                <a href="/search/?q=${q}&sort=popular">all time</a>
+            `;
+            sortTypes[1].innerHTML = monthFilterHtml;
+        }
+    }
+}
+
+addMonthFilter();
+
+
+//--------------------------*Month Filter**----------------------------------------
 
