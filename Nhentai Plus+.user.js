@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      6.2
+// @version      6.2.1
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -2367,27 +2367,38 @@ mangaBookmarking();
 
 
 //---------------------------**Month Filter**------------------------------------
+
 async function addMonthFilter() {
-    // Check if the feature is enabled
     const monthFilterEnabled = await GM.getValue('monthFilterEnabled', true);
     if (!monthFilterEnabled) return;
 
-    // Get current path
     const path = window.location.pathname;
 
-    // Check if the page is a search or tag-related page
     if (/^\/(search|tag|artist|character|parody)\//.test(path)) {
-        console.log("Path:", path); //Added console log for debugging
         const sortTypes = document.getElementsByClassName("sort-type");
         if (sortTypes.length > 1) {
-            const q = new URLSearchParams(window.location.search).get("q") || "";
-            console.log("Query:", q); //Added console log for debugging
+
+            let baseUrl = window.location.pathname;
+            
+            // Remove existing popularity filter from the path if present.
+            baseUrl = baseUrl.replace(/\/popular(-\w+)?$/, '');
+
+
+            const urlParams = new URLSearchParams(window.location.search);
+            urlParams.delete('sort'); // Remove any sort parameter from the query string
+            const remainingParams = urlParams.toString();
+
+            if (remainingParams) {
+                baseUrl += '?' + remainingParams;
+            }
+
+
             const monthFilterHtml = `
                 <span class="sort-name">Popular:</span>
-                <a href="/search/?q=${q}&sort=popular-today">today</a>
-                <a href="/search/?q=${q}&sort=popular-week">week</a>
-                <a href="/search/?q=${q}&sort=popular-month">month</a>
-                <a href="/search/?q=${q}&sort=popular">all time</a>
+                <a href="${baseUrl}${baseUrl.endsWith('/') ? '' : '/'}popular-today">today</a>
+                <a href="${baseUrl}${baseUrl.endsWith('/') ? '' : '/'}popular-week">week</a>
+                <a href="${baseUrl}${baseUrl.endsWith('/') ? '' : '/'}popular-month">month</a>
+                <a href="${baseUrl}${baseUrl.endsWith('/') ? '' : '/'}popular">all time</a>
             `;
             sortTypes[1].innerHTML = monthFilterHtml;
         }
@@ -2395,6 +2406,7 @@ async function addMonthFilter() {
 }
 
 addMonthFilter();
+
 
 
 //--------------------------*Month Filter**----------------------------------------
