@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      6.2.1
+// @version      6.3
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -299,11 +299,17 @@ async function addFindAltButton() {
             return;
         }
 
-        // Extract the text content
-        const titleText = titleElement.text();
+        // Extract the text content from the pretty class if it exists
+        let titleText;
+        const prettyElement = titleElement.find('.pretty');
+        if (prettyElement.length) {
+            titleText = prettyElement.text();
+        } else {
+            titleText = titleElement.text();
+        }
 
-        // Remove text inside square brackets [] and parentheses ()
-        const cleanedTitleText = titleText.replace(/\[.*?\]|\(.*?\)|\d+/g, '').trim();
+        // Remove text inside square brackets [], parentheses (), and 'Ch.'
+        const cleanedTitleText = titleText.replace(/\[.*?\]|\(.*?\)|Ch\.|\d+|-/g, '').trim();
 
         // Find the search input
         const searchInput = $('input[name="q"]');
@@ -1404,7 +1410,34 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
                flex-direction: column;
                gap: 10px;
            }
-       
+        .tooltip {
+        display: inline-block;
+        position: relative;
+        cursor: pointer;
+        font-size: 14px;
+        background: #444;
+        color: #fff;
+        border-radius: 50%;
+        width: 18px;
+        height: 18px;
+        text-align: center;
+        line-height: 18px;
+        font-weight: bold;
+    }
+
+    .tooltip:hover::after {
+        content: attr(data-tooltip);
+        position: absolute;
+        left: 50%;
+        bottom: 100%;
+        transform: translateX(-50%);
+        background: #666;
+        color: #fff;
+        padding: 5px;
+        border-radius: 3px;
+        white-space: nowrap;
+        font-size: 12px;
+    }
            #settingsForm label {
                display: flex;
                align-items: center;
@@ -1489,95 +1522,89 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
            <h1>Settings</h1>
            <form id="settingsForm">
                <label>
-                   <input type="checkbox" id="findSimilarEnabled">
-                   Enable Find Similar Button
-               </label>
-               <label>
-                   <input type="checkbox" id="englishFilterEnabled">
-                   Enable English Filter Button
-               </label>
-               <label>
-                   <input type="checkbox" id="autoLoginEnabled">
-                   Enable Auto Login
-               </label>
-               <div id="autoLoginCredentials">
-                   <label>
-                       Email: <input type="text" id="email">
-                   </label>
-                   <label>
-                       Password: <input type="password" id="password">
-                   </label>
-               </div>
-               <label>
-                   <input type="checkbox" id="findAltmangaEnabled">
-                   Enable Find Altmanga Button
-               </label>
-               <label>
-                   <input type="checkbox" id="findAltMangaThumbnailEnabled">
-                   Enable Find Alt Manga (Thumbnail Version)
-               </label>
-       
-               <!-- Add the new checkbox here -->
-               <label>
-                   <input type="checkbox" id="openInNewTabEnabled">
-                   Enable Open in New Tab Button
-               </label>
-         <label>
+                             <input type="checkbox" id="findSimilarEnabled">
+            Enable Find Similar Button <span class="tooltip" data-tooltip="Finds similar manga based on the current one.">?</span>
+        </label>
+        <label>
+            <input type="checkbox" id="englishFilterEnabled">
+            Enable English Filter Button <span class="tooltip" data-tooltip="Filters manga to show only English translations.">?</span>
+        </label>
+        <label>
+            <input type="checkbox" id="autoLoginEnabled">
+            Enable Auto Login <span class="tooltip" data-tooltip="Automatically logs in with saved credentials.">?</span>
+        </label>
+        <div id="autoLoginCredentials">
+            <label>
+                Email: <input type="text" id="email">
+            </label>
+            <label>
+                Password: <input type="password" id="password">
+            </label>
+        </div>
+        <label>
+            <input type="checkbox" id="findAltmangaEnabled">
+            Enable Find Altmanga Button <span class="tooltip" data-tooltip="Finds alternative sources for the manga.">?</span>
+        </label>
+        <label>
+            <input type="checkbox" id="findAltMangaThumbnailEnabled">
+            Enable Find Alt Manga (Thumbnail Version) <span class="tooltip" data-tooltip="Displays alternative manga sources as thumbnails.">?</span>
+        </label>
+        <label>
+            <input type="checkbox" id="openInNewTabEnabled">
+            Enable Open in New Tab Button <span class="tooltip" data-tooltip="Opens manga links in a new tab.">?</span>
+        </label>
+        <label>
             <input type="checkbox" id="monthFilterEnabled">
-            Enable Month Filter Button
+            Enable Month Filter Button <span class="tooltip" data-tooltip="Filters manga by publication month.">?</span>
         </label>
-       <label>
+        <label>
             <input type="checkbox" id="mangaBookMarkingButtonEnabled">
-            Enable Manga BookMarking Button
+            Enable Manga Bookmarking Button <span class="tooltip" data-tooltip="Allows bookmarking manga for quick access.">?</span>
         </label>
-
         <div id="manga-bookmarking-options" style="display: none;">
             <label>
                 <input type="radio" id="manga-bookmarking-cover" name="manga-bookmarking-type" value="cover">
-                Show Cover
+                Show Cover <span class="tooltip" data-tooltip="Displays the cover image for bookmarks.">?</span>
             </label>
             <label>
                 <input type="radio" id="manga-bookmarking-title" name="manga-bookmarking-type" value="title">
-                Show Title
+                Show Title <span class="tooltip" data-tooltip="Displays the title only for bookmarks.">?</span>
             </label>
             <label>
                 <input type="radio" id="manga-bookmarking-both" name="manga-bookmarking-type" value="both">
-                Show Both
+                Show Both <span class="tooltip" data-tooltip="Displays both the cover and title for bookmarks.">?</span>
             </label>
         </div>
+        <label>
+            <input type="checkbox" id="bookmarksEnabled">
+            Enable Bookmarks Button <span class="tooltip" data-tooltip="Enables the bookmarks feature.">?</span>
+        </label>
+        <div class="bookmark-actions">
+            <button type="button" id="exportBookmarks">Export Bookmarks</button>
+            <button type="button" id="importBookmarks">Import Bookmarks</button>
+            <input type="file" id="importBookmarksFile" accept=".json">
+        </div>
+        <div id="random-settings">
+            <h3>Random Hentai Preferences</h3>
+            <label>Language: <input type="text" id="pref-language"> <span class="tooltip" data-tooltip="Preferred language for random hentai.">?</span></label>
+            <label>Tags: <input type="text" id="pref-tags"> <span class="tooltip" data-tooltip="Preferred tags for filtering hentai.">?</span></label>
+            <label>Blacklisted Tags: <input type="text" id="blacklisted-tags"> <span class="tooltip" data-tooltip="Tags to exclude from search results.">?</span></label>
+            <label>Minimum Pages: <input type="number" id="pref-pages-min"> <span class="tooltip" data-tooltip="Minimum number of pages for random hentai.">?</span></label>
+            <label>Maximum Pages: <input type="number" id="pref-pages-max"> <span class="tooltip" data-tooltip="Maximum number of pages for random hentai.">?</span></label>
+            <label>
+                <input type="checkbox" id="matchAllTags">
+                Match All Tags (unchecked = match any) <span class="tooltip" data-tooltip="If enabled, all tags must match instead of any.">?</span>
+            </label>
+        </div>
+         <label>
+            <input type="checkbox" id="tooltipsEnabled">
+            Enable Tooltips <span class="tooltip" data-tooltip="Enables or disables tooltips.">?</span>
+        </label>
+        <button type="submit">Save Settings</button>
+    </form>
+</div>
+`;
 
-
-
-       
-               <!-- Bookmark Section -->
-               <label>
-                   <input type="checkbox" id="bookmarksEnabled">
-                   Enable Bookmarks Button
-               </label>
-               <div class="bookmark-actions">
-                   <button type="button" id="exportBookmarks">Export Bookmarks</button>
-                   <button type="button" id="importBookmarks">Import Bookmarks</button>
-                   <input type="file" id="importBookmarksFile" accept=".json">
-               </div>
-       
-               <div id="random-settings">
-                   <h3>Random Hentai Preferences</h3>
-                   <label>Language: <input type="text" id="pref-language"></label>
-                   <label>Tags: <input type="text" id="pref-tags"></label>
-                   <label>Blacklisted Tags: <input type="text" id="blacklisted-tags"></label>
-                   <label>Minimum Pages: <input type="number" id="pref-pages-min"></label>
-                   <label>Maximum Pages: <input type="number" id="pref-pages-max"></label>
-                   <label>
-                       <input type="checkbox" id="matchAllTags">
-                       Match All Tags (unchecked = match any)
-                   </label>
-               </div>
-       
-               <button type="submit">Save Settings</button>
-           </form>
-       </div>
-       `;
-       
        // Append settings form to the container
        $('div.container').append(settingsHtml);
         
@@ -1602,6 +1629,8 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
             const mangaBookMarkingButtonEnabled = await GM.getValue('mangaBookMarkingButtonEnabled', true);
             const mangaBookMarkingType = await GM.getValue('mangaBookMarkingType', 'cover');
             const monthFilterEnabled = await GM.getValue('monthFilterEnabled', true);
+            const tooltipsEnabled = await GM.getValue('tooltipsEnabled', true);
+
 
             $('#findSimilarEnabled').prop('checked', findSimilarEnabled);
             $('#englishFilterEnabled').prop('checked', englishFilterEnabled);
@@ -1621,6 +1650,13 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
             $('#openInNewTabEnabled').prop('checked', openInNewTabEnabled);
             $('#mangaBookMarkingButtonEnabled').prop('checked', mangaBookMarkingButtonEnabled);
             $('#monthFilterEnabled').prop('checked', monthFilterEnabled);
+            $('#tooltipsEnabled').prop('checked', tooltipsEnabled);
+
+
+            $('.tooltip').toggle(tooltipsEnabled);
+            $('#tooltipsEnabled').on('change', function() {
+                $('.tooltip').toggle(this.checked);
+            });
 
             if (mangaBookMarkingButtonEnabled) {
                 $('#manga-bookmarking-options').show();
@@ -1667,6 +1703,8 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
             const mangaBookMarkingButtonEnabled = $('#mangaBookMarkingButtonEnabled').prop('checked');
             const mangaBookMarkingType = $('input[name="manga-bookmarking-type"]:checked').val();
             const monthFilterEnabled = $('#monthFilterEnabled').prop('checked');
+            const tooltipsEnabled = $('#tooltipsEnabled').prop('checked');
+
 
 
             await GM.setValue('findSimilarEnabled', findSimilarEnabled);
@@ -1687,6 +1725,7 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
             await GM.setValue('mangaBookMarkingButtonEnabled', mangaBookMarkingButtonEnabled);
             await GM.setValue('mangaBookMarkingType', mangaBookMarkingType);
             await GM.setValue('monthFilterEnabled', monthFilterEnabled);
+            await GM.setValue('tooltipsEnabled', tooltipsEnabled);
 
 
 
