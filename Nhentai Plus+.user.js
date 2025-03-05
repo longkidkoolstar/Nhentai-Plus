@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      6.3
+// @version      6.4
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -15,8 +15,33 @@
 // @grant        GM.openInTab
 // ==/UserScript==
 
-//------------------------  **Nhentai Related Manga Button**  ------------------
 
+//----------------------- **Fix Menu OverFlow**----------------------------------
+
+function preventMenuOverflow(menuElement, maxHeight) {
+    /**
+     * Prevents the menu from overflowing by adding a scrollbar or adjusting the height.
+     *
+     * @param {HTMLElement} menuElement - The menu element to prevent from overflowing.
+     * @param {number} maxHeight - The maximum height of the menu in pixels.
+     */
+    var menuHeight = menuElement.offsetHeight;
+    if (menuHeight > maxHeight) {
+      menuElement.style.overflowY = 'auto';
+      menuElement.style.maxHeight = maxHeight + 'px';
+    }
+  }
+  
+  // Example usage:
+  var menuElement = document.querySelector('.menu');
+  var maxHeight = 450; // adjust this value as needed
+  preventMenuOverflow(menuElement, maxHeight);
+
+//--------------------------**Fix Menu OverFlow**------------------------------------
+
+
+
+//------------------------  **Nhentai Related Manga Button**  ------------------
 
 // Initialize maxTagsToSelect from localStorage or default to 5
 let maxTagsToSelect = GM.getValue('maxTagsToSelect');
@@ -540,7 +565,10 @@ addFindAltButton();
             return url;
         }
 
-        function GroupAltVersionsOnPage() {
+       async function GroupAltVersionsOnPage() {
+        // Check if the feature is enabled
+        const mangagroupingenabled = await GM.getValue('mangagroupingenabled', true);
+        if (!mangagroupingenabled) return;
             let i = 0;
             let found = $(".container > .gallery");
             while (!!found && i < found.length) {
@@ -1549,6 +1577,12 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
             <input type="checkbox" id="findAltMangaThumbnailEnabled">
             Enable Find Alt Manga (Thumbnail Version) <span class="tooltip" data-tooltip="Displays alternative manga sources as thumbnails.">?</span>
         </label>
+        <div id="find-Alt-Manga-Thumbnail-options" style="display: none;">
+            <label>
+                <input type="checkbox" id="mangagroupingenabled" name="manga-grouping-type" value="grouping">
+                Find Alt Manga Grouping <span class="tooltip" data-tooltip="Groups alternative versions of manga together on the page.">?</span>
+            </label>
+         </div>
         <label>
             <input type="checkbox" id="openInNewTabEnabled">
             Enable Open in New Tab Button <span class="tooltip" data-tooltip="Opens manga links in a new tab.">?</span>
@@ -1630,6 +1664,7 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
             const mangaBookMarkingType = await GM.getValue('mangaBookMarkingType', 'cover');
             const monthFilterEnabled = await GM.getValue('monthFilterEnabled', true);
             const tooltipsEnabled = await GM.getValue('tooltipsEnabled', true);
+            const mangagroupingenabled = await GM.getValue('mangagroupingenabled', true);
 
 
             $('#findSimilarEnabled').prop('checked', findSimilarEnabled);
@@ -1651,13 +1686,26 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
             $('#mangaBookMarkingButtonEnabled').prop('checked', mangaBookMarkingButtonEnabled);
             $('#monthFilterEnabled').prop('checked', monthFilterEnabled);
             $('#tooltipsEnabled').prop('checked', tooltipsEnabled);
+            $('#mangagroupingenabled').prop('checked', mangagroupingenabled);
 
 
             $('.tooltip').toggle(tooltipsEnabled);
             $('#tooltipsEnabled').on('change', function() {
                 $('.tooltip').toggle(this.checked);
             });
+            
+            if (findAltMangaThumbnailEnabled){
+                $('#find-Alt-Manga-Thumbnail-options').show();
 
+            }
+            $('#findAltMangaThumbnailEnabled').on('change', function() {
+                if ($(this).prop('checked')) {
+                    $('#find-Alt-Manga-Thumbnail-options').show();
+                } else {
+                    $('#find-Alt-Manga-Thumbnail-options').hide();
+                }
+            });
+            
             if (mangaBookMarkingButtonEnabled) {
                 $('#manga-bookmarking-options').show();
             }
@@ -1704,6 +1752,7 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
             const mangaBookMarkingType = $('input[name="manga-bookmarking-type"]:checked').val();
             const monthFilterEnabled = $('#monthFilterEnabled').prop('checked');
             const tooltipsEnabled = $('#tooltipsEnabled').prop('checked');
+            const mangagroupingenabled = $('#mangagroupingenabled').prop('checked');
 
 
 
@@ -1726,6 +1775,7 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
             await GM.setValue('mangaBookMarkingType', mangaBookMarkingType);
             await GM.setValue('monthFilterEnabled', monthFilterEnabled);
             await GM.setValue('tooltipsEnabled', tooltipsEnabled);
+            await GM.setValue('mangagroupingenabled', mangagroupingenabled);
 
 
 
@@ -2449,4 +2499,3 @@ addMonthFilter();
 
 
 //--------------------------*Month Filter**----------------------------------------
-
