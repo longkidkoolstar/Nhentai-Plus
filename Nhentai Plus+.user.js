@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      6.4
+// @version      6.4.1
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -18,25 +18,17 @@
 
 //----------------------- **Fix Menu OverFlow**----------------------------------
 
-function preventMenuOverflow(menuElement, maxHeight) {
-    /**
-     * Prevents the menu from overflowing by adding a scrollbar or adjusting the height.
-     *
-     * @param {HTMLElement} menuElement - The menu element to prevent from overflowing.
-     * @param {number} maxHeight - The maximum height of the menu in pixels.
-     */
-    var menuHeight = menuElement.offsetHeight;
-    if (menuHeight > maxHeight) {
-      menuElement.style.overflowY = 'auto';
-      menuElement.style.maxHeight = maxHeight + 'px';
-    }
-  }
-  
-  // Example usage:
-  var menuElement = document.querySelector('.menu');
-  var maxHeight = 450; // adjust this value as needed
-  preventMenuOverflow(menuElement, maxHeight);
-
+// Nhentai Plus+.user.js
+$(document).ready(function() {
+    var styles = `
+        @media (max-width: 644px) {
+            nav .collapse.open {
+                max-height: 450px;
+            }
+        }
+    `;
+    $("<style>").html(styles).appendTo("head");
+});
 //--------------------------**Fix Menu OverFlow**------------------------------------
 
 
@@ -334,7 +326,7 @@ async function addFindAltButton() {
         }
 
         // Remove text inside square brackets [], parentheses (), and 'Ch.'
-        const cleanedTitleText = titleText.replace(/\[.*?\]|\(.*?\)|Ch\.|\d+|-/g, '').trim();
+        const cleanedTitleText = titleText.replace(/\[.*?\]|\(.*?\)|Ch\.|\d+|-|Vol\./g, '').trim();
 
         // Find the search input
         const searchInput = $('input[name="q"]');
@@ -933,16 +925,7 @@ async function displayBookmarkedPages() {
                 background-color: #e63946;
                 color: #1d3557;
             }
-            .delete-button {
-                position: relative;
-                top: -32px;
-                float: right;
-                background: none;
-                border: none;
-                color: #e63946;
-                cursor: pointer;
-                font-size: 14px;
-            }
+                
             .delete-button:hover {
                 color: #f1faee;
             }
@@ -1195,6 +1178,10 @@ const additionalStyles = `
         cursor: pointer;
         opacity: 0;
         transition: opacity 0.2s ease;
+        text-align: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .bookmark-item:hover .delete-button {
