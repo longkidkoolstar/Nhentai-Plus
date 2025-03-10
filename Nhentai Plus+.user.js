@@ -1,12 +1,12 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      6.4.1
+// @version      6.4.2
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
 // @require      https://code.jquery.com/jquery-3.6.0.min.js
-// @icon         https://i.imgur.com/4zMY2VD.png
+// @icon         https://i.imgur.com/AOs1HMS.png
 // @license      MIT
 // @grant        GM.setValue
 // @grant        GM.getValue
