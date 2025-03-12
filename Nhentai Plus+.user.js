@@ -875,9 +875,11 @@ async function displayBookmarkedPages() {
         const searchInput = $('<input type="text" id="searchBookmarks" placeholder="Search bookmarks..." class="search-input">');
         const mangaBookmarksTitle = $('<h2 class="bookmarks-title">Bookmarked Mangas</h2>');
         const mangaBookmarksList = $('<ul class="bookmarks-grid">');
+        const tagSearchInput = $('<input type="text" id="searchMangaTags" placeholder="Search manga tags..." class="search-input">');
 
         bookmarksContainer.append(bookmarksTitle);
         bookmarksContainer.append(searchInput);
+        bookmarksContainer.append(tagSearchInput); // Append the new search input
         bookmarksContainer.append(bookmarksList);
         bookmarksContainer.append(mangaBookmarksTitle);
         bookmarksContainer.append(mangaBookmarksList);
@@ -1023,7 +1025,6 @@ async function displayBookmarkedPages() {
                         clearTimeout(timeout);
                         const restoredBookmarkedPages = [...updatedBookmarkedPages, page];
                         await GM.setValue('bookmarkedPages', restoredBookmarkedPages);
-                        await fetchTitleWithCacheAndRetry(page); // Re-fetch and store the title
                         undoPopup.remove();
                         $('#bookmarksContainer').remove();
                         displayBookmarkedPages();
@@ -1035,233 +1036,269 @@ async function displayBookmarkedPages() {
             });
         }
 
-// Modified version with better cover organization
-for (const manga of bookmarkedMangas) {
-    const listItem = $(`<li class="bookmark-item"><a href="${manga.url}" class="bookmark-link">Loading...</a><button class="delete-button">✖</button></li>`);
-    mangaBookmarksList.append(listItem);
+        // Modified version with better cover organization
+        for (const manga of bookmarkedMangas) {
+            const listItem = $(`<li class="bookmark-item"><a href="${manga.url}" class="bookmark-link">Loading...</a><button class="delete-button">✖</button></li>`);
+            mangaBookmarksList.append(listItem);
 
-    (async () => {  // Immediately invoked async function
-        const mangaBookMarkingType = await GM.getValue('mangaBookMarkingType', 'cover');
-        let title = manga.title;
-        let coverImage = manga.coverImageUrl;
+            (async () => {  // Immediately invoked async function
+                const mangaBookMarkingType = await GM.getValue('mangaBookMarkingType', 'cover');
+                let title = manga.title;
+                let coverImage = manga.coverImageUrl;
 
-        if (!title || !coverImage) {
-            try {
-                const info = await fetchMangaInfoWithCacheAndRetry(manga.url);
-                title = info.title;
-                
-            } catch (error) {
-                console.error(`Error fetching info for: ${manga.url}`, error);
-                listItem.html(`<span class="error-text">Failed to fetch data</span>`);
-                return; // Stop processing this item if fetching fails
+                if (!title || !coverImage) {
+                    try {
+                        const info = await fetchMangaInfoWithCacheAndRetry(manga.url);
+                        title = info.title;
+                    } catch (error) {
+                        console.error(`Error fetching info for: ${manga.url}`, error);
+                        listItem.html(`<span class="error-text">Failed to fetch data</span>`);
+                        return; // Stop processing this item if fetching fails
+                    }
+                }
+
+                // Fetch and store tags
+                let tags = await GM.getValue(`tags_${manga.url}`, null);
+                if (!tags) {
+                    try {
+                        const response = await fetch(manga.url);
+                        const html = await response.text();
+                        const doc = new DOMParser().parseFromString(html, 'text/html');
+                        tags = Array.from(doc.querySelectorAll('#tags .tag')).map(tag => {
+                            // Remove popularity numbers and format the tag
+                            return tag.textContent.replace(/\d+K?$/, '').trim().replace(/\b\w/g, char => char.toUpperCase());
+                        });
+                        console.log(`Fetched tags for ${manga.url}:`, tags); // Log the fetched tags
+                        await GM.setValue(`tags_${manga.url}`, tags); // Save tags for future use
+                    } catch (error) {
+                        console.error(`Error fetching tags for: ${manga.url}`, error);
+                        tags = []; // Default to empty if fetch fails
+                    }
+                } else {
+                    console.log(`Retrieved cached tags for ${manga.url}:`, tags); // Log cached tags
+                }
+
+                let content = "";
+                if (mangaBookMarkingType === 'cover') {
+                    content = `
+                        <div class="cover-container">
+                            <img src="${coverImage}" alt="${title}" class="cover-image">
+                            <div class="title-overlay">${title}</div>
+                        </div>`;
+                } else if (mangaBookMarkingType === 'title') {
+                    content = `<span class="title-only">${title}</span>`;
+                } else if (mangaBookMarkingType === 'both') {
+                    content = `
+                        <div class="cover-with-title">
+                            <img src="${coverImage}" alt="${title}" class="cover-image-small">
+                            <span class="title-text">${title}</span>
+                        </div>`;
+                }
+
+                const updatedListItem = $(`<li class="bookmark-item ${mangaBookMarkingType}-mode"><a href="${manga.url}" class="bookmark-link">${content}</a><button class="delete-button">✖</button></li>`);
+                listItem.replaceWith(updatedListItem);
+
+                // Add delete functionality
+                updatedListItem.find('.delete-button').click(async function() {
+                    const updatedBookmarkedMangas = bookmarkedMangas.filter(m => m.url !== manga.url);
+                    await GM.setValue('bookmarkedMangas', updatedBookmarkedMangas);
+                    updatedListItem.remove();
+
+                    const undoPopup = $(`
+                        <div class="undo-popup">
+                            <span>Bookmark deleted.</span>
+                            <button class="undo-button">Undo</button>
+                        </div>
+                    `);
+                    $('body').append(undoPopup);
+
+                    const timeout = setTimeout(() => {
+                        undoPopup.remove();
+                    }, 5000);
+
+                    undoPopup.find('.undo-button').click(async function() {
+                        clearTimeout(timeout);
+                        const restoredBookmarkedMangas = [...updatedBookmarkedMangas, manga];
+                        await GM.setValue('bookmarkedMangas', restoredBookmarkedMangas);
+                        undoPopup.remove();
+                        $('#bookmarksContainer').remove();
+                        displayBookmarkedPages();
+                    });
+                });
+            })(); // Execute the async function immediately
+        }
+
+        // Add this CSS to your styles
+        const additionalStyles = `
+            #mangaBookmarksList {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+                gap: 15px;
+                list-style-type: none;
+                padding: 0;
             }
-        }
 
-        let content = "";
-        if (mangaBookMarkingType === 'cover') {
-            content = `
-                <div class="cover-container">
-                    <img src="${coverImage}" alt="${title}" class="cover-image">
-                    <div class="title-overlay">${title}</div>
-                </div>`;
-        } else if (mangaBookMarkingType === 'title') {
-            content = `<span class="title-only">${title}</span>`;
-        } else if (mangaBookMarkingType === 'both') {
-            content = `
-                <div class="cover-with-title">
-                    <img src="${coverImage}" alt="${title}" class="cover-image-small">
-                    <span class="title-text">${title}</span>
-                </div>`;
-        }
+            .bookmark-item {
+                position: relative;
+            }
 
-        const updatedListItem = $(`<li class="bookmark-item ${mangaBookMarkingType}-mode"><a href="${manga.url}" class="bookmark-link">${content}</a><button class="delete-button">✖</button></li>`);
-        listItem.replaceWith(updatedListItem);
+            .bookmark-item.cover-mode {
+                text-align: center;
+            }
 
-        // Add delete functionality
-        updatedListItem.find('.delete-button').click(async function() {
-            const updatedBookmarkedMangas = bookmarkedMangas.filter(m => m.url !== manga.url);
-            await GM.setValue('bookmarkedMangas', updatedBookmarkedMangas);
-            updatedListItem.remove();
+            .cover-container {
+                position: relative;
+                width: 100%;
+                height: 0;
+                padding-bottom: 140%; /* Aspect ratio for typical manga covers */
+                overflow: hidden;
+                border-radius: 5px;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            }
 
-            const undoPopup = $(`
-                <div class="undo-popup">
-                    <span>Bookmark deleted.</span>
-                    <button class="undo-button">Undo</button>
-                </div>
-            `);
-            $('body').append(undoPopup);
+            .cover-image {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+                transition: transform 0.3s ease;
+            }
 
-            const timeout = setTimeout(() => {
-                undoPopup.remove();
-            }, 5000);
+            .cover-container:hover .cover-image {
+                transform: scale(1.05);
+            }
 
-            undoPopup.find('.undo-button').click(async function() {
-                clearTimeout(timeout);
-                const restoredBookmarkedMangas = [...updatedBookmarkedMangas, manga];
-                await GM.setValue('bookmarkedMangas', restoredBookmarkedMangas);
-                undoPopup.remove();
-                $('#bookmarksContainer').remove();
-                displayBookmarkedPages();
+            .title-overlay {
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                background: rgba(0,0,0,0.7);
+                color: white;
+                padding: 5px;
+                font-size: 12px;
+                text-align: center;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            .delete-button {
+                position: absolute;
+                top: 5px;
+                right: 5px;
+                background: rgba(0,0,0,0.5);
+                color: white;
+                border: none;
+                border-radius: 50%;
+                width: 20px;
+                height: 20px;
+                font-size: 12px;
+                cursor: pointer;
+                opacity: 0;
+                transition: opacity 0.2s ease;
+                text-align: center;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .bookmark-item:hover .delete-button {
+                opacity: 1;
+            }
+
+            .title-only {
+                display: block;
+                padding: 5px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            .cover-with-title {
+                display: flex;
+                align-items: center;
+            }
+
+            .cover-image-small {
+                width: 50px;
+                height: 70px;
+                object-fit: cover;
+                margin-right: 10px;
+                border-radius: 3px;
+            }
+            /* Default styles for desktop */
+            .bookmarks-grid {
+            list-style: none;
+            padding: 0;
+            max-height: 100%;
+            overflow-y: hidden;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); /* adjust the min and max widths as needed */
+            gap: 10px; /* adjust the gap between grid items as needed */
+            }
+
+            /* Styles for mobile devices */
+            @media only screen and (max-width: 768px) {
+            .bookmarks-grid {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); /* adjust the grid item width for mobile */
+                gap: 5px; /* adjust the gap between grid items for mobile */
+            }
+            }
+            .title-text {
+                flex: 1;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                display: -webkit-box;
+                -webkit-line-clamp: 2;
+                -webkit-box-orient: vertical;
+            }
+
+            /* Modified search to work with new layout */
+            .bookmark-item.hidden {
+                display: none;
+            }
+        `;
+
+        // Add the CSS to the page
+        $('<style>').text(additionalStyles).appendTo('head');
+
+        // Modified search functionality to work with the new layout
+        searchInput.on('input', function() {
+            const query = $(this).val().toLowerCase();
+            
+            function filterBookmarks(list) {
+                list.children('li').each(function() {
+                    const linkElement = $(this).find('.bookmark-link');
+                    const textContent = linkElement.text().toLowerCase();
+                    const imageSrc = linkElement.find('img').attr('src') || '';
+                    
+                    const match = textContent.includes(query) || imageSrc.toLowerCase().includes(query);
+                    $(this).toggleClass('hidden', !match);
+                });
+            }
+            
+            filterBookmarks(bookmarksList);
+            filterBookmarks(mangaBookmarksList);
+        });
+
+        // New functionality to filter bookmarked mangas based on tags
+        tagSearchInput.on('input', async function() {
+            const query = $(this).val().toLowerCase().trim().split(/\s+/); // Split by spaces
+            mangaBookmarksList.children('li').each(async function() {
+                const mangaUrl = $(this).find('.bookmark-link').attr('href');
+                const tags = await GM.getValue(`tags_${mangaUrl}`, []); // Retrieve tags for the manga
+                
+                // Clean up tags
+                const cleanedTags = tags.map(tag => tag.replace(/\d+K?$/, '').trim().toLowerCase());
+
+                // Check if all words in the query match the cleaned tags
+                const match = query.every(q => cleanedTags.some(tag => tag.includes(q))); // Check for all matches
+                $(this).toggleClass('hidden', !match);
             });
         });
-    })(); // Execute the async function immediately
-}
-
-// Add this CSS to your styles
-const additionalStyles = `
-    #mangaBookmarksList {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-        gap: 15px;
-        list-style-type: none;
-        padding: 0;
-    }
-
-    .bookmark-item {
-        position: relative;
-    }
-
-    .bookmark-item.cover-mode {
-        text-align: center;
-    }
-
-    .cover-container {
-        position: relative;
-        width: 100%;
-        height: 0;
-        padding-bottom: 140%; /* Aspect ratio for typical manga covers */
-        overflow: hidden;
-        border-radius: 5px;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-    }
-
-    .cover-image {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        transition: transform 0.3s ease;
-    }
-
-    .cover-container:hover .cover-image {
-        transform: scale(1.05);
-    }
-
-    .title-overlay {
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        background: rgba(0,0,0,0.7);
-        color: white;
-        padding: 5px;
-        font-size: 12px;
-        text-align: center;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-
-    .delete-button {
-        position: absolute;
-        top: 5px;
-        right: 5px;
-        background: rgba(0,0,0,0.5);
-        color: white;
-        border: none;
-        border-radius: 50%;
-        width: 20px;
-        height: 20px;
-        font-size: 12px;
-        cursor: pointer;
-        opacity: 0;
-        transition: opacity 0.2s ease;
-        text-align: center;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .bookmark-item:hover .delete-button {
-        opacity: 1;
-    }
-
-    .title-only {
-        display: block;
-        padding: 5px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-
-    .cover-with-title {
-        display: flex;
-        align-items: center;
-    }
-
-    .cover-image-small {
-        width: 50px;
-        height: 70px;
-        object-fit: cover;
-        margin-right: 10px;
-        border-radius: 3px;
-    }
-    /* Default styles for desktop */
-    .bookmarks-grid {
-    list-style: none;
-    padding: 0;
-    max-height: 100%;
-    overflow-y: hidden;
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); /* adjust the min and max widths as needed */
-    gap: 10px; /* adjust the gap between grid items as needed */
-    }
-
-    /* Styles for mobile devices */
-    @media only screen and (max-width: 768px) {
-    .bookmarks-grid {
-        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); /* adjust the grid item width for mobile */
-        gap: 5px; /* adjust the gap between grid items for mobile */
-    }
-    }
-    .title-text {
-        flex: 1;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        -webkit-box-orient: vertical;
-    }
-
-    /* Modified search to work with new layout */
-    .bookmark-item.hidden {
-        display: none;
-    }
-`;
-
-// Add the CSS to the page
-$('<style>').text(additionalStyles).appendTo('head');
-
-// Modified search functionality to work with the new layout
-searchInput.on('input', function() {
-    const query = $(this).val().toLowerCase();
-    
-    function filterBookmarks(list) {
-        list.children('li').each(function() {
-            const linkElement = $(this).find('.bookmark-link');
-            const textContent = linkElement.text().toLowerCase();
-            const imageSrc = linkElement.find('img').attr('src') || '';
-            
-            const match = textContent.includes(query) || imageSrc.toLowerCase().includes(query);
-            $(this).toggleClass('hidden', !match);
-        });
-    }
-    
-    filterBookmarks(bookmarksList);
-    filterBookmarks(mangaBookmarksList);
-});
     } else {
         console.error('Bookmarked pages or mangas is not an array');
     }
