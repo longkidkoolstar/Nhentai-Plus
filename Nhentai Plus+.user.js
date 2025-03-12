@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      6.4.3
+// @version      6.5.1
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -1286,7 +1286,9 @@ async function displayBookmarkedPages() {
 
         // New functionality to filter bookmarked mangas based on tags
         tagSearchInput.on('input', async function() {
-            const query = $(this).val().toLowerCase().trim().split(/\s+/); // Split by spaces
+            const input = $(this).val().toLowerCase().trim();
+            const queries = input.split(/,\s*|\s+/); // Split by commas or spaces
+
             mangaBookmarksList.children('li').each(async function() {
                 const mangaUrl = $(this).find('.bookmark-link').attr('href');
                 const tags = await GM.getValue(`tags_${mangaUrl}`, []); // Retrieve tags for the manga
@@ -1294,8 +1296,14 @@ async function displayBookmarkedPages() {
                 // Clean up tags
                 const cleanedTags = tags.map(tag => tag.replace(/\d+K?$/, '').trim().toLowerCase());
 
-                // Check if all words in the query match the cleaned tags
-                const match = query.every(q => cleanedTags.some(tag => tag.includes(q))); // Check for all matches
+                // Check if any of the queries match the cleaned tags
+                const match = queries.every(query => {
+                    const queryWords = query.split(/\s+/); // Split by spaces for multi-word tags
+                    return cleanedTags.some(tag => {
+                        return queryWords.every(word => tag.includes(word)); // Check if all words in the query are in the tag
+                    });
+                });
+
                 $(this).toggleClass('hidden', !match);
             });
         });
