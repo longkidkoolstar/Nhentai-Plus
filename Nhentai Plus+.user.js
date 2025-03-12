@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      6.4.2
+// @version      6.4.3
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -325,8 +325,8 @@ async function addFindAltButton() {
             titleText = titleElement.text();
         }
 
-        // Remove text inside square brackets [], parentheses (), and 'Ch.'
-        const cleanedTitleText = titleText.replace(/\[.*?\]|\(.*?\)|Ch\.|\d+|-|Vol\./g, '').trim();
+        // Remove text inside square brackets [], parentheses (), 'Ch.', 'ch.', 'Vol.', 'vol.', and all Chinese and Japanese characters
+        const cleanedTitleText = titleText.replace(/[\[\]\(\)\d\-]|Ch\.|ch\.|Vol\.|vol\.|[\u3002\uFF01-\uFF5E\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF]/g, '').trim();
 
         // Find the search input
         const searchInput = $('input[name="q"]');
