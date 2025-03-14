@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      6.7.1
+// @version      6.7.2
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -826,11 +826,29 @@ addBookmarkButton(); // Call the function to add the bookmark button
 
 // Function to fetch the title of a webpage with caching and retries
 async function fetchTitleWithCacheAndRetry(url, retries = 3) {
-    const cachedTitle = await GM.getValue(url);
-    if (cachedTitle) {
-        return cachedTitle;
+    // Check if we have cached manga IDs for this bookmark
+    const mangaIds = await GM.getValue(`bookmark_manga_ids_${url}`, []);
+    
+    // If we have cached manga data, use it to construct the title
+    if (mangaIds.length > 0) {
+        // For bookmarks with multiple manga, we'll show a count
+        if (mangaIds.length > 1) {
+            let itemCount = mangaIds.length;
+            let itemSuffix = itemCount > 25 ? `+` : ``;
+            return `${url} (${itemCount}${itemSuffix} items)`;
+        } 
+        // For a single manga, fetch its details
+        else {
+            const mangaId = mangaIds[0];
+            const mangaInfo = await GM.getValue(`manga_${mangaId}`);
+            
+            if (mangaInfo && mangaInfo.title) {
+                return mangaInfo.title;
+            }
+        }
     }
 
+    // If no cached data found, fetch the title directly
     for (let i = 0; i < retries; i++) {
         try {
             const response = await fetch(url);
@@ -850,8 +868,8 @@ async function fetchTitleWithCacheAndRetry(url, retries = 3) {
                 title = title.replace(unwantedPart, '').trim();
             }
 
-            // Cache the title
-            await GM.setValue(url, title);
+            // We no longer cache the title directly with the URL as the key
+            // Instead, we'll create proper relationships when manga data is saved
 
             return title;
         } catch (error) {
@@ -991,83 +1009,121 @@ async function displayBookmarkedPages() {
         styleSheet.innerText = styles;
         document.head.appendChild(styleSheet);
 
-        // Fetch titles for each bookmark and update dynamically
-        for (const page of bookmarkedPages) {
-            // Append a loading list item first
-            const listItem = $(`<li><a href="${page}" class="bookmark-link">Loading...</a><button class="delete-button-pages">✖</button></li>`);
-            bookmarksList.append(listItem);
+// Fetch titles for each bookmark and update dynamically
+for (const page of bookmarkedPages) {
+    // Append a loading list item first
+    const listItem = $(`<li><a href="${page}" class="bookmark-link">Loading...</a><button class="delete-button-pages">✖</button></li>`);
+    bookmarksList.append(listItem);
 
-            fetchTitleWithCacheAndRetry(page).then(title => {
-                // Update the list item with the fetched title
-                const updatedListItem = $(`<li><a href="${page}" class="bookmark-link">${title}</a><button class="delete-button-pages">✖</button></li>`);
-                listItem.replaceWith(updatedListItem);
-
-        // Add delete functionality
-        updatedListItem.find('.delete-button-pages').click(async function() {
-            const updatedBookmarkedPages = bookmarkedPages.filter(p => p !== page);
-            await GM.setValue('bookmarkedPages', updatedBookmarkedPages);
-            await GM.deleteValue(page); // Remove the title from GM storage
-
-            // Get the list of manga IDs for this bookmark
-            const bookmarkMangaIds = await GM.getValue(`bookmark_manga_ids_${page}`, []);
+    // Using async IIFE to handle async operations in the loop
+    (async () => {
+        try {
+            // Get manga IDs associated with this bookmark
+            const mangaIds = await GM.getValue(`bookmark_manga_ids_${page}`, []);
             
-            // Delete the bookmark's manga ID list
-            await GM.deleteValue(`bookmark_manga_ids_${page}`);
+            // Determine what to display based on manga IDs
+            let displayText;
             
-            // For each manga associated with this bookmark
-            const allKeys = await GM.listValues();
-            const mangaKeys = allKeys.filter(key => key.startsWith('manga_'));
-            
-            for (const key of mangaKeys) {
-                const mangaInfo = await GM.getValue(key);
-                
-                // If this manga is associated with the deleted bookmark
-                if (mangaInfo && mangaInfo.bookmarks && mangaInfo.bookmarks.includes(page)) {
-                    // Remove this bookmark from the manga's bookmarks list
-                    mangaInfo.bookmarks = mangaInfo.bookmarks.filter(b => b !== page);
+            if (mangaIds.length > 0) {
+                if (mangaIds.length > 1) {
+                    // For search results or tag pages with multiple manga
+                    const urlObj = new URL(page);
+                    const pathName = urlObj.pathname;
+                    const searchParams = urlObj.searchParams.get('q');
                     
-                    // If this manga is no longer in any bookmarks, delete it entirely
-                    if (mangaInfo.bookmarks.length === 0) {
-                        await GM.deleteValue(key);
-                        console.log(`Deleted orphaned manga: ${key}`);
+                    let itemCount = mangaIds.length;
+                    let itemSuffix = itemCount == 25 ? `+` : ``;
+                    
+                    if (pathName.includes('/tag/')) {
+                        // For tag pages, extract the tag name
+                        const tagName = pathName.split('/tag/')[1].replace('/', '');
+                        displayText = `Tag: ${tagName} (${itemCount}${itemSuffix} items)`;
+                    } else if (searchParams) {
+                        // For search results
+                        displayText = `Search: ${searchParams} (${itemCount}${itemSuffix} items)`;
                     } else {
-                        // Otherwise, update the manga info with the bookmark removed
-                        await GM.setValue(key, mangaInfo);
-                        console.log(`Updated manga ${key}: removed bookmark reference`);
+                        // Default display for other pages with multiple manga
+                        displayText = `${page} (${itemCount}${itemSuffix} items)`;
+                    }
+                } else {
+                    // For a single manga, fetch its title
+                    const mangaInfo = await GM.getValue(`manga_${mangaIds[0]}`);
+                    displayText = mangaInfo?.title || page;
+                }
+            } else {
+                // If no manga IDs found, fetch title directly
+                displayText = await fetchTitleWithCacheAndRetry(page);
+            }
+            
+            // Update the list item with the fetched title/display text
+            const updatedListItem = $(`<li><a href="${page}" class="bookmark-link">${displayText}</a><button class="delete-button-pages">✖</button></li>`);
+            listItem.replaceWith(updatedListItem);
+
+            // Add delete functionality
+            updatedListItem.find('.delete-button-pages').click(async function() {
+                const updatedBookmarkedPages = bookmarkedPages.filter(p => p !== page);
+                await GM.setValue('bookmarkedPages', updatedBookmarkedPages);
+                
+                // Get the list of manga IDs for this bookmark
+                const bookmarkMangaIds = await GM.getValue(`bookmark_manga_ids_${page}`, []);
+                
+                // Delete the bookmark's manga ID list
+                await GM.deleteValue(`bookmark_manga_ids_${page}`);
+                
+                // For each manga associated with this bookmark
+                const allKeys = await GM.listValues();
+                const mangaKeys = allKeys.filter(key => key.startsWith('manga_'));
+                
+                for (const key of mangaKeys) {
+                    const mangaInfo = await GM.getValue(key);
+                    
+                    // If this manga is associated with the deleted bookmark
+                    if (mangaInfo && mangaInfo.bookmarks && mangaInfo.bookmarks.includes(page)) {
+                        // Remove this bookmark from the manga's bookmarks list
+                        mangaInfo.bookmarks = mangaInfo.bookmarks.filter(b => b !== page);
+                        
+                        // If this manga is no longer in any bookmarks, delete it entirely
+                        if (mangaInfo.bookmarks.length === 0) {
+                            await GM.deleteValue(key);
+                            console.log(`Deleted orphaned manga: ${key}`);
+                        } else {
+                            // Otherwise, update the manga info with the bookmark removed
+                            await GM.setValue(key, mangaInfo);
+                            console.log(`Updated manga ${key}: removed bookmark reference`);
+                        }
                     }
                 }
-            }
 
-    updatedListItem.remove();
-    console.log(`Deleted bookmark: ${page} and cleaned up related manga data`);
+                updatedListItem.remove();
+                console.log(`Deleted bookmark: ${page} and cleaned up related manga data`);
 
-                    const undoPopup = $(`
-                        <div class="undo-popup">
-                            <span>Bookmark deleted.</span>
-                            <button class="undo-button">Undo</button>
-                        </div>
-                    `);
-                    $('body').append(undoPopup);
+                const undoPopup = $(`
+                    <div class="undo-popup">
+                        <span>Bookmark deleted.</span>
+                        <button class="undo-button">Undo</button>
+                    </div>
+                `);
+                $('body').append(undoPopup);
 
-                    const timeout = setTimeout(() => {
-                        undoPopup.remove();
-                    }, 5000);
+                const timeout = setTimeout(() => {
+                    undoPopup.remove();
+                }, 5000);
 
-                    undoPopup.find('.undo-button').click(async function() {
-                        clearTimeout(timeout);
-                        const restoredBookmarkedPages = [...updatedBookmarkedPages, page];
-                        await GM.setValue('bookmarkedPages', restoredBookmarkedPages);
-                        undoPopup.remove();
-                        $('#bookmarksContainer').remove();
-                        displayBookmarkedPages();
-                    });
+                undoPopup.find('.undo-button').click(async function() {
+                    clearTimeout(timeout);
+                    const restoredBookmarkedPages = [...updatedBookmarkedPages, page];
+                    await GM.setValue('bookmarkedPages', restoredBookmarkedPages);
+                    undoPopup.remove();
+                    $('#bookmarksContainer').remove();
+                    displayBookmarkedPages();
                 });
-            }).catch(error => {
-                console.error(`Error fetching title for: ${page}`, error);
-                listItem.text("Failed to fetch title");
             });
+        } catch (error) {
+            console.error(`Error processing bookmark: ${page}`, error);
+            listItem.html(`<a href="${page}" class="bookmark-link">Failed to load</a><button class="delete-button-pages">✖</button>`);
         }
-
+    })();
+}
         // Modified version with better cover organization
         for (const manga of bookmarkedMangas) {
             const listItem = $(`<li class="bookmark-item"><a href="${manga.url}" class="bookmark-link">Loading...</a><button class="delete-button">✖</button></li>`);
