@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      6.7.2
+// @version      6.7.3
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -1406,11 +1406,18 @@ for (const page of bookmarkedPages) {
                 const bookmarkUrl = $li.find('.bookmark-link').attr('href');
                 let matchFound = false;
         
-                const allKeys = await GM.listValues();
-                const relatedMangaKeys = allKeys.filter(key => key.startsWith('manga_') && key.includes(bookmarkUrl));
-        
-                for (const key of relatedMangaKeys) {
-                    const mangaData = await GM.getValue(key);
+                // Get all manga IDs associated with this bookmark
+                const mangaIds = await GM.getValue(`bookmark_manga_ids_${bookmarkUrl}`, []);
+                
+                if (!mangaIds || mangaIds.length === 0) {
+                    // If we don't have any manga IDs for this bookmark, hide it
+                    $li.toggleClass('hidden', true);
+                    return;
+                }
+                
+                // Check each manga in this bookmark for matching tags
+                for (const mangaId of mangaIds) {
+                    const mangaData = await GM.getValue(`manga_${mangaId}`, null);
                     if (!mangaData || !mangaData.tags) continue;
         
                     const cleanedTags = mangaData.tags.map(tag =>
@@ -1629,6 +1636,7 @@ setTimeout(async function() {
       throw new Error(`Failed to fetch ${url} after ${maxRetries} retries.`);
     }
     cleanupOldCacheEntries();
+    cleanupOldTitleStorage();
     // Call the function to process bookmarked pages
     processBookmarkedPages();
   }, 2000);
@@ -1677,6 +1685,24 @@ async function cleanupOldCacheEntries() {
     console.log(`Cleanup complete! Removed ${removedCount} old format entries.`);
     return removedCount;
 }
+
+// Function to clean up old title storage
+async function cleanupOldTitleStorage() {
+    // Get all stored keys
+    const storedKeys = await GM.listValues();
+
+    // Filter keys that match the old title storage format
+    const oldTitleKeys = storedKeys.filter(key => key.startsWith('title_'));
+
+    // Delete each old title key
+    for (const key of oldTitleKeys) {
+        await GM.deleteValue(key);
+        console.log(`Deleted old title storage key: ${key}`);
+    }
+
+    console.log(`Cleaned up ${oldTitleKeys.length} old title storage keys`);
+}
+
 
 // Function to fetch manga info (title and cover image) with cache and retry
 async function fetchMangaInfoWithCacheAndRetry(manga) {
