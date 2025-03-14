@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      6.5.1
+// @version      6.5.2
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -1003,7 +1003,7 @@ async function displayBookmarkedPages() {
                 listItem.replaceWith(updatedListItem);
 
                 // Add delete functionality
-                updatedListItem.find('.delete-button').click(async function() {
+                updatedListItem.find('.delete-button-pages').click(async function() {
                     const updatedBookmarkedPages = bookmarkedPages.filter(p => p !== page);
                     await GM.setValue('bookmarkedPages', updatedBookmarkedPages);
                     await GM.deleteValue(page); // Remove the title from GM storage
