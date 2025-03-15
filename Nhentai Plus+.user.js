@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      6.7.3
+// @version      6.7.4
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -757,6 +757,37 @@ async function createBookmarkButton() {
             const updatedBookmarkedPages = bookmarkedPages.filter(page => page !== currentPage);
             await GM.setValue('bookmarkedPages', updatedBookmarkedPages);
             await GM.deleteValue(currentPage);
+
+            // Get the list of manga IDs for this bookmark
+            const bookmarkMangaIds = await GM.getValue(`bookmark_manga_ids_${currentPage}`, []);
+
+            // Delete the bookmark's manga ID list
+            await GM.deleteValue(`bookmark_manga_ids_${currentPage}`);
+
+            // For each manga associated with this bookmark
+            const allKeys = await GM.listValues();
+            const mangaKeys = allKeys.filter(key => key.startsWith('manga_'));
+
+            for (const key of mangaKeys) {
+                const mangaInfo = await GM.getValue(key);
+
+                // If this manga is associated with the deleted bookmark
+                if (mangaInfo && mangaInfo.bookmarks && mangaInfo.bookmarks.includes(currentPage)) {
+                    // Remove this bookmark from the manga's bookmarks list
+                    mangaInfo.bookmarks = mangaInfo.bookmarks.filter(b => b !== currentPage);
+
+                    // If this manga is no longer in any bookmarks, delete it entirely
+                    if (mangaInfo.bookmarks.length === 0) {
+                        await GM.deleteValue(key);
+                        console.log(`Deleted orphaned manga: ${key}`);
+                    } else {
+                        // Otherwise, update the manga info with the bookmark removed
+                        await GM.setValue(key, mangaInfo);
+                        console.log(`Updated manga ${key}: removed bookmark reference`);
+                    }
+                }
+            }
+
             bookmarkIcon.addClass('far').removeClass('fas');
         } else {
             // Add the bookmark
@@ -1445,6 +1476,7 @@ for (const page of bookmarkedPages) {
         console.error('Bookmarked pages or mangas is not an array');
     }
 }
+// Nhentai Plus+.user.js (1448-1642)
 // Wait for the HTML document to be fully loaded
 setTimeout(async function() {
     // Function to fetch and process bookmarked pages
@@ -1457,12 +1489,12 @@ setTimeout(async function() {
       
       console.log('Found bookmark links:', bookmarkLinks.length);
       console.log('Max manga per bookmark setting:', maxMangaPerBookmark);
-  
+
       if (bookmarkLinks.length === 0) {
         console.log('No bookmark links found');
         return;
       }
-  
+
       // Log the fetched bookmarked URLs
       console.log('Processing bookmarked URLs:');
       
@@ -1470,6 +1502,13 @@ setTimeout(async function() {
       for (const link of bookmarkLinks) {
         if (!link.href) {
           console.log('Bookmark link has no href attribute, skipping');
+          continue;
+        }
+        
+        // Check if bookmark has existing cache
+        const existingCache = await GM.getValue(`bookmark_manga_ids_${link.href}`);
+        if (existingCache) {
+          console.log(`Skipping bookmark ${link.href} as it has existing cache`);
           continue;
         }
         
@@ -1500,10 +1539,10 @@ setTimeout(async function() {
             
           // Slice the array to the appropriate length
           const mangaToProcess = allMangaUrls.slice(0, limitToApply);
-  
+
           // Log the fetched manga URLs from each bookmark with limit info
           console.log(`Found ${allMangaUrls.length} manga in bookmark, processing ${mangaToProcess.length} (limit: ${limitToApply})`);
-  
+
           // Fetch and process tags for each manga URL (limited by maxMangaPerBookmark)
           for (const manga of mangaToProcess) {
             const mangaId = manga.id;
@@ -1575,7 +1614,7 @@ setTimeout(async function() {
       // Optional: clean up old cached manga data that hasn't been seen in a while
       await cleanupOldCacheData(30); // Clean data older than 30 days
     }
-  
+
     // Helper function to clean up old cache data
     async function cleanupOldCacheData(daysOld) {
       try {
@@ -1603,7 +1642,7 @@ setTimeout(async function() {
         console.error('Error cleaning up old cache data:', error);
       }
     }
-  
+
     // Helper function to fetch with retry logic for 429 errors
     async function fetchWithRetry(url, maxRetries = 10, delay = 2000) {
       let retries = 0;
@@ -1635,11 +1674,35 @@ setTimeout(async function() {
       
       throw new Error(`Failed to fetch ${url} after ${maxRetries} retries.`);
     }
-    cleanupOldCacheEntries();
-    cleanupOldTitleStorage();
+
+    // Helper function to update manga cache when limit changes
+    async function updateMangaCache() {
+      const maxMangaPerBookmark = await GM.getValue('maxMangaPerBookmark', 5);
+      const allKeys = await GM.listValues();
+      const mangaKeys = allKeys.filter(key => key.startsWith('manga_'));
+      
+      for (const key of mangaKeys) {
+        const mangaInfo = await GM.getValue(key);
+        
+        if (mangaInfo) {
+          const newLimit = maxMangaPerBookmark;
+          const existingLimit = mangaInfo.limit;
+          
+          if (newLimit !== existingLimit) {
+            console.log(`Updating manga cache for ${mangaInfo.id} with new limit ${newLimit}`);
+            mangaInfo.limit = newLimit;
+            await GM.setValue(key, mangaInfo);
+          }
+        }
+      }
+    }
+
     // Call the function to process bookmarked pages
     processBookmarkedPages();
-  }, 2000);
+    
+    // Update manga cache when limit changes
+    updateMangaCache();
+}, 2000);
 
 /**
  * Detects and removes old-format cache entries while preserving important data
