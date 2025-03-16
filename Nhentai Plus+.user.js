@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      6.7.4
+// @version      6.7.5
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -13,6 +13,7 @@
 // @grant        GM.addStyle
 // @grant        GM.deleteValue
 // @grant        GM.openInTab
+// @grant        GM.listValues
 // ==/UserScript==
 
 
@@ -788,11 +789,14 @@ async function createBookmarkButton() {
                 }
             }
 
+            // Switch icon class to 'far' when unbookmarking
             bookmarkIcon.addClass('far').removeClass('fas');
         } else {
             // Add the bookmark
             bookmarkedPages.push(currentPage);
             await GM.setValue('bookmarkedPages', bookmarkedPages);
+
+            // Switch icon class to 'fas' when bookmarking
             bookmarkIcon.addClass('fas').removeClass('far');
         }
 
