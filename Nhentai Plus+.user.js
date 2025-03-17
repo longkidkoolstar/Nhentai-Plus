@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      6.7.5
+// @version      6.7.6
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -1389,98 +1389,85 @@ for (const page of bookmarkedPages) {
         $('<style>').text(additionalStyles).appendTo('head');
 
         // Modified search functionality to work with the new layout
-        searchInput.on('input', function() {
-            const query = $(this).val().toLowerCase();
-            
-            function filterBookmarks(list) {
-                list.children('li').each(function() {
-                    const linkElement = $(this).find('.bookmark-link');
-                    const textContent = linkElement.text().toLowerCase();
-                    const imageSrc = linkElement.find('img').attr('src') || '';
-                    
-                    const match = textContent.includes(query) || imageSrc.toLowerCase().includes(query);
-                    $(this).toggleClass('hidden', !match);
-                });
-            }
-            
-            filterBookmarks(bookmarksList);
-            filterBookmarks(mangaBookmarksList);
-        });
+        searchInput.on('input', filterBookmarks);
+        tagSearchInput.on('input', filterBookmarks);
 
-        tagSearchInput.on('input', async function () {
-            const input = $(this).val().toLowerCase().trim();
-            const queries = input.split(/,\s*|\s+/); // Split by commas or spaces
-        
-            // ==========================
-            // Filter Manga Bookmarks
-            // ==========================
+        function filterBookmarks() {
+            const searchQuery = searchInput.val().toLowerCase();
+            const tagQueries = tagSearchInput.val().toLowerCase().trim().split(/,\s*|\s+/);
+
             mangaBookmarksList.children('li').each(async function () {
                 const $li = $(this);
                 const mangaUrl = $li.find('.bookmark-link').attr('href');
                 const tags = await GM.getValue(`tags_${mangaUrl}`, []);
-                
+
                 const cleanedTags = tags.map(tag =>
                     tag.replace(/\d+K?$/, '').trim().toLowerCase()
                 );
-        
-                const match = queries.every(query => {
+
+                const textContent = $li.find('.bookmark-link').text().toLowerCase();
+                const imageSrc = $li.find('.bookmark-link img').attr('src') || '';
+
+                const searchMatch = textContent.includes(searchQuery) || imageSrc.toLowerCase().includes(searchQuery);
+                const tagMatch = tagQueries.every(query => {
                     const queryWords = query.split(/\s+/);
                     return cleanedTags.some(tag =>
                         queryWords.every(word => tag.includes(word))
                     );
                 });
-        
-                $li.toggleClass('hidden', !match);
+
+                $li.toggleClass('hidden', !(searchMatch && tagMatch));
             });
-        
-            // ==========================
-            // Filter Tag/Search Bookmarked Pages
-            // ==========================
+
             $('.bookmarks-list li').each(async function () {
                 const $li = $(this);
                 const bookmarkUrl = $li.find('.bookmark-link').attr('href');
                 let matchFound = false;
-        
+
                 // Get all manga IDs associated with this bookmark
                 const mangaIds = await GM.getValue(`bookmark_manga_ids_${bookmarkUrl}`, []);
-                
+
                 if (!mangaIds || mangaIds.length === 0) {
                     // If we don't have any manga IDs for this bookmark, hide it
                     $li.toggleClass('hidden', true);
                     return;
                 }
-                
+
                 // Check each manga in this bookmark for matching tags
                 for (const mangaId of mangaIds) {
                     const mangaData = await GM.getValue(`manga_${mangaId}`, null);
                     if (!mangaData || !mangaData.tags) continue;
-        
+
                     const cleanedTags = mangaData.tags.map(tag =>
                         tag.replace(/\d+K?$/, '').trim().toLowerCase()
                     );
-        
-                    const matches = queries.every(query => {
+
+                    const searchContent = $li.find('.bookmark-link').text().toLowerCase();
+                    const searchImageSrc = $li.find('.bookmark-link img').attr('src') || '';
+
+                    const searchMatch = searchContent.includes(searchQuery) || searchImageSrc.toLowerCase().includes(searchQuery);
+                    const tagMatch = tagQueries.every(query => {
                         const queryWords = query.split(/\s+/);
                         return cleanedTags.some(tag =>
                             queryWords.every(word => tag.includes(word))
                         );
                     });
-        
-                    if (matches) {
+
+                    if (searchMatch && tagMatch) {
                         matchFound = true;
                         break;
                     }
                 }
-        
+
                 $li.toggleClass('hidden', !matchFound);
             });
-        });
+        }
         
     } else {
         console.error('Bookmarked pages or mangas is not an array');
     }
 }
-// Nhentai Plus+.user.js (1448-1642)
+
 // Wait for the HTML document to be fully loaded
 setTimeout(async function() {
     // Function to fetch and process bookmarked pages
