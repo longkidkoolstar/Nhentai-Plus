@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      6.9.3
+// @version      6.9.4
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -1411,61 +1411,51 @@ for (const page of bookmarkedPages) {
         // Add the CSS to the page
         $('<style>').text(additionalStyles).appendTo('head');
 
-// Nhentai Plus+.user.js (1414-1493)
-async function appendButton() {
-    console.log("Appending button to page...");
-    const target = document.querySelector("#bookmarksContainer > h2:nth-child(1)");
-    console.log("Target element:", target);
-    const button = $('<button class="random-button"><i class="fas fa-random"></i> Random</button>');
-    console.log("Button element:", button);
-    $(target).after(button);
-    $(target).css('display', 'inline-block');
-    button.css({
-        'display': 'inline-block',
-        'margin-left': '10px', // Add a margin of 10px to the left of the button
-        'position': 'relative', // Add relative positioning
-        'top': '-3px' // Move the button up by 10 pixels
-    });
-    
-    button.on('click', async function() {
-        console.log("Button clicked. Getting bookmarks from storage...");
-        const bookmarks = await getBookmarksFromStorage();
-        console.log("Bookmarks:", bookmarks);
-        if (bookmarks.length > 0) {
-            const randomIndex = Math.floor(Math.random() * bookmarks.length);
-            console.log("Random index:", randomIndex);
-            const randomBookmark = bookmarks[randomIndex];
-            console.log("Random bookmark:", randomBookmark);
-            const link = `https://nhentai.net/g/${randomBookmark.id}`;
-            console.log("Opening link:", link);
-            console.log(`Opening manga from bookmark source: ${randomBookmark.source}`);
-            window.open(link, '_blank');
-        } else {
-            console.log("No bookmarks found.");
+        async function appendButton() {
+            const target = document.querySelector("#bookmarksContainer > h2:nth-child(1)");
+            const button = $('<button class="random-button"><i class="fas fa-random"></i> Random</button>');
+            $(target).after(button);
+            $(target).css('display', 'inline-block');
+            button.css({
+                'display': 'inline-block',
+                'margin-left': '10px',
+                'position': 'relative',
+                'top': '-3px'
+            });
+        
+            // Pre-fetch the bookmarks to avoid async issues during click
+            const bookmarks = await getBookmarksFromStorage();
+        
+            button.on('click', () => {
+                if (bookmarks.length > 0) {
+                    const randomIndex = Math.floor(Math.random() * bookmarks.length);
+                    const randomBookmark = bookmarks[randomIndex];
+                    const link = `https://nhentai.net/g/${randomBookmark.id}`;
+                    console.log(`Opening manga from bookmark source: ${randomBookmark.source}`);
+                    // This is now directly inside the click callback
+                    window.open(link, '_blank');
+                } else {
+                    console.log("No bookmarks found.");
+                }
+            });
         }
-    });
-}
+        
 
 appendButton();
         
 async function getBookmarksFromStorage() {
-    console.log("Getting bookmarks from storage...");
     const bookmarks = [];
     const addedIds = new Set();
     
     // Check for bookmarks in the first format (simple array of IDs)
     const allKeys = await GM.listValues();
-    console.log("All keys:", allKeys);
     for (const key of allKeys) {
         if (key.startsWith("bookmark_manga_ids_")) {
-            console.log("Key starts with 'bookmark_manga_ids_':", key);
             const ids = await GM.getValue(key);
-            console.log("IDs:", ids);
             if (Array.isArray(ids)) {
                 // Add each ID as a bookmark object
                 ids.forEach(id => {
                     if (!addedIds.has(id)) {
-                        console.log("Adding ID to bookmarks:", id);
                         bookmarks.push({
                             id: id,
                             url: `https://nhentai.net/g/${id}/`,
@@ -1480,19 +1470,15 @@ async function getBookmarksFromStorage() {
     
     // Check for bookmarks in the second format (array of objects)
     const bookmarkedMangas = await GM.getValue("bookmarkedMangas");
-    console.log("Bookmarked mangas:", bookmarkedMangas);
     if (Array.isArray(bookmarkedMangas)) {
         bookmarkedMangas.forEach(manga => {
             // Extract ID from URL if it exists
             if (manga.url) {
                 const match = manga.url.match(/\/g\/(\d+)/);
-                console.log("Match:", match);
                 if (match && match[1]) {
                     const id = match[1];
-                    console.log("ID:", id);
                     // Check if this ID is already in our bookmarks array
                     if (!addedIds.has(id)) {
-                        console.log("Adding ID to bookmarks:", id);
                         bookmarks.push({
                             id: id,
                             url: manga.url,
@@ -1507,7 +1493,6 @@ async function getBookmarksFromStorage() {
         });
     }
     
-    console.log("Returning bookmarks:", bookmarks);
     return bookmarks;
 }
         
