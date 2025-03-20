@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      6.8
+// @version      6.9
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -2024,34 +2024,34 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
                flex-direction: column;
                gap: 10px;
            }
-        .tooltip {
-        display: inline-block;
-        position: relative;
-        cursor: pointer;
-        font-size: 14px;
-        background: #444;
-        color: #fff;
-        border-radius: 50%;
-        width: 18px;
-        height: 18px;
-        text-align: center;
-        line-height: 18px;
-        font-weight: bold;
-    }
-
-    .tooltip:hover::after {
-        content: attr(data-tooltip);
-        position: absolute;
-        left: 50%;
-        bottom: 100%;
-        transform: translateX(-50%);
-        background: #666;
-        color: #fff;
-        padding: 5px;
-        border-radius: 3px;
-        white-space: nowrap;
-        font-size: 12px;
-    }
+           .tooltip {
+               display: inline-block;
+               position: relative;
+               cursor: pointer;
+               font-size: 14px;
+               background: #444;
+               color: #fff;
+               border-radius: 50%;
+               width: 18px;
+               height: 18px;
+               text-align: center;
+               line-height: 18px;
+               font-weight: bold;
+           }
+       
+           .tooltip:hover::after {
+               content: attr(data-tooltip);
+               position: absolute;
+               left: 50%;
+               bottom: 100%;
+               transform: translateX(-50%);
+               background: #666;
+               color: #fff;
+               padding: 5px;
+               border-radius: 3px;
+               white-space: nowrap;
+               font-size: 12px;
+           }
            #settingsForm label {
                display: flex;
                align-items: center;
@@ -2130,107 +2130,256 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
            #importBookmarksFile {
                display: none;
            }
+           
+           /* Advanced Settings Section */
+           #advanced-settings {
+               margin-top: 30px;
+               border-top: 1px solid #333;
+               padding-top: 20px;
+           }
+           
+           #advanced-settings h3 {
+               display: flex;
+               align-items: center;
+               gap: 10px;
+               cursor: pointer;
+           }
+           
+           #advanced-settings-content {
+               display: none;
+               margin-top: 15px;
+           }
+           
+           #storage-data {
+               width: 100%;
+               height: 200px;
+               background: #333;
+               color: #fff;
+               border: 1px solid #444;
+               padding: 10px;
+               font-family: monospace;
+               margin-bottom: 10px;
+               white-space: pre;
+               overflow: auto;
+           }
+           
+           .storage-key-item {
+               display: flex;
+               align-items: center;
+               margin-bottom: 5px;
+               background: #2a2a2a;
+               padding: 5px;
+               border-radius: 3px;
+           }
+           
+           .storage-key {
+               flex: 1;
+               padding: 5px;
+               overflow: hidden;
+               text-overflow: ellipsis;
+           }
+           
+           .storage-actions {
+               display: flex;
+               gap: 5px;
+           }
+           
+           .storage-actions button {
+               background: #444;
+               border: none;
+               color: white;
+               padding: 3px 8px;
+               border-radius: 2px;
+               cursor: pointer;
+           }
+           
+           .storage-actions button:hover {
+               background: #555;
+           }
+           
+           .action-btn-danger {
+               background: #d9534f !important;
+           }
+           
+           .action-btn-danger:hover {
+               background: #c9302c !important;
+           }
+           
+           #edit-value-modal {
+               display: none;
+               position: fixed;
+               top: 0;
+               left: 0;
+               width: 100%;
+               height: 100%;
+               background: rgba(0, 0, 0, 0.8);
+               z-index: 999;
+           }
+           
+           #edit-value-content {
+               position: absolute;
+               top: 50%;
+               left: 50%;
+               transform: translate(-50%, -50%);
+               background: #222;
+               padding: 20px;
+               border-radius: 5px;
+               width: 80%;
+               max-width: 600px;
+           }
+           
+           #edit-value-textarea {
+               width: 100%;
+               height: 200px;
+               background: #333;
+               color: #fff;
+               border: 1px solid #444;
+               padding: 10px;
+               font-family: monospace;
+               margin-bottom: 15px;
+           }
+           
+           .modal-buttons {
+               display: flex;
+               gap: 10px;
+               justify-content: flex-end;
+           }
+           
+           .expand-icon::after {
+               content: "▶";
+               margin-left: 5px;
+               font-size: 10px;
+           }
+           
+.expand-icon.expanded::after {
+    content: "▼";
+      margin-left: 5px;
+               font-size: 12px;
+}
        </style>
        
        <div id="content">
            <h1>Settings</h1>
            <form id="settingsForm">
                <label>
-                             <input type="checkbox" id="findSimilarEnabled">
-            Enable Find Similar Button <span class="tooltip" data-tooltip="Finds similar manga based on the current one.">?</span>
-        </label>
-        <label>
-            <input type="checkbox" id="englishFilterEnabled">
-            Enable English Filter Button <span class="tooltip" data-tooltip="Filters manga to show only English translations.">?</span>
-        </label>
-        <label>
-            <input type="checkbox" id="autoLoginEnabled">
-            Enable Auto Login <span class="tooltip" data-tooltip="Automatically logs in with saved credentials.">?</span>
-        </label>
-        <div id="autoLoginCredentials">
-            <label>
-                Email: <input type="text" id="email">
-            </label>
-            <label>
-                Password: <input type="password" id="password">
-            </label>
-        </div>
-        <label>
-            <input type="checkbox" id="findAltmangaEnabled">
-            Enable Find Altmanga Button <span class="tooltip" data-tooltip="Finds alternative sources for the manga.">?</span>
-        </label>
-        <label>
-            <input type="checkbox" id="findAltMangaThumbnailEnabled">
-            Enable Find Alt Manga (Thumbnail Version) <span class="tooltip" data-tooltip="Displays alternative manga sources as thumbnails.">?</span>
-        </label>
-        <div id="find-Alt-Manga-Thumbnail-options" style="display: none;">
-            <label>
-                <input type="checkbox" id="mangagroupingenabled" name="manga-grouping-type" value="grouping">
-                Find Alt Manga Grouping <span class="tooltip" data-tooltip="Groups alternative versions of manga together on the page.">?</span>
-            </label>
-         </div>
-        <label>
-            <input type="checkbox" id="openInNewTabEnabled">
-            Enable Open in New Tab Button <span class="tooltip" data-tooltip="Opens manga links in a new tab.">?</span>
-        </label>
-        <label>
-            <input type="checkbox" id="monthFilterEnabled">
-            Enable Month Filter Button <span class="tooltip" data-tooltip="Filters manga by publication month.">?</span>
-        </label>
-        <label>
-            <input type="checkbox" id="mangaBookMarkingButtonEnabled">
-            Enable Manga Bookmarking Button <span class="tooltip" data-tooltip="Allows bookmarking manga for quick access.">?</span>
-        </label>
-        <div id="manga-bookmarking-options" style="display: none;">
-            <label>
-                <input type="radio" id="manga-bookmarking-cover" name="manga-bookmarking-type" value="cover">
-                Show Cover <span class="tooltip" data-tooltip="Displays the cover image for bookmarks.">?</span>
-            </label>
-            <label>
-                <input type="radio" id="manga-bookmarking-title" name="manga-bookmarking-type" value="title">
-                Show Title <span class="tooltip" data-tooltip="Displays the title only for bookmarks.">?</span>
-            </label>
-            <label>
-                <input type="radio" id="manga-bookmarking-both" name="manga-bookmarking-type" value="both">
-                Show Both <span class="tooltip" data-tooltip="Displays both the cover and title for bookmarks.">?</span>
-            </label>
-        </div>
-        <label>
-            <input type="checkbox" id="bookmarksEnabled">
-            Enable Bookmarks Button <span class="tooltip" data-tooltip="Enables the bookmarks feature.">?</span>
-        </label>
-        <div class="bookmark-actions">
-            <button type="button" id="exportBookmarks">Export Bookmarks</button>
-            <button type="button" id="importBookmarks">Import Bookmarks</button>
-            <input type="file" id="importBookmarksFile" accept=".json">
-        </div>
-<div>
-  <label for="max-manga-per-bookmark-slider">Max Manga per Bookmark on Mobile:</label>
-  <input type="range" id="max-manga-per-bookmark-slider" min="1" max="25" value="5">
-  <span id="max-manga-per-bookmark-on-mobile-value">5</span>
-  <span class="tooltip" data-tooltip="Sets the maximum number of manga to display per bookmark on mobile devices.">?</span>
-</div>
-
-        <div id="random-settings">
-            <h3>Random Hentai Preferences</h3>
-            <label>Language: <input type="text" id="pref-language"> <span class="tooltip" data-tooltip="Preferred language for random hentai.">?</span></label>
-            <label>Tags: <input type="text" id="pref-tags"> <span class="tooltip" data-tooltip="Preferred tags for filtering hentai.">?</span></label>
-            <label>Blacklisted Tags: <input type="text" id="blacklisted-tags"> <span class="tooltip" data-tooltip="Tags to exclude from search results.">?</span></label>
-            <label>Minimum Pages: <input type="number" id="pref-pages-min"> <span class="tooltip" data-tooltip="Minimum number of pages for random hentai.">?</span></label>
-            <label>Maximum Pages: <input type="number" id="pref-pages-max"> <span class="tooltip" data-tooltip="Maximum number of pages for random hentai.">?</span></label>
-            <label>
-                <input type="checkbox" id="matchAllTags">
-                Match All Tags (unchecked = match any) <span class="tooltip" data-tooltip="If enabled, all tags must match instead of any.">?</span>
-            </label>
-        </div>
-         <label>
-            <input type="checkbox" id="tooltipsEnabled">
-            Enable Tooltips <span class="tooltip" data-tooltip="Enables or disables tooltips.">?</span>
-        </label>
-        <button type="submit">Save Settings</button>
-    </form>
-</div>
-`;
+                   <input type="checkbox" id="findSimilarEnabled">
+                   Enable Find Similar Button <span class="tooltip" data-tooltip="Finds similar manga based on the current one.">?</span>
+               </label>
+               <label>
+                   <input type="checkbox" id="englishFilterEnabled">
+                   Enable English Filter Button <span class="tooltip" data-tooltip="Filters manga to show only English translations.">?</span>
+               </label>
+               <label>
+                   <input type="checkbox" id="autoLoginEnabled">
+                   Enable Auto Login <span class="tooltip" data-tooltip="Automatically logs in with saved credentials.">?</span>
+               </label>
+               <div id="autoLoginCredentials">
+                   <label>
+                       Email: <input type="text" id="email">
+                   </label>
+                   <label>
+                       Password: <input type="password" id="password">
+                   </label>
+               </div>
+               <label>
+                   <input type="checkbox" id="findAltmangaEnabled">
+                   Enable Find Altmanga Button <span class="tooltip" data-tooltip="Finds alternative sources for the manga.">?</span>
+               </label>
+               <label>
+                   <input type="checkbox" id="findAltMangaThumbnailEnabled">
+                   Enable Find Alt Manga (Thumbnail Version) <span class="tooltip" data-tooltip="Displays alternative manga sources as thumbnails.">?</span>
+               </label>
+               <div id="find-Alt-Manga-Thumbnail-options" style="display: none;">
+                   <label>
+                       <input type="checkbox" id="mangagroupingenabled" name="manga-grouping-type" value="grouping">
+                       Find Alt Manga Grouping <span class="tooltip" data-tooltip="Groups alternative versions of manga together on the page.">?</span>
+                   </label>
+                </div>
+               <label>
+                   <input type="checkbox" id="openInNewTabEnabled">
+                   Enable Open in New Tab Button <span class="tooltip" data-tooltip="Opens manga links in a new tab.">?</span>
+               </label>
+               <label>
+                   <input type="checkbox" id="monthFilterEnabled">
+                   Enable Month Filter Button <span class="tooltip" data-tooltip="Filters manga by publication month.">?</span>
+               </label>
+               <label>
+                   <input type="checkbox" id="mangaBookMarkingButtonEnabled">
+                   Enable Manga Bookmarking Button <span class="tooltip" data-tooltip="Allows bookmarking manga for quick access.">?</span>
+               </label>
+               <div id="manga-bookmarking-options" style="display: none;">
+                   <label>
+                       <input type="radio" id="manga-bookmarking-cover" name="manga-bookmarking-type" value="cover">
+                       Show Cover <span class="tooltip" data-tooltip="Displays the cover image for bookmarks.">?</span>
+                   </label>
+                   <label>
+                       <input type="radio" id="manga-bookmarking-title" name="manga-bookmarking-type" value="title">
+                       Show Title <span class="tooltip" data-tooltip="Displays the title only for bookmarks.">?</span>
+                   </label>
+                   <label>
+                       <input type="radio" id="manga-bookmarking-both" name="manga-bookmarking-type" value="both">
+                       Show Both <span class="tooltip" data-tooltip="Displays both the cover and title for bookmarks.">?</span>
+                   </label>
+               </div>
+               <label>
+                   <input type="checkbox" id="bookmarksEnabled">
+                   Enable Bookmarks Button <span class="tooltip" data-tooltip="Enables the bookmarks feature.">?</span>
+               </label>
+               <div class="bookmark-actions">
+                   <button type="button" id="exportBookmarks">Export Bookmarks</button>
+                   <button type="button" id="importBookmarks">Import Bookmarks</button>
+                   <input type="file" id="importBookmarksFile" accept=".json">
+               </div>
+               <div>
+                 <label for="max-manga-per-bookmark-slider">Max Manga per Bookmark on Mobile:</label>
+                 <input type="range" id="max-manga-per-bookmark-slider" min="1" max="25" value="5">
+                 <span id="max-manga-per-bookmark-on-mobile-value">5</span>
+                 <span class="tooltip" data-tooltip="Sets the maximum number of manga to display per bookmark on mobile devices.">?</span>
+               </div>
+       
+               <div id="random-settings">
+                   <h3>Random Hentai Preferences</h3>
+                   <label>Language: <input type="text" id="pref-language"> <span class="tooltip" data-tooltip="Preferred language for random hentai.">?</span></label>
+                   <label>Tags: <input type="text" id="pref-tags"> <span class="tooltip" data-tooltip="Preferred tags for filtering hentai.">?</span></label>
+                   <label>Blacklisted Tags: <input type="text" id="blacklisted-tags"> <span class="tooltip" data-tooltip="Tags to exclude from search results.">?</span></label>
+                   <label>Minimum Pages: <input type="number" id="pref-pages-min"> <span class="tooltip" data-tooltip="Minimum number of pages for random hentai.">?</span></label>
+                   <label>Maximum Pages: <input type="number" id="pref-pages-max"> <span class="tooltip" data-tooltip="Maximum number of pages for random hentai.">?</span></label>
+                   <label>
+                       <input type="checkbox" id="matchAllTags">
+                       Match All Tags (unchecked = match any) <span class="tooltip" data-tooltip="If enabled, all tags must match instead of any.">?</span>
+                   </label>
+               </div>
+               <label>
+                   <input type="checkbox" id="tooltipsEnabled">
+                   Enable Tooltips <span class="tooltip" data-tooltip="Enables or disables tooltips.">?</span>
+               </label>
+               
+               <!-- Advanced Storage Section -->
+               <div id="advanced-settings">
+                   <h3 class="expand-icon">Advanced Storage Management <span class="tooltip" data-tooltip="View and modify all data stored in GM.getValue">?</span></h3>
+                   <div id="advanced-settings-content">
+                       <p>This section allows you to view and modify all data stored by this userscript.</p>
+                       <button type="button" id="refresh-storage">Refresh Storage Data</button>
+                       <div id="storage-keys-list"></div>
+                       
+                       <div id="edit-value-modal">
+                           <div id="edit-value-content">
+                               <h3>Edit Storage Value</h3>
+                               <p id="editing-key-name">Key: </p>
+                               <textarea id="edit-value-textarea"></textarea>
+                               <div class="modal-buttons">
+                                   <button type="button" id="cancel-edit">Cancel</button>
+                                   <button type="button" id="save-edit">Save Changes</button>
+                               </div>
+                           </div>
+                       </div>
+                   </div>
+               </div>
+               
+               <button type="submit">Save Settings</button>
+           </form>
+       </div>
+       `;
 
        // Append settings form to the container
        $('div.container').append(settingsHtml);
@@ -2447,6 +2596,527 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
     setupBookmarkButtons();
 
     }
+
+// Advanced Settings Management Functions
+
+    // Toggle advanced settings section
+    const advancedHeader = document.querySelector('#advanced-settings h3');
+    const advancedContent = document.getElementById('advanced-settings-content');
+    
+    if (!advancedHeader) {
+        console.error('Advanced settings header not found');
+        return;
+    }
+    
+    if (!advancedContent) {
+        console.error('Advanced settings content not found');
+        return;
+    }
+    
+    console.log('Advanced header found:', advancedHeader);
+    console.log('Initial display state:', advancedContent.style.display);
+    
+advancedHeader.addEventListener('click', function() {
+    console.log('Header clicked');
+    advancedContent.style.display = (advancedContent.style.display === 'none' || advancedContent.style.display === '') ? 'block' : 'none';
+    console.log('New display state:', advancedContent.style.display);
+    
+    // Toggle the expanded class
+    advancedHeader.classList.toggle('expanded', advancedContent.style.display === 'block');
+    console.log('Classes after toggle:', advancedHeader.className);
+    
+    if (advancedContent.style.display === 'block') {
+        refreshStorageData();
+    }
+});
+
+
+
+    // Refresh storage button
+    const refreshBtn = document.getElementById('refresh-storage');
+    refreshBtn.addEventListener('click', refreshStorageData);
+    
+    // Modal controls
+    const editModal = document.getElementById('edit-value-modal');
+    const cancelEditBtn = document.getElementById('cancel-edit');
+    const saveEditBtn = document.getElementById('save-edit');
+    
+    cancelEditBtn.addEventListener('click', function() {
+        editModal.style.display = 'none';
+    });
+    
+    saveEditBtn.addEventListener('click', function() {
+        const keyName = document.getElementById('editing-key-name').dataset.key;
+        const newValue = document.getElementById('edit-value-textarea').value;
+        
+        try {
+            // Try to parse the JSON to validate it
+            const parsedValue = JSON.parse(newValue);
+            
+            // Save the changes to GM storage
+            GM.setValue(keyName, parsedValue)
+                .then(() => {
+                    alert('Value saved successfully!');
+                    editModal.style.display = 'none';
+                    refreshStorageData();
+                })
+                .catch(err => {
+                    alert('Error saving value: ' + err.message);
+                });
+        } catch (e) {
+            alert('Invalid JSON format. Please check your input.');
+        }
+    });
+    
+// Function to refresh storage data with mobile-friendly layout
+function refreshStorageData() {
+    const keysList = document.getElementById('storage-keys-list');
+    keysList.innerHTML = '<p>Loading storage data...</p>';
+    
+    // Use GM.listValues() to get all keys
+    GM.listValues()
+        .then(keys => {
+            if (keys.length === 0) {
+                keysList.innerHTML = '<p>No data found in storage.</p>';
+                return;
+            }
+            
+            keysList.innerHTML = '';
+            
+            // Sort keys alphabetically for easier navigation
+            keys.sort();
+            
+            // Process each key
+            Promise.all(keys.map(key => {
+                return GM.getValue(key)
+                    .then(value => {
+                        return { key, value };
+                    });
+            }))
+            .then(items => {
+                // Create responsive container
+                const container = document.createElement('div');
+                container.style.width = '100%';
+                
+                // Add media query detection
+                const isMobile = window.matchMedia("(max-width: 600px)").matches;
+                
+                if (isMobile) {
+                    // Mobile view: Card-based layout
+                    items.forEach(item => {
+                        const card = document.createElement('div');
+                        card.style.border = '1px solid #444';
+                        card.style.borderRadius = '4px';
+                        card.style.padding = '10px';
+                        card.style.marginBottom = '15px';
+                        card.style.backgroundColor = '#2a2a2a';
+                        
+                        // Key
+                        const keyDiv = document.createElement('div');
+                        keyDiv.style.fontWeight = 'bold';
+                        keyDiv.style.marginBottom = '5px';
+                        keyDiv.style.wordBreak = 'break-word';
+                        keyDiv.textContent = item.key;
+                        card.appendChild(keyDiv);
+                        
+                        // Type and Size
+                        const infoDiv = document.createElement('div');
+                        infoDiv.style.display = 'flex';
+                        infoDiv.style.justifyContent = 'space-between';
+                        infoDiv.style.marginBottom = '10px';
+                        infoDiv.style.fontSize = '0.9em';
+                        infoDiv.style.color = '#aaa';
+                        
+                        const typeSpan = document.createElement('span');
+                        typeSpan.textContent = `Type: ${getValueType(item.value)}`;
+                        
+                        const sizeSpan = document.createElement('span');
+                        sizeSpan.textContent = `Size: ${getValueSize(item.value)}`;
+                        
+                        infoDiv.appendChild(typeSpan);
+                        infoDiv.appendChild(sizeSpan);
+                        card.appendChild(infoDiv);
+                        
+                        // Actions
+                        const actionDiv = document.createElement('div');
+                        actionDiv.style.display = 'flex';
+                        actionDiv.style.gap = '10px';
+                        
+                        const viewBtn = document.createElement('button');
+                        viewBtn.textContent = 'View/Edit';
+                        viewBtn.style.flex = '1';
+                        viewBtn.style.padding = '8px';
+                        viewBtn.style.backgroundColor = '#444';
+                        viewBtn.style.border = 'none';
+                        viewBtn.style.borderRadius = '4px';
+                        viewBtn.style.color = 'white';
+                        viewBtn.style.cursor = 'pointer';
+                        
+                        viewBtn.addEventListener('click', function() {
+                            openEditModal(item.key, item.value);
+                        });
+                        
+                        const deleteBtn = document.createElement('button');
+                        deleteBtn.textContent = 'Delete';
+                        deleteBtn.style.flex = '1';
+                        deleteBtn.style.padding = '8px';
+                        deleteBtn.style.backgroundColor = '#d9534f';
+                        deleteBtn.style.border = 'none';
+                        deleteBtn.style.borderRadius = '4px';
+                        deleteBtn.style.color = 'white';
+                        deleteBtn.style.cursor = 'pointer';
+                        
+                        deleteBtn.addEventListener('click', function() {
+                            if (confirm(`Are you sure you want to delete "${item.key}"?`)) {
+                                GM.deleteValue(item.key)
+                                    .then(() => {
+                                        refreshStorageData();
+                                    })
+                                    .catch(err => {
+                                        alert('Error deleting value: ' + err.message);
+                                    });
+                            }
+                        });
+                        
+                        actionDiv.appendChild(viewBtn);
+                        actionDiv.appendChild(deleteBtn);
+                        card.appendChild(actionDiv);
+                        
+                        container.appendChild(card);
+                    });
+                } else {
+                    // Desktop view: Table layout
+                    const table = document.createElement('table');
+                    table.style.width = '100%';
+                    table.style.borderCollapse = 'collapse';
+                    table.style.marginTop = '10px';
+                    
+                    // Create table header
+                    const thead = document.createElement('thead');
+                    const headerRow = document.createElement('tr');
+                    ['Key', 'Type', 'Size', 'Actions'].forEach(text => {
+                        const th = document.createElement('th');
+                        th.textContent = text;
+                        th.style.textAlign = 'left';
+                        th.style.padding = '8px';
+                        th.style.backgroundColor = '#2a2a2a';
+                        th.style.borderBottom = '1px solid #444';
+                        headerRow.appendChild(th);
+                    });
+                    thead.appendChild(headerRow);
+                    table.appendChild(thead);
+                    
+                    // Create table body
+                    const tbody = document.createElement('tbody');
+                    
+                    items.forEach(item => {
+                        const row = document.createElement('tr');
+                        row.style.borderBottom = '1px solid #333';
+                        
+                        // Key column
+                        const keyCell = document.createElement('td');
+                        keyCell.textContent = item.key;
+                        keyCell.style.padding = '8px';
+                        keyCell.style.maxWidth = '200px';
+                        keyCell.style.overflow = 'hidden';
+                        keyCell.style.textOverflow = 'ellipsis';
+                        keyCell.style.whiteSpace = 'nowrap';
+                        
+                        // Type column
+                        const typeCell = document.createElement('td');
+                        typeCell.textContent = getValueType(item.value);
+                        typeCell.style.padding = '8px';
+                        
+                        // Size column
+                        const sizeCell = document.createElement('td');
+                        sizeCell.textContent = getValueSize(item.value);
+                        sizeCell.style.padding = '8px';
+                        
+                        // Actions column
+                        const actionsCell = document.createElement('td');
+                        actionsCell.style.padding = '8px';
+                        
+                        const actionWrapper = document.createElement('div');
+                        actionWrapper.style.display = 'flex';
+                        actionWrapper.style.gap = '5px';
+                        
+                        const viewBtn = document.createElement('button');
+                        viewBtn.textContent = 'View/Edit';
+                        viewBtn.style.padding = '3px 8px';
+                        viewBtn.style.backgroundColor = '#444';
+                        viewBtn.style.border = 'none';
+                        viewBtn.style.borderRadius = '2px';
+                        viewBtn.style.color = 'white';
+                        viewBtn.style.cursor = 'pointer';
+                        
+                        viewBtn.addEventListener('click', function() {
+                            openEditModal(item.key, item.value);
+                        });
+                        
+                        const deleteBtn = document.createElement('button');
+                        deleteBtn.textContent = 'Delete';
+                        deleteBtn.style.padding = '3px 8px';
+                        deleteBtn.style.backgroundColor = '#d9534f';
+                        deleteBtn.style.border = 'none';
+                        deleteBtn.style.borderRadius = '2px';
+                        deleteBtn.style.color = 'white';
+                        deleteBtn.style.cursor = 'pointer';
+                        
+                        deleteBtn.addEventListener('click', function() {
+                            if (confirm(`Are you sure you want to delete "${item.key}"?`)) {
+                                GM.deleteValue(item.key)
+                                    .then(() => {
+                                        refreshStorageData();
+                                    })
+                                    .catch(err => {
+                                        alert('Error deleting value: ' + err.message);
+                                    });
+                            }
+                        });
+                        
+                        actionWrapper.appendChild(viewBtn);
+                        actionWrapper.appendChild(deleteBtn);
+                        actionsCell.appendChild(actionWrapper);
+                        
+                        // Add all cells to the row
+                        row.appendChild(keyCell);
+                        row.appendChild(typeCell);
+                        row.appendChild(sizeCell);
+                        row.appendChild(actionsCell);
+                        
+                        // Add row to table body
+                        tbody.appendChild(row);
+                    });
+                    
+                    table.appendChild(tbody);
+                    container.appendChild(table);
+                }
+                
+                keysList.appendChild(container);
+                
+                // Add option to create new key
+                const addNewSection = document.createElement('div');
+                addNewSection.style.marginTop = '20px';
+                
+                const addNewHeading = document.createElement('h4');
+                addNewHeading.textContent = 'Add New Storage Key';
+                addNewSection.appendChild(addNewHeading);
+                
+                const addNewForm = document.createElement('div');
+                addNewForm.style.display = 'flex';
+                addNewForm.style.gap = '10px';
+                addNewForm.style.marginTop = '10px';
+                addNewForm.style.flexWrap = 'wrap'; // Allow wrapping on small screens
+                
+                const keyInput = document.createElement('input');
+                keyInput.type = 'text';
+                keyInput.placeholder = 'Key name';
+                keyInput.style.flex = '1';
+                keyInput.style.padding = '8px';
+                keyInput.style.backgroundColor = '#333';
+                keyInput.style.border = '1px solid #444';
+                keyInput.style.color = '#fff';
+                keyInput.style.borderRadius = '4px';
+                keyInput.style.minWidth = '120px'; // Ensure minimum usable width
+                
+                const valueInput = document.createElement('input');
+                valueInput.type = 'text';
+                valueInput.placeholder = 'Value (valid JSON)';
+                valueInput.style.flex = '2';
+                valueInput.style.padding = '8px';
+                valueInput.style.backgroundColor = '#333';
+                valueInput.style.border = '1px solid #444';
+                valueInput.style.color = '#fff';
+                valueInput.style.borderRadius = '4px';
+                valueInput.style.minWidth = '150px'; // Ensure minimum usable width
+                
+                const addBtn = document.createElement('button');
+                addBtn.textContent = 'Add';
+                addBtn.style.padding = '8px';
+                addBtn.style.backgroundColor = '#28a745';
+                addBtn.style.border = 'none';
+                addBtn.style.borderRadius = '4px';
+                addBtn.style.color = 'white';
+                addBtn.style.cursor = 'pointer';
+                
+                addBtn.addEventListener('click', function() {
+                    const key = keyInput.value.trim();
+                    const value = valueInput.value.trim();
+                    
+                    if (!key) {
+                        alert('Please enter a key name.');
+                        return;
+                    }
+                    
+                    if (!value) {
+                        alert('Please enter a value.');
+                        return;
+                    }
+                    
+                    try {
+                        const parsedValue = JSON.parse(value);
+                        
+                        GM.setValue(key, parsedValue)
+                            .then(() => {
+                                alert('New key added successfully!');
+                                keyInput.value = '';
+                                valueInput.value = '';
+                                refreshStorageData();
+                            })
+                            .catch(err => {
+                                alert('Error adding new key: ' + err.message);
+                            });
+                    } catch (e) {
+                        alert('Invalid JSON format. Please check your input.');
+                    }
+                });
+                
+                addNewForm.appendChild(keyInput);
+                addNewForm.appendChild(valueInput);
+                addNewForm.appendChild(addBtn);
+                
+                addNewSection.appendChild(addNewForm);
+                keysList.appendChild(addNewSection);
+                
+                // Add export/import buttons
+                const buttonSection = document.createElement('div');
+                buttonSection.style.marginTop = '20px';
+                buttonSection.style.display = 'flex';
+                buttonSection.style.gap = '10px';
+                buttonSection.style.flexWrap = 'wrap'; // Allow buttons to wrap on small screens
+                
+                const exportBtn = document.createElement('button');
+                exportBtn.textContent = 'Export All Storage Data';
+                exportBtn.style.padding = '10px';
+                exportBtn.style.backgroundColor = '#007bff';
+                exportBtn.style.border = 'none';
+                exportBtn.style.borderRadius = '4px';
+                exportBtn.style.color = 'white';
+                exportBtn.style.cursor = 'pointer';
+                exportBtn.style.flex = '1';
+                exportBtn.style.minWidth = isMobile ? '100%' : '150px';
+                
+                exportBtn.addEventListener('click', function() {
+                    const exportData = {};
+                    items.forEach(item => {
+                        exportData[item.key] = item.value;
+                    });
+                    
+                    const dataStr = JSON.stringify(exportData, null, 2);
+                    const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
+                    
+                    const exportLink = document.createElement('a');
+                    exportLink.setAttribute('href', dataUri);
+                    exportLink.setAttribute('download', 'userscript_storage_backup.json');
+                    exportLink.click();
+                });
+                
+                const importInput = document.createElement('input');
+                importInput.type = 'file';
+                importInput.accept = '.json';
+                importInput.style.display = 'none';
+                importInput.id = 'import-storage-file';
+                
+                const importBtn = document.createElement('button');
+                importBtn.textContent = 'Import Storage Data';
+                importBtn.style.padding = '10px';
+                importBtn.style.backgroundColor = '#6c757d';
+                importBtn.style.border = 'none';
+                importBtn.style.borderRadius = '4px';
+                importBtn.style.color = 'white';
+                importBtn.style.cursor = 'pointer';
+                importBtn.style.flex = '1';
+                importBtn.style.minWidth = isMobile ? '100%' : '150px';
+                
+                importBtn.addEventListener('click', function() {
+                    importInput.click();
+                });
+                
+                importInput.addEventListener('change', function(e) {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        try {
+                            const importData = JSON.parse(e.target.result);
+                            
+                            if (confirm(`This will import ${Object.keys(importData).length} keys. Continue?`)) {
+                                // Process each key in the import data
+                                const importPromises = Object.entries(importData).map(([key, value]) => {
+                                    return GM.setValue(key, value);
+                                });
+                                
+                                Promise.all(importPromises)
+                                    .then(() => {
+                                        alert('Import completed successfully!');
+                                        refreshStorageData();
+                                    })
+                                    .catch(err => {
+                                        alert('Error during import: ' + err.message);
+                                    });
+                            }
+                        } catch (e) {
+                            alert('Invalid JSON file. Please check the file format.');
+                        }
+                    };
+                    reader.readAsText(file);
+                });
+                
+                buttonSection.appendChild(exportBtn);
+                buttonSection.appendChild(importBtn);
+                buttonSection.appendChild(importInput);
+                keysList.appendChild(buttonSection);
+            })
+            .catch(err => {
+                keysList.innerHTML = `<p>Error processing storage data: ${err.message}</p>`;
+            });
+        })
+        .catch(err => {
+            keysList.innerHTML = `<p>Error loading storage data: ${err.message}</p>`;
+        });
+}
+    
+    // Function to open the edit modal
+    function openEditModal(key, value) {
+        const editModal = document.getElementById('edit-value-modal');
+        const keyNameElem = document.getElementById('editing-key-name');
+        const valueTextarea = document.getElementById('edit-value-textarea');
+        
+        keyNameElem.textContent = `Key: ${key}`;
+        keyNameElem.dataset.key = key;
+        
+        // Format the JSON for better readability
+        const formattedValue = JSON.stringify(value, null, 2);
+        valueTextarea.value = formattedValue;
+        
+        editModal.style.display = 'block';
+    }
+    
+    // Helper function to get the type of a value
+    function getValueType(value) {
+        if (value === null) return 'null';
+        if (Array.isArray(value)) return 'array';
+        return typeof value;
+    }
+    
+    // Helper function to get the size of a value
+    function getValueSize(value) {
+        const json = JSON.stringify(value);
+        const bytes = new Blob([json]).size;
+        
+        if (bytes < 1024) {
+            return bytes + ' bytes';
+        } else if (bytes < 1024 * 1024) {
+            return (bytes / 1024).toFixed(2) + ' KB';
+        } else {
+            return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+        }
+    }
+
+
+
+
 
     function showPopup(message) {
         const popup = document.createElement('div');
