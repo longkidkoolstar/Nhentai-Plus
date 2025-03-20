@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      6.7.6
+// @version      6.8
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -1383,11 +1383,119 @@ for (const page of bookmarkedPages) {
             .bookmark-item.hidden {
                 display: none;
             }
+            .random-button {
+                background-color: #e63946;
+                color: #ffffff;
+                border: none;
+                padding: 5px 10px;
+                font-size: 14px;
+                cursor: pointer;
+                border-radius: 5px;
+                transition: background-color 0.2s ease;
+                
+            }
+
+            .random-button:hover {
+                background-color: #2ecc71;
+            }
+
+            .random-button:active {
+                transform: translateY(2px);
+            }
+
+            .random-button i {
+                margin-right: 10px;
+            }
         `;
 
         // Add the CSS to the page
         $('<style>').text(additionalStyles).appendTo('head');
 
+async function appendButton() {
+    const target = document.querySelector("#bookmarksContainer > h2:nth-child(1)");
+    const button = $('<button class="random-button"><i class="fas fa-random"></i> Random</button>');
+    $(target).after(button);
+    $(target).css('display', 'inline-block');
+    button.css({
+        'display': 'inline-block',
+        'margin-left': '10px', // Add a margin of 10px to the left of the button
+        'position': 'relative', // Add relative positioning
+        'top': '-3px' // Move the button up by 10 pixels
+    });
+    
+    button.on('click', async function() {
+        const bookmarks = await getBookmarksFromStorage();
+        if (bookmarks.length > 0) {
+            const randomIndex = Math.floor(Math.random() * bookmarks.length);
+            const randomBookmark = bookmarks[randomIndex];
+            const link = `https://nhentai.net/g/${randomBookmark.id}`;
+            console.log(`Opening manga from bookmark source: ${randomBookmark.source}`);
+            window.open(link, '_blank');
+        } else {
+            console.log("No bookmarks found.");
+        }
+    });
+}
+
+appendButton();
+        
+async function getBookmarksFromStorage() {
+    const bookmarks = [];
+    const addedIds = new Set();
+    
+    // Check for bookmarks in the first format (simple array of IDs)
+    const allKeys = await GM.listValues();
+    for (const key of allKeys) {
+        if (key.startsWith("bookmark_manga_ids_")) {
+            const ids = await GM.getValue(key);
+            if (Array.isArray(ids)) {
+                // Add each ID as a bookmark object
+                ids.forEach(id => {
+                    if (!addedIds.has(id)) {
+                        bookmarks.push({
+                            id: id,
+                            url: `https://nhentai.net/g/${id}/`,
+                            source: key
+                        });
+                        addedIds.add(id);
+                    }
+                });
+            }
+        }
+    }
+    
+    // Check for bookmarks in the second format (array of objects)
+    const bookmarkedMangas = await GM.getValue("bookmarkedMangas");
+    if (Array.isArray(bookmarkedMangas)) {
+        bookmarkedMangas.forEach(manga => {
+            // Extract ID from URL if it exists
+            if (manga.url) {
+                const match = manga.url.match(/\/g\/(\d+)/);
+                if (match && match[1]) {
+                    const id = match[1];
+                    // Check if this ID is already in our bookmarks array
+                    if (!addedIds.has(id)) {
+                        bookmarks.push({
+                            id: id,
+                            url: manga.url,
+                            cover: manga.cover || null,
+                            title: manga.title || null,
+                            source: "bookmarkedMangas"
+                        });
+                        addedIds.add(id);
+                    }
+                }
+            }
+        });
+    }
+    
+    return bookmarks;
+}
+        
+        function getMangaLink(mangaID) {
+            return `https://nhentai.net/g/${mangaID}`;
+        }
+        
         // Modified search functionality to work with the new layout
         searchInput.on('input', filterBookmarks);
         tagSearchInput.on('input', filterBookmarks);
