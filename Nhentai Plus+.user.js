@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      6.9.1
+// @version      6.9.2
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -2534,9 +2534,7 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
     // Call this function after settings form is rendered
     setupBookmarkButtons();
 
-    }
-
-// Advanced Settings Management Functions
+//------------------------------------------------ Advanced Settings Management Functions---------------------------------------------------------
 
     // Toggle advanced settings section
     const advancedHeader = document.querySelector('#advanced-settings h3');
@@ -3051,6 +3049,10 @@ function refreshStorageData() {
         } else {
             return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
         }
+    }
+
+
+
     }
 
 
