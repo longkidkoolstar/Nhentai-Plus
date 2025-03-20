@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      6.9
+// @version      6.9.1
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -1803,67 +1803,6 @@ setTimeout(async function() {
     updateMangaCache();
 }, 2000);
 
-/**
- * Detects and removes old-format cache entries while preserving important data
- */
-async function cleanupOldCacheEntries() {
-    console.log("Starting cleanup of old cache format entries...");
-    const allKeys = await GM.listValues();
-    let removedCount = 0;
-    
-    // Find and delete old manga_URL_ID format keys
-    const oldMangaKeys = allKeys.filter(key => key.startsWith('manga_http'));
-    for (const key of oldMangaKeys) {
-        await GM.deleteValue(key);
-        removedCount++;
-    }
-    
-    // Find and handle URL to title mappings (old format bookmarks)
-    for (const key of allKeys) {
-        // Skip keys that are part of the new format or important lists
-        if (key === 'bookmarkedPages' || 
-            key === 'bookmarkedMangas' || 
-            key.startsWith('manga_') ||
-            key.startsWith('bookmark_manga_ids_')) {
-            continue;
-        }
-        
-        // Check if it's an old-style URL to title mapping
-        const value = await GM.getValue(key);
-        if (typeof value === 'string' && 
-            (value.startsWith('Tag: ') || 
-             value.startsWith('Search: ') || 
-             value.startsWith('Artist: ') || 
-             value.startsWith('Character: ') || 
-             value.startsWith('Group: ') || 
-             value.startsWith('Parody: '))) {
-            
-            // This is an old-style bookmark title, safe to remove
-            await GM.deleteValue(key);
-            removedCount++;
-        }
-    }
-    
-    console.log(`Cleanup complete! Removed ${removedCount} old format entries.`);
-    return removedCount;
-}
-
-// Function to clean up old title storage
-async function cleanupOldTitleStorage() {
-    // Get all stored keys
-    const storedKeys = await GM.listValues();
-
-    // Filter keys that match the old title storage format
-    const oldTitleKeys = storedKeys.filter(key => key.startsWith('title_'));
-
-    // Delete each old title key
-    for (const key of oldTitleKeys) {
-        await GM.deleteValue(key);
-        console.log(`Deleted old title storage key: ${key}`);
-    }
-
-    console.log(`Cleaned up ${oldTitleKeys.length} old title storage keys`);
-}
 
 
 // Function to fetch manga info (title and cover image) with cache and retry
@@ -3778,3 +3717,69 @@ addMonthFilter();
 
 
 //--------------------------*Month Filter**----------------------------------------
+
+
+/**
+ * Detects and removes old-format cache entries while preserving important data
+ */
+async function cleanupOldCacheEntries() {
+    console.log("Starting cleanup of old cache format entries...");
+    const allKeys = await GM.listValues();
+    let removedCount = 0;
+    
+    // Find and delete old manga_URL_ID format keys
+    const oldMangaKeys = allKeys.filter(key => key.startsWith('manga_http'));
+    for (const key of oldMangaKeys) {
+        await GM.deleteValue(key);
+        removedCount++;
+    }
+    
+    // Find and handle URL to title mappings (old format bookmarks)
+    for (const key of allKeys) {
+        // Skip keys that are part of the new format or important lists
+        if (key === 'bookmarkedPages' || 
+            key === 'bookmarkedMangas' || 
+            key.startsWith('manga_') ||
+            key.startsWith('bookmark_manga_ids_')) {
+            continue;
+        }
+        
+        // Check if it's an old-style URL to title mapping
+        const value = await GM.getValue(key);
+        if (typeof value === 'string' && 
+            (value.startsWith('Tag: ') || 
+             value.startsWith('Search: ') || 
+             value.startsWith('Artist: ') || 
+             value.startsWith('Character: ') || 
+             value.startsWith('Group: ') || 
+             value.startsWith('Parody: '))) {
+            
+            // This is an old-style bookmark title, safe to remove
+            await GM.deleteValue(key);
+            removedCount++;
+        }
+    }
+    
+    console.log(`Cleanup complete! Removed ${removedCount} old format entries.`);
+    return removedCount;
+}
+
+// Function to clean up old title storage
+async function cleanupOldTitleStorage() {
+    // Get all stored keys
+    const storedKeys = await GM.listValues();
+
+    // Filter keys that match the old title storage format
+    const oldTitleKeys = storedKeys.filter(key => key.startsWith('title_'));
+
+    // Delete each old title key
+    for (const key of oldTitleKeys) {
+        await GM.deleteValue(key);
+        console.log(`Deleted old title storage key: ${key}`);
+    }
+
+    console.log(`Cleaned up ${oldTitleKeys.length} old title storage keys`);
+}
+
+cleanupOldTitleStorage();
+cleanupOldCacheEntries();
