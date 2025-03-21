@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      6.9.5
+// @version      6.10
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -299,6 +299,16 @@ function updateLockedTagsCounter() {
     }
 }
 
+// Function to toggle lock buttons based on findSimilarEnabled
+async function toggleLockButtons() {
+    const findSimilarEnabled = await GM.getValue('findSimilarEnabled', true);
+    if (findSimilarEnabled) {
+        $('span.lock-button').show();
+    } else {
+        $('span.lock-button').hide();
+    }
+}
+
 // Event listener for locking/unlocking tags
 $(document).on('click', 'span.lock-button', function(event) {
     event.stopPropagation(); // Prevent tag link click event from firing
@@ -335,6 +345,9 @@ if (tagsContainer.length) {
         $(tagLink).after(lockButton);
     });
 }
+
+// Initialize lock buttons visibility based on findSimilarEnabled
+toggleLockButtons();
 
 console.log('Script setup complete.');
 
@@ -1127,30 +1140,41 @@ for (const page of bookmarkedPages) {
             let displayText;
             
             if (mangaIds.length > 0) {
-                if (mangaIds.length > 1) {
-                    // For search results or tag pages with multiple manga
-                    const urlObj = new URL(page);
-                    const pathName = urlObj.pathname;
-                    const searchParams = urlObj.searchParams.get('q');
-                    
-                    let itemCount = mangaIds.length;
-                    let itemSuffix = itemCount == 25 ? `+` : ``;
-                    
-                    if (pathName.includes('/tag/')) {
-                        // For tag pages, extract the tag name
-                        const tagName = pathName.split('/tag/')[1].replace('/', '');
-                        displayText = `Tag: ${tagName} (${itemCount}${itemSuffix} items)`;
-                    } else if (searchParams) {
-                        // For search results
-                        displayText = `Search: ${searchParams} (${itemCount}${itemSuffix} items)`;
-                    } else {
-                        // Default display for other pages with multiple manga
-                        displayText = `${page} (${itemCount}${itemSuffix} items)`;
-                    }
+                // For single or multiple manga
+                const urlObj = new URL(page);
+                const pathName = urlObj.pathname;
+                const searchParams = urlObj.searchParams.get('q');
+                
+                let itemCount = mangaIds.length;
+                let itemSuffix = itemCount == 1 ? ' item' : ` items`;
+                let itemPlusSuffix = itemCount == 25 ? `+` : ``;
+                
+                if (pathName.includes('/tag/')) {
+                    // For tag pages, extract the tag name
+                    const tagName = pathName.split('/tag/')[1].replace('/', '');
+                    displayText = `Tag: ${tagName} (${itemCount}${itemPlusSuffix}${itemSuffix})`;
+                } else if (pathName.includes('/artist/')) {
+                    // For artist pages, extract the artist name
+                    const artistName = pathName.split('/artist/')[1].replace('/', '');
+                    displayText = `Artist: ${artistName} (${itemCount}${itemPlusSuffix}${itemSuffix})`;
+                } else if (pathName.includes('/character/')) {
+                    // For character pages, extract the character name
+                    const characterName = pathName.split('/character/')[1].replace('/', '');
+                    displayText = `Character: ${characterName} (${itemCount}${itemPlusSuffix}${itemSuffix})`;
+                } else if (pathName.includes('/parody/')) {
+                    // For parody pages, extract the parody name
+                    const parodyName = pathName.split('/parody/')[1].replace('/', '');
+                    displayText = `Parody: ${parodyName} (${itemCount}${itemPlusSuffix}${itemSuffix})`;
+                } else if (pathName.includes('/group/')) {
+                    // For group pages, extract the group name
+                    const groupName = pathName.split('/group/')[1].replace('/', '');
+                    displayText = `Group: ${groupName} (${itemCount}${itemPlusSuffix}${itemSuffix})`;
+                } else if (searchParams) {
+                    // For search results
+                    displayText = `Search: ${searchParams} (${itemCount}${itemPlusSuffix}${itemSuffix})`;
                 } else {
-                    // For a single manga, fetch its title
-                    const mangaInfo = await GM.getValue(`manga_${mangaIds[0]}`);
-                    displayText = mangaInfo?.title || page;
+                    // Default display for other pages with manga
+                    displayText = `${page} (${itemCount}${itemPlusSuffix}${itemSuffix})`;
                 }
             } else {
                 // If no manga IDs found, fetch title directly
@@ -1479,94 +1503,7 @@ for (const page of bookmarkedPages) {
         // Add the CSS to the page
         $('<style>').text(additionalStyles).appendTo('head');
 
-        async function appendButton() {
-            const target = document.querySelector("#bookmarksContainer > h2:nth-child(1)");
-            const button = $('<button class="random-button"><i class="fas fa-random"></i> Random</button>');
-            $(target).after(button);
-            $(target).css('display', 'inline-block');
-            button.css({
-                'display': 'inline-block',
-                'margin-left': '10px',
-                'position': 'relative',
-                'top': '-3px'
-            });
-        
-            // Pre-fetch the bookmarks to avoid async issues during click
-            const bookmarks = await getBookmarksFromStorage();
-        
-            button.on('click', () => {
-                if (bookmarks.length > 0) {
-                    const randomIndex = Math.floor(Math.random() * bookmarks.length);
-                    const randomBookmark = bookmarks[randomIndex];
-                    const link = `https://nhentai.net/g/${randomBookmark.id}`;
-                    console.log(`Opening manga from bookmark source: ${randomBookmark.source}`);
-                    // This is now directly inside the click callback
-                    window.open(link, '_blank');
-                } else {
-                    console.log("No bookmarks found.");
-                }
-            });
-        }
-        
 
-appendButton();
-        
-async function getBookmarksFromStorage() {
-    const bookmarks = [];
-    const addedIds = new Set();
-    
-    // Check for bookmarks in the first format (simple array of IDs)
-    const allKeys = await GM.listValues();
-    for (const key of allKeys) {
-        if (key.startsWith("bookmark_manga_ids_")) {
-            const ids = await GM.getValue(key);
-            if (Array.isArray(ids)) {
-                // Add each ID as a bookmark object
-                ids.forEach(id => {
-                    if (!addedIds.has(id)) {
-                        bookmarks.push({
-                            id: id,
-                            url: `https://nhentai.net/g/${id}/`,
-                            source: key
-                        });
-                        addedIds.add(id);
-                    }
-                });
-            }
-        }
-    }
-    
-    // Check for bookmarks in the second format (array of objects)
-    const bookmarkedMangas = await GM.getValue("bookmarkedMangas");
-    if (Array.isArray(bookmarkedMangas)) {
-        bookmarkedMangas.forEach(manga => {
-            // Extract ID from URL if it exists
-            if (manga.url) {
-                const match = manga.url.match(/\/g\/(\d+)/);
-                if (match && match[1]) {
-                    const id = match[1];
-                    // Check if this ID is already in our bookmarks array
-                    if (!addedIds.has(id)) {
-                        bookmarks.push({
-                            id: id,
-                            url: manga.url,
-                            cover: manga.cover || null,
-                            title: manga.title || null,
-                            source: "bookmarkedMangas"
-                        });
-                        addedIds.add(id);
-                    }
-                }
-            }
-        });
-    }
-    
-    return bookmarks;
-}
-        
-        function getMangaLink(mangaID) {
-            return `https://nhentai.net/g/${mangaID}`;
-        }
         
         // Modified search functionality to work with the new layout
         searchInput.on('input', filterBookmarks);
@@ -3136,70 +3073,161 @@ function refreshStorageData() {
 
 
 
-    function showPopup(message) {
-        const popup = document.createElement('div');
-        popup.id = 'popup';
-        popup.innerHTML = `
-            <div class="popup-content">
-                <button class="close-btn">&times;</button>
-                <p>${message}</p>
-            </div>
-        `;
-        document.body.appendChild(popup);
+function showPopup(message, options = {}) {
+    // Default options
+    const defaultOptions = {
+        timeout: 3000,           // Default timeout of 3 seconds
+        width: '250px',          // Default width
+        buttons: [],             // Additional buttons besides close
+        closeButton: true,       // Show close button
+        autoClose: true          // Auto close after timeout
+    };
     
-        // Add CSS styling for the popup
-        const style = document.createElement('style');
-        style.textContent = `
-            #popup {
-                position: fixed;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                background: rgba(0, 0, 0, 0.9);
-                color: #fff;
-                border-radius: 5px;
-                z-index: 9999;
-                padding: 15px;
-                width: 250px; /* Make the popup smaller */
-                text-align: center;
-            }
-            .popup-content {
-                position: relative;
-                padding: 10px; /* Adjust padding for a smaller popup */
-            }
-            .close-btn {
-                position: absolute;
-                top: 5px; /* Position closer to the top */
-                right: 10px; /* Position closer to the right */
-                background: none;
-                border: none;
-                color: #fff;
-                font-size: 18px; /* Adjust font size for a smaller popup */
-                cursor: pointer;
-                transition: color 0.3s, opacity 0.3s;
-            }
-            .close-btn:hover {
-                color: #ff0000;
-                opacity: 0.7;
-            }
-        `;
-        document.head.appendChild(style);
+    // Merge default options with provided options
+    const settings = { ...defaultOptions, ...options };
     
-        // Close the popup when the close button is clicked
-        document.querySelector('.close-btn').addEventListener('click', function() {
-            document.body.removeChild(popup);
-            document.head.removeChild(style); // Remove the styling
+    // Create popup element
+    const popup = document.createElement('div');
+    popup.id = 'popup';
+    
+    // Create buttons HTML if provided
+    let buttonsHTML = '';
+    if (settings.buttons && settings.buttons.length > 0) {
+        buttonsHTML = '<div class="popup-buttons">';
+        settings.buttons.forEach(button => {
+            buttonsHTML += `<button class="popup-btn" data-action="${button.action || ''}">${button.text}</button>`;
         });
-    
-    
-
-// Optionally remove the popup after a few seconds
-setTimeout(() => {
-    if (document.body.contains(popup)) {
-        document.body.removeChild(popup);
-        document.head.removeChild(style); // Remove the styling
+        buttonsHTML += '</div>';
     }
-}, 3000); // Adjust the time as needed
+    
+    // Create close button HTML if enabled
+    const closeButtonHTML = settings.closeButton ? 
+        '<button class="close-btn">&times;</button>' : '';
+    
+    // Populate popup HTML
+    popup.innerHTML = `
+        <div class="popup-content">
+            ${closeButtonHTML}
+            <p>${message}</p>
+            ${buttonsHTML}
+        </div>
+    `;
+    document.body.appendChild(popup);
+
+    // Add CSS styling for the popup
+    const style = document.createElement('style');
+    style.textContent = `
+        #popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: #fff;
+            border-radius: 5px;
+            z-index: 9999;
+            padding: 15px;
+            width: ${settings.width};
+            text-align: center;
+        }
+        .popup-content {
+            position: relative;
+            padding: 10px;
+        }
+        .close-btn {
+            position: absolute;
+            top: 5px;
+            right: 10px;
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 18px;
+            cursor: pointer;
+            transition: color 0.3s, opacity 0.3s;
+        }
+        .close-btn:hover {
+            color: #ff0000;
+            opacity: 0.7;
+        }
+        .popup-buttons {
+            margin-top: 15px;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+        .popup-btn {
+            background: #333;
+            color: #fff;
+            border: 1px solid #555;
+            border-radius: 3px;
+            padding: 5px 10px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .popup-btn:hover {
+            background: #444;
+        }
+    `;
+    document.head.appendChild(style);
+
+    // Function to close the popup
+    const closePopup = () => {
+        if (document.body.contains(popup)) {
+            document.body.removeChild(popup);
+            document.head.removeChild(style);
+        }
+    };
+
+    // Close button event listener
+    if (settings.closeButton) {
+        const closeBtn = popup.querySelector('.close-btn');
+        if (closeBtn) {
+            closeBtn.addEventListener('click', closePopup);
+        }
+    }
+
+    // Add event listeners for custom buttons
+    if (settings.buttons && settings.buttons.length > 0) {
+        const buttons = popup.querySelectorAll('.popup-btn');
+        buttons.forEach((btn, index) => {
+            btn.addEventListener('click', (e) => {
+                // Execute the callback if provided
+                if (settings.buttons[index].callback && typeof settings.buttons[index].callback === 'function') {
+                    settings.buttons[index].callback(e);
+                }
+                
+                // Close the popup after button click if closeOnClick is true
+                if (settings.buttons[index].closeOnClick !== false) {
+                    closePopup();
+                }
+            });
+        });
+    }
+
+    // Auto-close the popup after the specified timeout
+    let timeoutId;
+    if (settings.autoClose && settings.timeout > 0) {
+        timeoutId = setTimeout(closePopup, settings.timeout);
+    }
+
+    // Return an object with methods to control the popup
+    return {
+        close: closePopup,
+        updateMessage: (newMessage) => {
+            const messageElement = popup.querySelector('p');
+            if (messageElement) {
+                messageElement.innerHTML = newMessage;
+            }
+        },
+        resetTimeout: () => {
+            if (timeoutId) {
+                clearTimeout(timeoutId);
+            }
+            if (settings.autoClose && settings.timeout > 0) {
+                timeoutId = setTimeout(closePopup, settings.timeout);
+            }
+        }
+    };
 }
 
 function exportBookmarkedPages() {
@@ -3795,3 +3823,185 @@ addMonthFilter();
 //--------------------------*Month Filter**----------------------------------------
 
 
+async function appendButton() {
+    // Check if we're on the bookmarks page
+    if (window.location.pathname.includes('/bookmarks')) {
+        // Pre-fetch the bookmarks outside the observer
+        const bookmarks = await getBookmarksFromStorage();
+        
+        // Create a MutationObserver to wait for the element to be available
+        const observer = new MutationObserver((mutations) => {
+            const target = document.querySelector("#bookmarksContainer > h2:nth-child(1)");
+            if (target) {
+                // Append the button
+                const button = $('<button class="random-button"><i class="fas fa-random"></i> Random</button>');
+                $(target).after(button);
+                $(target).css('display', 'inline-block');
+                button.css({
+                    'display': 'inline-block',
+                    'margin-left': '10px',
+                    'position': 'relative',
+                    'top': '-3px'
+                });
+
+                button.on('click', () => {
+                    if (bookmarks.length > 0) {
+                        const randomIndex = Math.floor(Math.random() * bookmarks.length);
+                        const randomBookmark = bookmarks[randomIndex];
+                        const link = `https://nhentai.net/g/${randomBookmark.id}`;
+                        
+                        // Store bookmark info in localStorage for the next page
+                        localStorage.setItem('randomMangaSource', JSON.stringify({
+                            source: randomBookmark.source,
+                            id: randomBookmark.id
+                        }));
+
+                        // Redirect to the manga page
+                        window.open(link, '_blank');
+                    } else {
+                        showPopup("No bookmarks found.", {
+                            timeout: 3000
+                        });
+                    }
+                });
+
+                // Disconnect the observer since we've found the element
+                observer.disconnect();
+            }
+        });
+
+        // Observe the #bookmarksContainer element
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+    } else {
+        // Check if we're on a manga page and show the popup
+        checkRandomMangaSource();
+    }
+}
+
+function checkRandomMangaSource() {
+    const randomMangaSource = localStorage.getItem('randomMangaSource');
+    
+    if (randomMangaSource) {
+        try {
+            const { source, id } = JSON.parse(randomMangaSource);
+            
+            let popupText;
+            if (source.startsWith('bookmark_manga_ids_')) {
+                const link = source.replace('bookmark_manga_ids_', '');
+                const maxLength = 40; // maximum length of the link to display
+                const displayedLink = link.length > maxLength ? link.substring(0, maxLength) + '...' : link;
+                popupText = `Random manga from <a href="${link}" target="_blank" style="word-wrap: break-word; width: 200px; display: inline-block; vertical-align: top;">${displayedLink}</a>`;
+            } else {
+                popupText = `Random manga from ${source}`;
+            }
+            
+            // Create popup with options to random again or continue browsing
+            showPopup(popupText, {
+                autoClose: false,
+                width: 250, // adjust the width to fit the link
+                buttons: [
+                    {
+                        text: "<i class='fas fa-check'></i> Continue",
+                        callback: () => {
+                            // Just close the popup
+                        }
+                    },
+                    {
+                        text: "<i class='fas fa-random'></i> Again",
+                        callback: async () => {
+                            // Get bookmarks and find a new random one directly
+                            const bookmarks = await getBookmarksFromStorage();
+                            
+                            if (bookmarks.length > 0) {
+                                const randomIndex = Math.floor(Math.random() * bookmarks.length);
+                                const randomBookmark = bookmarks[randomIndex];
+                                const link = `https://nhentai.net/g/${randomBookmark.id}`;
+                                
+                                // Store bookmark info in localStorage for the next page
+                                localStorage.setItem('randomMangaSource', JSON.stringify({
+                                    source: randomBookmark.source,
+                                    id: randomBookmark.id
+                                }));
+                    
+                                // Navigate to the new manga page
+                                window.location.href = link;
+                            } else {
+                                showPopup("No bookmarks found.", {
+                                    timeout: 3000
+                                });
+                            }
+                        }
+                    }
+                ]
+            });
+    
+            // Clear the localStorage item
+            localStorage.removeItem('randomMangaSource');
+        } catch (error) {
+            console.error('Error parsing random manga source', error);
+        }
+    }
+}
+appendButton();
+
+
+
+async function getBookmarksFromStorage() {
+const bookmarks = [];
+const addedIds = new Set();
+
+// Check for bookmarks in the first format (simple array of IDs)
+const allKeys = await GM.listValues();
+for (const key of allKeys) {
+if (key.startsWith("bookmark_manga_ids_")) {
+    const ids = await GM.getValue(key);
+    if (Array.isArray(ids)) {
+        // Add each ID as a bookmark object
+        ids.forEach(id => {
+            if (!addedIds.has(id)) {
+                bookmarks.push({
+                    id: id,
+                    url: `https://nhentai.net/g/${id}/`,
+                    source: key
+                });
+                addedIds.add(id);
+            }
+        });
+    }
+}
+}
+
+// Check for bookmarks in the second format (array of objects)
+const bookmarkedMangas = await GM.getValue("bookmarkedMangas");
+if (Array.isArray(bookmarkedMangas)) {
+bookmarkedMangas.forEach(manga => {
+    // Extract ID from URL if it exists
+    if (manga.url) {
+        const match = manga.url.match(/\/g\/(\d+)/);
+        if (match && match[1]) {
+            const id = match[1];
+            // Check if this ID is already in our bookmarks array
+            if (!addedIds.has(id)) {
+                bookmarks.push({
+                    id: id,
+                    url: manga.url,
+                    cover: manga.cover || null,
+                    title: manga.title || null,
+                    source: "bookmarkedMangas"
+                });
+                addedIds.add(id);
+            }
+        }
+    }
+});
+}
+
+return bookmarks;
+}
+
+function getMangaLink(mangaID) {
+    return `https://nhentai.net/g/${mangaID}`;
+}
