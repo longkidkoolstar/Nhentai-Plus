@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      6.9.4
+// @version      6.9.5
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -32,7 +32,74 @@ $(document).ready(function() {
 });
 //--------------------------**Fix Menu OverFlow**------------------------------------
 
+/**
+ * Detects and removes old-format cache entries while preserving important data
+ */
+async function cleanupOldCacheEntries() {
+    console.log("Starting cleanup of old cache format entries...");
+    const allKeys = await GM.listValues();
+    let removedCount = 0;
+    
+    // Find and delete old manga_URL_ID format keys
+    const oldMangaKeys = allKeys.filter(key => key.startsWith('manga_http'));
+    for (const key of oldMangaKeys) {
+        await GM.deleteValue(key);
+        removedCount++;
+    }
+    
+    // Find and handle URL to title mappings (old format bookmarks)
+    for (const key of allKeys) {
+        // Skip keys that are part of the new format or important lists
+        if (key === 'bookmarkedPages' || 
+            key === 'bookmarkedMangas' || 
+            key.startsWith('manga_') ||
+            key.startsWith('bookmark_manga_ids_')) {
+            continue;
+        }
+        
+        // Check if it's an old-style URL to title mapping
+        const value = await GM.getValue(key);
+        if (typeof value === 'string' && 
+            (value.startsWith('Tag: ') || 
+             value.startsWith('Search: ') || 
+             value.startsWith('Artist: ') || 
+             value.startsWith('Character: ') || 
+             value.startsWith('Group: ') || 
+             value.startsWith('Parody: '))) {
+            
+            // This is an old-style bookmark title, safe to remove
+            await GM.deleteValue(key);
+            removedCount++;
+        }
+    }
+    
+    console.log(`Cleanup complete! Removed ${removedCount} old format entries.`);
+    return removedCount;
+}
 
+// Function to clean up old title storage
+async function cleanupOldTitleStorage() {
+    // Get all stored keys
+    const storedKeys = await GM.listValues();
+
+    // Filter keys that match the old title storage format
+    const oldTitleKeys = storedKeys.filter(key => key.startsWith('title_'));
+
+    // Delete each old title key
+    for (const key of oldTitleKeys) {
+        await GM.deleteValue(key);
+        console.log(`Deleted old title storage key: ${key}`);
+    }
+
+    console.log(`Cleaned up ${oldTitleKeys.length} old title storage keys`);
+}
+
+cleanupOldTitleStorage();
+cleanupOldCacheEntries();
+
+/**
+ * Detects and removes old-format cache entries while preserving important data
+ */
 
 //------------------------  **Nhentai Related Manga Button**  ------------------
 
@@ -1396,7 +1463,8 @@ for (const page of bookmarkedPages) {
             }
 
             .random-button:hover {
-                background-color: #2ecc71;
+                background-color:rgb(255, 255, 255);
+                color: #e63946;
             }
 
             .random-button:active {
@@ -2188,17 +2256,20 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
                justify-content: flex-end;
            }
            
-           .expand-icon::after {
-               content: "▶";
-               margin-left: 5px;
-               font-size: 10px;
-           }
-           
-.expand-icon.expanded::after {
-    content: "▼";
-      margin-left: 5px;
-               font-size: 12px;
+.expand-icon::after {
+    content: "❯"; /* Chevron Right */
+    margin-left: 5px;
+    font-size: 14px;
+    display: inline-block;
+    transition: transform 0.2s ease;
 }
+
+.expand-icon.expanded::after {
+    content: "❯"; /* Keep the same content */
+    transform: rotate(90deg); /* Rotate to mimic Chevron Down */
+    font-size: 14px;
+}
+
        </style>
        
        <div id="content">
@@ -2557,19 +2628,20 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
     console.log('Advanced header found:', advancedHeader);
     console.log('Initial display state:', advancedContent.style.display);
     
-advancedHeader.addEventListener('click', function() {
-    console.log('Header clicked');
-    advancedContent.style.display = (advancedContent.style.display === 'none' || advancedContent.style.display === '') ? 'block' : 'none';
-    console.log('New display state:', advancedContent.style.display);
+    advancedHeader.addEventListener('click', function() {
+        console.log('Header clicked');
+        advancedContent.style.display = (advancedContent.style.display === 'none' || advancedContent.style.display === '') ? 'block' : 'none';
+        console.log('New display state:', advancedContent.style.display);
+        
+        // Toggle the expanded class
+        advancedHeader.classList.toggle('expanded', advancedContent.style.display === 'block');
+        console.log('Classes after toggle:', advancedHeader.className);
+        
+        if (advancedContent.style.display === 'block') {
+            refreshStorageData();
+        }
+    });
     
-    // Toggle the expanded class
-    advancedHeader.classList.toggle('expanded', advancedContent.style.display === 'block');
-    console.log('Classes after toggle:', advancedHeader.className);
-    
-    if (advancedContent.style.display === 'block') {
-        refreshStorageData();
-    }
-});
 
 
 
@@ -3059,6 +3131,7 @@ function refreshStorageData() {
 
     }
 
+//------------------------------------------------ Advanced Settings Management Functions---------------------------------------------------------
 
 
 
@@ -3306,7 +3379,9 @@ async function fetchRandomHentai() {
 
 async function analyzeURL(url) {
     try {
-        if (!window.searchInProgress) return; // Stop if search was canceled
+        if (!window.searchInProgress) {
+            return; // Stop if search was canceled
+        }
         const response = await fetch(url);
         const html = await response.text();
         const parser = new DOMParser();
@@ -3350,14 +3425,13 @@ async function analyzeURL(url) {
 
         if (coverImageUrl) {
             saveImageToLocalStorage(coverImageUrl, url, languageDisplay, pages, title);
-            showPreviousImage(); // Automatically show the next image if not paused. Says the showPreviousImage because I flipped the way images are saved in local storage so I had to flip everything
+            showPreviousImage(); 
         }
 
         if (await meetsUserPreferences(tags, pages)) {
             hideLoadingPopup();
             window.location.href = url;
         } else {
-            console.log('Does not meet user preferences, fetching another random hentai.');
             fetchRandomHentai();
         }
     } catch (error) {
@@ -3365,15 +3439,11 @@ async function analyzeURL(url) {
     }
 }
 
-
-
-
-
 async function meetsUserPreferences(tags, pages) {
     try {
         const preferredLanguage = (await GM.getValue('randomPrefLanguage', '')).toLowerCase();
         const preferredTags = (await GM.getValue('randomPrefTags', [])).map(tag => tag.toLowerCase());
-        const blacklistedTags = (await GM.getValue('blacklistedTags', [])).map(tag => tag.toLowerCase());
+        const blacklistedTags = (await GM.getValue('blacklistedTags', [])).map(tag => tag.toLowerCase()).filter(tag => tag !== '');
         const preferredPagesMin = parseInt(await GM.getValue('randomPrefPagesMin', ''), 10);
         const preferredPagesMax = parseInt(await GM.getValue('randomPrefPagesMax', ''), 10);
         const matchAllTags = await GM.getValue('matchAllTags', true);
@@ -3382,7 +3452,7 @@ async function meetsUserPreferences(tags, pages) {
         const cleanedTags = tags.map(tag => tag.replace(/\d+K?$/, '').trim().toLowerCase());
 
         const hasPreferredLanguage = preferredLanguage ? cleanedTags.includes(preferredLanguage) : true;
-        
+
         let hasPreferredTags;
         if (preferredTags.length > 0) {
             if (matchAllTags) {
@@ -3399,13 +3469,13 @@ async function meetsUserPreferences(tags, pages) {
 
         const hasBlacklistedTags = blacklistedTags.some(tag => cleanedTags.includes(tag));
 
-        return hasPreferredLanguage && hasPreferredTags && withinPageRange && !hasBlacklistedTags;
+        const meetsPreferences = hasPreferredLanguage && hasPreferredTags && withinPageRange && !hasBlacklistedTags;
+        return meetsPreferences;
     } catch (error) {
         console.error('Error checking user preferences:', error);
         return false;
     }
 }
-
 
 function saveImageToLocalStorage(imageUrl, hentaiUrl, language, pages, title) {
     let images = JSON.parse(localStorage.getItem('hentaiImages') || '[]');
@@ -3725,67 +3795,3 @@ addMonthFilter();
 //--------------------------*Month Filter**----------------------------------------
 
 
-/**
- * Detects and removes old-format cache entries while preserving important data
- */
-async function cleanupOldCacheEntries() {
-    console.log("Starting cleanup of old cache format entries...");
-    const allKeys = await GM.listValues();
-    let removedCount = 0;
-    
-    // Find and delete old manga_URL_ID format keys
-    const oldMangaKeys = allKeys.filter(key => key.startsWith('manga_http'));
-    for (const key of oldMangaKeys) {
-        await GM.deleteValue(key);
-        removedCount++;
-    }
-    
-    // Find and handle URL to title mappings (old format bookmarks)
-    for (const key of allKeys) {
-        // Skip keys that are part of the new format or important lists
-        if (key === 'bookmarkedPages' || 
-            key === 'bookmarkedMangas' || 
-            key.startsWith('manga_') ||
-            key.startsWith('bookmark_manga_ids_')) {
-            continue;
-        }
-        
-        // Check if it's an old-style URL to title mapping
-        const value = await GM.getValue(key);
-        if (typeof value === 'string' && 
-            (value.startsWith('Tag: ') || 
-             value.startsWith('Search: ') || 
-             value.startsWith('Artist: ') || 
-             value.startsWith('Character: ') || 
-             value.startsWith('Group: ') || 
-             value.startsWith('Parody: '))) {
-            
-            // This is an old-style bookmark title, safe to remove
-            await GM.deleteValue(key);
-            removedCount++;
-        }
-    }
-    
-    console.log(`Cleanup complete! Removed ${removedCount} old format entries.`);
-    return removedCount;
-}
-
-// Function to clean up old title storage
-async function cleanupOldTitleStorage() {
-    // Get all stored keys
-    const storedKeys = await GM.listValues();
-
-    // Filter keys that match the old title storage format
-    const oldTitleKeys = storedKeys.filter(key => key.startsWith('title_'));
-
-    // Delete each old title key
-    for (const key of oldTitleKeys) {
-        await GM.deleteValue(key);
-        console.log(`Deleted old title storage key: ${key}`);
-    }
-
-    console.log(`Cleaned up ${oldTitleKeys.length} old title storage keys`);
-}
-
-cleanupOldTitleStorage();
-cleanupOldCacheEntries();
