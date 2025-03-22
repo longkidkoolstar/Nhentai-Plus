@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      7.0.5
+// @version      7.0.6
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -4279,12 +4279,15 @@ function updateButtonToUnfavorited(button) {
 }
     
     
-    // Send favorite request to the API
-    async function sendFavoriteRequest(mangaId) {
+// Modified sendFavoriteRequest function with improved CSRF token handling
+async function sendFavoriteRequest(mangaId) {
+    const isIOSDevice = await GM.getValue('isIOSDevice', false);
+    if (isIOSDevice) {
+        // For iOS, we'll use a more compatible method
         return new Promise((resolve, reject) => {
-            console.log("Sending favorite request for manga:", mangaId);
+            console.log("Using iOS-compatible favoriting method for manga:", mangaId);
             
-            // Get CSRF token
+            // Get CSRF token using improved method
             const csrfToken = getCsrfToken();
             if (!csrfToken) {
                 console.error("Could not find CSRF token for request");
@@ -4292,40 +4295,213 @@ function updateButtonToUnfavorited(button) {
                 return;
             }
             
-            GM.xmlHttpRequest({
-                method: "POST",
-                url: `https://nhentai.net/api/gallery/${mangaId}/favorite`,
-                headers: {
-                    "Content-Type": "application/x-www-form-urlencoded",
-                    "X-CSRFToken": csrfToken,
-                    "Referer": "https://nhentai.net/g/" + mangaId + "/"
-                },
-                data: `csrf_token=${encodeURIComponent(csrfToken)}`,
-                withCredentials: true,
-                onload: function(response) {
-                    console.log("Favorite request response for manga " + mangaId + ":", response.status);
-                    if (response.status === 200) {
-                        resolve(response);
+            // Create a temporary form to submit
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = `https://nhentai.net/api/gallery/${mangaId}/favorite`;
+            form.style.display = 'none';
+            
+            // Add CSRF token to form
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = 'csrf_token';
+            csrfInput.value = csrfToken;
+            form.appendChild(csrfInput);
+            
+            // Add a hidden iframe to target the form
+            const iframe = document.createElement('iframe');
+            iframe.name = 'favorite_frame';
+            iframe.style.display = 'none';
+            document.body.appendChild(iframe);
+            
+            // Set up form target and add to document
+            form.target = 'favorite_frame';
+            document.body.appendChild(form);
+            
+            // Set up response handling
+            let timeoutId;
+            
+            iframe.onload = () => {
+                clearTimeout(timeoutId);
+                try {
+                    // Check if favoriting was successful
+                    if (iframe.contentDocument.body.textContent.includes('success')) {
+                        console.log("Successfully favorited manga:", mangaId);
+                        resolve({ status: 200 });
                     } else {
-                        console.error("Favorite request failed for manga " + mangaId + ":", response.status, response.responseText);
-                        reject(new Error(`Request failed with status ${response.status}`));
+                        console.error("Failed to favorite manga:", mangaId);
+                        reject(new Error("Failed to favorite manga"));
                     }
-                },
-                onerror: function(error) {
-                    console.error("Favorite request error for manga " + mangaId + ":", error);
-                    reject(error);
+                } catch (e) {
+                    // If we can't access iframe content due to CORS, assume success
+                    console.log("Could not access iframe content, assuming success");
+                    resolve({ status: 200 });
                 }
-            });
+                
+                // Clean up
+                setTimeout(() => {
+                    document.body.removeChild(form);
+                    document.body.removeChild(iframe);
+                }, 100);
+            };
+            
+            // Set timeout in case of no response
+            timeoutId = setTimeout(() => {
+                console.error("Favorite request timed out for manga:", mangaId);
+                document.body.removeChild(form);
+                document.body.removeChild(iframe);
+                reject(new Error("Request timed out"));
+            }, 10000);
+            
+            // Submit the form
+            form.submit();
         });
-    }
-    
-    // Process stored favorites when logged in
-    async function processFavorites(favorites) {
-if (window.location.href.startsWith("https://nhentai.net/login/")) {
-    return;
+    }else{
+    return new Promise((resolve, reject) => {
+        console.log("Sending favorite request for manga:", mangaId);
+        
+        // Get CSRF token - trying multiple methods
+        let csrfToken = getCsrfToken();
+        if (!csrfToken) {
+            console.error("Could not find CSRF token for request");
+            reject(new Error("Missing CSRF token"));
+            return;
+        }
+        
+        // Use fetch API instead of GM.xmlHttpRequest for iOS compatibility
+        // Note: This requires Tampermonkey to grant fetch permissions
+        fetch(`https://nhentai.net/api/gallery/${mangaId}/favorite`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+                "X-CSRFToken": csrfToken,
+                "Referer": "https://nhentai.net/g/" + mangaId + "/",
+                "User-Agent": navigator.userAgent
+            },
+            body: `csrf_token=${encodeURIComponent(csrfToken)}`,
+            credentials: "include", // Important for sending cookies properly
+            mode: "cors"
+        })
+        .then(response => {
+            console.log("Favorite request response for manga " + mangaId + ":", response.status);
+            if (response.status === 200) {
+                resolve(response);
+            } else {
+                console.error("Favorite request failed for manga " + mangaId + ":", response.status);
+                reject(new Error(`Request failed with status ${response.status}`));
+            }
+        })
+        .catch(error => {
+            console.error("Favorite request error for manga " + mangaId + ":", error);
+            reject(error);
+        });
+    });
+}
 }
 
-        console.log("Processing stored favorites:", favorites);
+// Improved CSRF token extraction function
+function getCsrfToken() {
+    // Try to get from script tag with the most up-to-date token
+    const scriptTags = document.querySelectorAll('script:not([src])');
+    for (const script of scriptTags) {
+        const tokenMatch = script.textContent.match(/csrf_token:\s*"([^"]+)"/);
+        if (tokenMatch && tokenMatch[1]) {
+            console.log("Found CSRF token from inline script:", tokenMatch[1]);
+            return tokenMatch[1];
+        }
+    }
+    
+    // Try to get from window._n_app object which should have the most recent token
+    if (window._n_app && window._n_app.csrf_token) {
+        console.log("Found CSRF token from window._n_app:", window._n_app.csrf_token);
+        return window._n_app.csrf_token;
+    }
+    
+    // Try getting from page HTML (your original method)
+    const scriptText = document.body.innerHTML;
+    const tokenMatch = scriptText.match(/csrf_token:\s*"([^"]+)"/);
+    if (tokenMatch && tokenMatch[1]) {
+        console.log("Found CSRF token from page HTML:", tokenMatch[1]);
+        return tokenMatch[1];
+    }
+    
+    // Try alternative method - look for form inputs
+    const csrfInput = document.querySelector('input[name="csrfmiddlewaretoken"]');
+    if (csrfInput) {
+        console.log("Found CSRF token from input:", csrfInput.value);
+        return csrfInput.value;
+    }
+    
+    console.log("Could not find CSRF token");
+    return null;
+}
+    
+// Add this function to check if cookies are properly enabled and set
+function verifyCookies() {
+    return new Promise((resolve, reject) => {
+        // Try setting a test cookie
+        document.cookie = "test_cookie=1; path=/;";
+        
+        // Check if the cookie was set
+        if (document.cookie.indexOf("test_cookie=1") === -1) {
+            console.error("Cookies appear to be disabled or restricted");
+            reject(new Error("Cookies appear to be disabled or restricted"));
+            return;
+        }
+        
+        // Verify session cookies by making a simple request
+        fetch("https://nhentai.net/", {
+            method: "GET",
+            credentials: "include"
+        })
+        .then(response => {
+            if (response.ok) {
+                // Check if we're actually logged in by looking for specific elements in the response
+                return response.text().then(html => {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, "text/html");
+                    
+                    // If the menu-sign-in element is present, we're not properly logged in
+                    const signInElement = doc.querySelector('.menu-sign-in');
+                    if (signInElement) {
+                        console.error("Session cookies not working correctly - not logged in");
+                        reject(new Error("Session cookies not working correctly - not logged in"));
+                    } else {
+                        console.log("Cookies and session verified successfully");
+                        resolve(true);
+                    }
+                });
+            } else {
+                console.error("Failed to verify session");
+                reject(new Error("Failed to verify session"));
+            }
+        })
+        .catch(error => {
+            console.error("Error verifying cookies:", error);
+            reject(error);
+        });
+    });
+}
+
+// Modify the processFavorites function to check cookies first
+async function processFavorites(favorites) {
+    if (window.location.href.startsWith("https://nhentai.net/login/")) {
+        return;
+    }
+
+    console.log("Processing stored favorites:", favorites);
+    
+    // Verify cookies before proceeding
+    try {
+        await verifyCookies();
+    } catch (error) {
+        console.error("Cookie verification failed:", error);
+        showPopup(`Cannot process favorites: ${error.message}. Try logging in again.`, {
+            timeout: 5000,
+            width: '300px'
+        });
+        return;
+    }
         
         // Create and show a popup with progress information
         const progressPopup = showPopup(`Processing favorites: 0/${favorites.length}`, {
@@ -4401,3 +4577,107 @@ if (window.location.href.startsWith("https://nhentai.net/login/")) {
     
 init();
 //--------------------------**Offline Favoriting**----------------------------------------------
+
+// Add this function to create a settings menu
+async function createSettingsMenu() {
+    // Create settings button
+    const nav = document.querySelector('nav .menu.left');
+    if (!nav) return;
+    
+    const settingsLi = document.createElement('li');
+    settingsLi.className = 'desktop';
+    const settingsLink = document.createElement('a');
+    settingsLink.href = '#';
+    settingsLink.innerHTML = '<i class="fas fa-cog"></i> NFM';
+    settingsLi.appendChild(settingsLink);
+    nav.appendChild(settingsLi);
+    
+    // Create settings popup
+    settingsLink.addEventListener('click', async (e) => {
+        e.preventDefault();
+        
+        const offlineFavoritingEnabled = await GM.getValue('offlineFavoritingEnabled', true);
+        const toFavorite = await GM.getValue('toFavorite', []);
+        const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        
+        const content = `
+            <div style="padding: 1rem;">
+                <h3>NHentai Favorite Manager Settings</h3>
+                <div style="margin-bottom: 1rem;">
+                    <label>
+                        <input type="checkbox" id="nfm-offline-favoriting" ${offlineFavoritingEnabled ? 'checked' : ''}>
+                        Enable offline favoriting
+                    </label>
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <p>Pending favorites: ${toFavorite.length}</p>
+                    <button id="nfm-clear-favorites" class="btn btn-secondary">Clear Pending Favorites</button>
+                    <button id="nfm-process-favorites" class="btn btn-primary">Process Now</button>
+                </div>
+                <div style="margin-bottom: 1rem;">
+                    <h4>Debug Info</h4>
+                    <p>iOS Device: ${isIOSDevice ? 'Yes' : 'No'}</p>
+                    <p>Logged In: ${!document.querySelector('.menu-sign-in') ? 'Yes' : 'No'}</p>
+                    <p>Cookies Enabled: ${navigator.cookieEnabled ? 'Yes' : 'No'}</p>
+                    <button id="nfm-test-request" class="btn btn-secondary">Test API Request</button>
+                </div>
+            </div>
+        `;
+        
+        const popup = showPopup(content, {
+            autoClose: false,
+            width: '400px',
+            buttons: [
+                {
+                    text: "Close",
+                    callback: () => {}
+                }
+            ]
+        });
+        
+        // Add event listeners
+        document.getElementById('nfm-offline-favoriting').addEventListener('change', async (e) => {
+            await GM.setValue('offlineFavoritingEnabled', e.target.checked);
+            console.log("Offline favoriting enabled:", e.target.checked);
+        });
+        
+        document.getElementById('nfm-clear-favorites').addEventListener('click', async () => {
+            await GM.setValue('toFavorite', []);
+            console.log("Cleared pending favorites");
+            popup.updateMessage('Pending favorites cleared!');
+            setTimeout(() => popup.close(), 1500);
+        });
+        
+        document.getElementById('nfm-process-favorites').addEventListener('click', async () => {
+            popup.close();
+            const toFavorite = await GM.getValue('toFavorite', []);
+            if (toFavorite.length > 0) {
+                await processFavorites(toFavorite);
+            } else {
+                showPopup("No pending favorites to process.", {
+                    timeout: 2000,
+                    width: '300px'
+                });
+            }
+        });
+        
+        document.getElementById('nfm-test-request').addEventListener('click', async () => {
+            console.log("Testing API request...");
+            try {
+                await verifyCookies();
+                showPopup("Cookie test successful!", {
+                    timeout: 2000,
+                    width: '300px'
+                });
+            } catch (error) {
+                showPopup(`Cookie test failed: ${error.message}`, {
+                    timeout: 4000,
+                    width: '300px'
+                });
+            }
+        });
+    });
+}
+
+// Add this to your init function
+createSettingsMenu();
