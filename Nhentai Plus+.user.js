@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      7.0.3
+// @version      7.0.4
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -4220,24 +4220,44 @@ function getMangaLink(mangaID) {
         return match ? match[1] : null;
     }
     
-    // Extract CSRF token from page
     function getCsrfToken() {
-        // Try to get from app initialization
+        // Try multiple methods to find the CSRF token
+        
+        // Method 1: Try to get from app initialization
         const scriptText = document.body.innerHTML;
         const tokenMatch = scriptText.match(/csrf_token:\s*"([^"]+)"/);
         if (tokenMatch && tokenMatch[1]) {
-            console.log("Found CSRF token from script:", tokenMatch[1]);
+            showPopup("Found CSRF token from script", {timeout: 2000});
             return tokenMatch[1];
         }
         
-        // Try alternative method - look for form inputs
+        // Method 2: Look for form inputs
         const csrfInput = document.querySelector('input[name="csrfmiddlewaretoken"]');
         if (csrfInput) {
-            console.log("Found CSRF token from input:", csrfInput.value);
+            showPopup("Found CSRF token from input", {timeout: 2000});
             return csrfInput.value;
         }
         
-        console.log("Could not find CSRF token");
+        // Method 3: Try to extract from meta tags
+        const metaToken = document.querySelector('meta[name="csrf-token"]');
+        if (metaToken) {
+            showPopup("Found CSRF token from meta tag", {timeout: 2000});
+            return metaToken.content;
+        }
+        
+        // Method 4: Try to find it in script tags
+        const scripts = document.querySelectorAll('script');
+        for (const script of scripts) {
+            if (script.textContent.includes('csrf_token')) {
+                const match = script.textContent.match(/csrf_token['":\s]+([^"']+)/);
+                if (match && match[1]) {
+                    showPopup("Found CSRF token in script tag", {timeout: 2000});
+                    return match[1];
+                }
+            }
+        }
+        
+        showPopup("Could not find CSRF token", {timeout: 3000});
         return null;
     }
     
@@ -4279,45 +4299,66 @@ function updateButtonToUnfavorited(button) {
 }
     
     
-    // Send favorite request to the API
-    async function sendFavoriteRequest(mangaId) {
-        return new Promise((resolve, reject) => {
-            console.log("Sending favorite request for manga:", mangaId);
-            
-            // Get CSRF token
-            const csrfToken = getCsrfToken();
-            if (!csrfToken) {
-                console.error("Could not find CSRF token for request");
-                reject(new Error("Missing CSRF token"));
-                return;
-            }
-            
-            GM.xmlHttpRequest({
-                method: "POST",
-                url: `https://nhentai.net/api/gallery/${mangaId}/favorite`,
-                headers: {
-                    "Content-Type": "application/x-www-form-urlencoded",
-                    "X-CSRFToken": csrfToken,
-                    "Referer": "https://nhentai.net/g/" + mangaId + "/"
-                },
-                data: `csrf_token=${encodeURIComponent(csrfToken)}`,
-                withCredentials: true,
-                onload: function(response) {
-                    console.log("Favorite request response for manga " + mangaId + ":", response.status);
-                    if (response.status === 200) {
-                        resolve(response);
-                    } else {
-                        console.error("Favorite request failed for manga " + mangaId + ":", response.status, response.responseText);
-                        reject(new Error(`Request failed with status ${response.status}`));
-                    }
-                },
-                onerror: function(error) {
-                    console.error("Favorite request error for manga " + mangaId + ":", error);
-                    reject(error);
-                }
-            });
+async function sendFavoriteRequest(mangaId) {
+    return new Promise((resolve, reject) => {
+        console.log("Sending favorite request for manga:", mangaId);
+        
+        // Get CSRF token
+        const csrfToken = getCsrfToken();
+        
+        // Show CSRF token in popup for debugging on mobile
+        showPopup(`CSRF Token: ${csrfToken ? csrfToken.substring(0, 10) + '...' : 'Not found'}`, {
+            timeout: 3000,
+            width: '300px'
         });
-    }
+        
+        if (!csrfToken) {
+            console.error("Could not find CSRF token for request");
+            reject(new Error("Missing CSRF token"));
+            return;
+        }
+        
+        GM.xmlHttpRequest({
+            method: "POST",
+            url: `https://nhentai.net/api/gallery/${mangaId}/favorite`,
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+                "X-CSRFToken": csrfToken,
+                "Referer": "https://nhentai.net/g/" + mangaId + "/",
+                "Origin": "https://nhentai.net"
+            },
+            data: `csrf_token=${encodeURIComponent(csrfToken)}`,
+            withCredentials: true,
+            onload: function(response) {
+                console.log("Favorite request response for manga " + mangaId + ":", response.status);
+                
+                // Show response status in popup for mobile debugging
+                showPopup(`Response status: ${response.status}\nResponse text: ${response.responseText.substring(0, 100)}`, {
+                    timeout: 5000,
+                    width: '300px'
+                });
+                
+                if (response.status === 200) {
+                    resolve(response);
+                } else {
+                    console.error("Favorite request failed for manga " + mangaId + ":", response.status, response.responseText);
+                    reject(new Error(`Request failed with status ${response.status}: ${response.responseText.substring(0, 100)}`));
+                }
+            },
+            onerror: function(error) {
+                console.error("Favorite request error for manga " + mangaId + ":", error);
+                
+                // Show error details in popup
+                showPopup(`Error sending request: ${error.toString()}`, {
+                    timeout: 5000,
+                    width: '300px'
+                });
+                
+                reject(error);
+            }
+        });
+    });
+}
     
     // Process stored favorites when logged in
     async function processFavorites(favorites) {
