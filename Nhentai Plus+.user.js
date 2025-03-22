@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      7.0
+// @version      7.0.1
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -4399,6 +4399,5 @@ if (window.location.href.startsWith("https://nhentai.net/login/")) {
         });
     }
     
-    // Run the script
-    window.addEventListener('load', init);
+init();
 //--------------------------**Offline Favoriting**----------------------------------------------
