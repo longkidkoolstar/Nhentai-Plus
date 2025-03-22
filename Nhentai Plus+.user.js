@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      6.10.3
+// @version      7.0
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -14,6 +14,7 @@
 // @grant        GM.deleteValue
 // @grant        GM.openInTab
 // @grant        GM.listValues
+// @grant        GM.xmlHttpRequest
 // ==/UserScript==
 
 
@@ -2212,6 +2213,10 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
        <div id="content">
            <h1>Settings</h1>
            <form id="settingsForm">
+                <label>
+                   <input type="checkbox" id="offlineFavoritingEnabled">
+                   Enable Offline Favoriting <span class="tooltip" data-tooltip="Allows favoriting manga even without being logged in.">?</span>
+               </label>
                <label>
                    <input type="checkbox" id="findSimilarEnabled">
                    Enable Find Similar Button <span class="tooltip" data-tooltip="Finds similar manga based on the current one.">?</span>
@@ -2292,10 +2297,10 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
                    <input type="file" id="importBookmarksFile" accept=".json">
                </div>
                <div>
-                 <label for="max-manga-per-bookmark-slider">Max Manga per Bookmark on Mobile:</label>
+                 <label for="max-manga-per-bookmark-slider">Max Manga per Bookmark:</label>
                  <input type="range" id="max-manga-per-bookmark-slider" min="1" max="25" value="5">
                  <span id="max-manga-per-bookmark-on-mobile-value">5</span>
-                 <span class="tooltip" data-tooltip="Sets the maximum number of manga to display per bookmark on mobile devices.">?</span>
+                 <span class="tooltip" data-tooltip="Sets the maximum number of manga to display per bookmark.">?</span>
                </div>
        
                <div id="random-settings">
@@ -2370,6 +2375,7 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
             const mangagroupingenabled = await GM.getValue('mangagroupingenabled', true);
             const maxMangaPerBookmark = await GM.getValue('maxMangaPerBookmark', 5);
             const openInNewTabType = await GM.getValue('openInNewTabType', 'background');
+            const offlineFavoritingEnabled = await GM.getValue('offlineFavoritingEnabled', true);
 
 
             $('#findSimilarEnabled').prop('checked', findSimilarEnabled);
@@ -2393,6 +2399,7 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
             $('#tooltipsEnabled').prop('checked', tooltipsEnabled);
             $('#mangagroupingenabled').prop('checked', mangagroupingenabled);
             $('#max-manga-per-bookmark-slider').val(maxMangaPerBookmark);
+            $('#offlineFavoritingEnabled').prop('checked', offlineFavoritingEnabled);
 
             $('#max-manga-per-bookmark-slider').on('input', function() {
                 const value = parseInt($(this).val());
@@ -2507,6 +2514,7 @@ $('#openInNewTabEnabled').change(function() {
             const mangagroupingenabled = $('#mangagroupingenabled').prop('checked');
             const maxMangaPerBookmark = parseInt($('#max-manga-per-bookmark-slider').val());
             const openInNewTabType = $('input[name="open-in-new-tab"]:checked').val();
+            const offlineFavoritingEnabled = $('#offlineFavoritingEnabled').prop('checked');
 
 
 
@@ -2533,6 +2541,7 @@ $('#openInNewTabEnabled').change(function() {
             await GM.setValue('mangagroupingenabled', mangagroupingenabled);
             await GM.setValue('maxMangaPerBookmark', maxMangaPerBookmark);
             await GM.setValue('openInNewTabType', openInNewTabType);
+            await GM.setValue('offlineFavoritingEnabled', offlineFavoritingEnabled);
 
 
 
@@ -4060,3 +4069,336 @@ function getMangaLink(mangaID) {
     return `https://nhentai.net/g/${mangaID}`;
 }
 //---------------------------**BookMark-Random-Button**-----------------------------
+
+//--------------------------**Offline Favoriting**----------------------------------------------
+    // Main function to initialize the script
+    async function init() {
+        const offlineFavoritingEnabled = await GM.getValue('offlineFavoritingEnabled', true);
+        if (!offlineFavoritingEnabled) return;
+        console.log("NHentai Favorite Manager initialized");
+        
+        // Check if user is logged in
+        const isLoggedIn = !document.querySelector('.menu-sign-in');
+        console.log("User logged in status:", isLoggedIn);
+        
+        // Process stored favorites if user is logged in, regardless of current page
+        if (isLoggedIn) {
+            const toFavorite = await GM.getValue('toFavorite', []);
+            if (Array.isArray(toFavorite) && toFavorite.length > 0) {
+                console.log("Found stored favorites to process:", toFavorite);
+                await processFavorites(toFavorite);
+            }
+        }
+        
+        // Only proceed with manga-specific features if we're on a manga page
+        if (window.location.pathname.includes('/g/')) {
+            await handleMangaPage(isLoggedIn);
+        }
+    }
+    
+    // Handle manga page-specific functionality
+    async function handleMangaPage(isLoggedIn) {
+        // Get the manga ID from the URL
+        const mangaId = getMangaIdFromUrl();
+        console.log("Current manga ID:", mangaId);
+        
+        if (!mangaId) {
+            console.log("Could not find manga ID, exiting manga-specific handling");
+            return;
+        }
+        
+        // Get favorite button
+        const favoriteBtn = document.querySelector('.btn.btn-primary[class*="tooltip"]');
+        if (!favoriteBtn) {
+            console.log("Could not find favorite button, exiting manga-specific handling");
+            return;
+        }
+        
+        // Get stored favorites
+        let toFavorite = await GM.getValue('toFavorite', []);
+        if (!Array.isArray(toFavorite)) {
+            toFavorite = [];
+            await GM.setValue('toFavorite', toFavorite);
+        }
+        console.log("Stored favorites:", toFavorite);
+        
+        // Is this manga in our favorites?
+        const isFavorited = toFavorite.includes(mangaId);
+        console.log("Current manga in stored favorites:", isFavorited);
+        
+        // Enable button if disabled
+        if (favoriteBtn.classList.contains('btn-disabled') && !isLoggedIn) {
+            favoriteBtn.classList.remove('btn-disabled');
+            console.log("Favorite button enabled");
+        }
+        
+        // Update button state if it's in our favorites
+        if (isFavorited && !isLoggedIn) {
+            updateButtonToFavorited(favoriteBtn);
+        }
+        
+        // Add click event to favorite button
+        favoriteBtn.addEventListener('click', async function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            console.log("Favorite button clicked");
+            
+            // Get the CURRENT list of favorites (not the one from page load)
+            // This ensures we have the most up-to-date list
+            let currentFavorites = await GM.getValue('toFavorite', []);
+            if (!Array.isArray(currentFavorites)) {
+                currentFavorites = [];
+            }
+            
+            // Check if this manga is CURRENTLY in favorites
+            const currentlyFavorited = currentFavorites.includes(mangaId);
+            console.log("Manga currently in favorites:", currentlyFavorited);
+            
+            if (isLoggedIn) {
+                // Send favorite request directly to API
+                try {
+                    await sendFavoriteRequest(mangaId);
+                    console.log("Successfully favorited manga:", mangaId);
+                    
+                    // Remove from stored favorites if present
+                    const index = currentFavorites.indexOf(mangaId);
+                    if (index > -1) {
+                        currentFavorites.splice(index, 1);
+                        await GM.setValue('toFavorite', currentFavorites);
+                        console.log("Removed manga from stored favorites:", mangaId);
+                        console.log("Updated stored favorites:", currentFavorites);
+                    }
+                    
+                    // Show success popup
+                    showPopup("Successfully favorited manga!", {
+                        timeout: 2000,
+                        width: '300px'
+                    });
+                } catch (error) {
+                    console.error("Failed to favorite manga:", error);
+                    
+                    // Show error popup
+                    showPopup("Failed to favorite manga: " + error.message, {
+                        timeout: 4000,
+                        width: '300px'
+                    });
+                }
+            } else {
+                // Toggle in stored favorites
+                if (currentlyFavorited) {
+                    // Remove from favorites
+                    const index = currentFavorites.indexOf(mangaId);
+                    currentFavorites.splice(index, 1);
+                    updateButtonToUnfavorited(favoriteBtn);
+                    showPopup("Removed from offline favorites", {
+                        timeout: 2000,
+                        width: '300px'
+                    });
+                    console.log("Removed manga from stored favorites:", mangaId);
+                } else {
+                    // Add to favorites
+                    currentFavorites.push(mangaId);
+                    updateButtonToFavorited(favoriteBtn);
+                    showPopup("Added to offline favorites", {
+                        timeout: 2000,
+                        width: '300px'
+                    });
+                    console.log("Added manga to stored favorites:", mangaId);
+                }
+                
+                await GM.setValue('toFavorite', currentFavorites);
+                console.log("Updated stored favorites:", currentFavorites);
+            }
+        });
+    }
+    
+    // Helper function to get manga ID from URL
+    function getMangaIdFromUrl() {
+        const urlPath = window.location.pathname;
+        const match = urlPath.match(/\/g\/(\d+)/);
+        return match ? match[1] : null;
+    }
+    
+    // Extract CSRF token from page
+    function getCsrfToken() {
+        // Try to get from app initialization
+        const scriptText = document.body.innerHTML;
+        const tokenMatch = scriptText.match(/csrf_token:\s*"([^"]+)"/);
+        if (tokenMatch && tokenMatch[1]) {
+            console.log("Found CSRF token from script:", tokenMatch[1]);
+            return tokenMatch[1];
+        }
+        
+        // Try alternative method - look for form inputs
+        const csrfInput = document.querySelector('input[name="csrfmiddlewaretoken"]');
+        if (csrfInput) {
+            console.log("Found CSRF token from input:", csrfInput.value);
+            return csrfInput.value;
+        }
+        
+        console.log("Could not find CSRF token");
+        return null;
+    }
+    
+// Nhentai Plus+.user.js (4405-4427)
+function updateButtonToFavorited(button) {
+    button.classList.add('favorited');
+
+    const icon = button.querySelector('i');
+    const text = button.querySelector('span');
+
+    if (icon) icon.className = 'far fa-heart'; // Solid (filled) heart
+    if (text) {
+        const countSpan = text.querySelector('span.nobold');
+        text.innerText = 'Unfavorite ';
+        if (countSpan) {
+            text.appendChild(countSpan);
+        }
+    }
+
+    console.log("Button updated to favorited state");
+}
+
+function updateButtonToUnfavorited(button) {
+    button.classList.remove('favorited');
+
+    const icon = button.querySelector('i');
+    const text = button.querySelector('span');
+
+    if (icon) icon.className = 'fas fa-heart'; // Regular (outline) heart
+    if (text) {
+        const countSpan = text.querySelector('span.nobold');
+        text.innerText = 'Favorite ';
+        if (countSpan) {
+            text.appendChild(countSpan);
+        }
+    }
+
+    console.log("Button updated to unfavorited state");
+}
+    
+    
+    // Send favorite request to the API
+    async function sendFavoriteRequest(mangaId) {
+        return new Promise((resolve, reject) => {
+            console.log("Sending favorite request for manga:", mangaId);
+            
+            // Get CSRF token
+            const csrfToken = getCsrfToken();
+            if (!csrfToken) {
+                console.error("Could not find CSRF token for request");
+                reject(new Error("Missing CSRF token"));
+                return;
+            }
+            
+            GM.xmlHttpRequest({
+                method: "POST",
+                url: `https://nhentai.net/api/gallery/${mangaId}/favorite`,
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "X-CSRFToken": csrfToken,
+                    "Referer": "https://nhentai.net/g/" + mangaId + "/"
+                },
+                data: `csrf_token=${encodeURIComponent(csrfToken)}`,
+                withCredentials: true,
+                onload: function(response) {
+                    console.log("Favorite request response for manga " + mangaId + ":", response.status);
+                    if (response.status === 200) {
+                        resolve(response);
+                    } else {
+                        console.error("Favorite request failed for manga " + mangaId + ":", response.status, response.responseText);
+                        reject(new Error(`Request failed with status ${response.status}`));
+                    }
+                },
+                onerror: function(error) {
+                    console.error("Favorite request error for manga " + mangaId + ":", error);
+                    reject(error);
+                }
+            });
+        });
+    }
+    
+    // Process stored favorites when logged in
+    async function processFavorites(favorites) {
+if (window.location.href.startsWith("https://nhentai.net/login/")) {
+    return;
+}
+
+        console.log("Processing stored favorites:", favorites);
+        
+        // Create and show a popup with progress information
+        const progressPopup = showPopup(`Processing favorites: 0/${favorites.length}`, {
+            autoClose: false,
+            width: '300px',
+            buttons: [
+                {
+                    text: "Cancel",
+                    callback: () => {
+                        // User canceled processing
+                        processingCanceled = true;
+                    }
+                }
+            ]
+        });
+        
+        const successfulOnes = [];
+        const failedOnes = [];
+        let processingCanceled = false;
+        
+        for (let i = 0; i < favorites.length; i++) {
+            if (processingCanceled) {
+                progressPopup.updateMessage(`Processing canceled. Completed: ${successfulOnes.length}/${favorites.length}`);
+                break;
+            }
+            
+            const mangaId = favorites[i];
+            
+            // Update progress in popup
+            progressPopup.updateMessage(`Processing favorites: ${i+1}/${favorites.length}`);
+            
+            try {
+                await sendFavoriteRequest(mangaId);
+                console.log("Successfully favorited manga:", mangaId);
+                successfulOnes.push(mangaId);
+            } catch (error) {
+                console.error("Error favoriting manga:", mangaId, error);
+                failedOnes.push(mangaId);
+            }
+            
+            // Small delay to avoid hammering the server
+            await new Promise(resolve => setTimeout(resolve, 500));
+        }
+        
+        // Keep only the failed ones in storage
+        if (failedOnes.length > 0) {
+            await GM.setValue('toFavorite', failedOnes);
+            console.log("Updated stored favorites with failed ones:", failedOnes);
+        } else {
+            // Clear stored favorites after processing
+            await GM.setValue('toFavorite', []);
+            console.log("Cleared stored favorites");
+        }
+        
+        // Update final result in popup
+        progressPopup.updateMessage(`Completed: ${successfulOnes.length} successful, ${failedOnes.length} failed`);
+        
+        // Add a "Done" button to close the popup
+        const content = progressPopup.close();
+        
+        // Show a summary popup that auto-closes
+        showPopup(`Completed: ${successfulOnes.length} successful, ${failedOnes.length} failed`, {
+            timeout: 5000,
+            width: '300px',
+            buttons: [
+                {
+                    text: "OK",
+                    callback: () => {}
+                }
+            ]
+        });
+    }
+    
+    // Run the script
+    window.addEventListener('load', init);
+//--------------------------**Offline Favoriting**----------------------------------------------
