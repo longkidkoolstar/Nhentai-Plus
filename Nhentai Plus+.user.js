@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      7.0.1
+// @version      7.0.2
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -4191,19 +4191,19 @@ function getMangaLink(mangaID) {
                     const index = currentFavorites.indexOf(mangaId);
                     currentFavorites.splice(index, 1);
                     updateButtonToUnfavorited(favoriteBtn);
-                    showPopup("Removed from offline favorites", {
-                        timeout: 2000,
-                        width: '300px'
-                    });
+                //    showPopup("Removed from offline favorites", {
+                //        timeout: 2000,
+                //        width: '300px'
+                //    });
                     console.log("Removed manga from stored favorites:", mangaId);
                 } else {
                     // Add to favorites
                     currentFavorites.push(mangaId);
                     updateButtonToFavorited(favoriteBtn);
-                    showPopup("Added to offline favorites", {
-                        timeout: 2000,
-                        width: '300px'
-                    });
+                //    showPopup("Added to offline favorites", {
+                //        timeout: 2000,
+                //        width: '300px'
+                //    });
                     console.log("Added manga to stored favorites:", mangaId);
                 }
                 
