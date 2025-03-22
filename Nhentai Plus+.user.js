@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      7.0.2
+// @version      7.0.3
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -4345,18 +4345,18 @@ if (window.location.href.startsWith("https://nhentai.net/login/")) {
         const successfulOnes = [];
         const failedOnes = [];
         let processingCanceled = false;
-        
+    
         for (let i = 0; i < favorites.length; i++) {
             if (processingCanceled) {
                 progressPopup.updateMessage(`Processing canceled. Completed: ${successfulOnes.length}/${favorites.length}`);
                 break;
             }
-            
+    
             const mangaId = favorites[i];
-            
+    
             // Update progress in popup
             progressPopup.updateMessage(`Processing favorites: ${i+1}/${favorites.length}`);
-            
+    
             try {
                 await sendFavoriteRequest(mangaId);
                 console.log("Successfully favorited manga:", mangaId);
@@ -4364,28 +4364,56 @@ if (window.location.href.startsWith("https://nhentai.net/login/")) {
             } catch (error) {
                 console.error("Error favoriting manga:", mangaId, error);
                 failedOnes.push(mangaId);
+    
+                // Show error popup
+                showPopup(`Error favoriting manga ${mangaId}: ${error.message}`, {
+                    timeout: 5000,
+                    width: '300px',
+                    buttons: [
+                        {
+                            text: "OK",
+                            callback: () => {}
+                        }
+                    ]
+                });
             }
-            
+    
             // Small delay to avoid hammering the server
             await new Promise(resolve => setTimeout(resolve, 500));
         }
-        
+    
         // Keep only the failed ones in storage
         if (failedOnes.length > 0) {
             await GM.setValue('toFavorite', failedOnes);
             console.log("Updated stored favorites with failed ones:", failedOnes);
+    
+            // Show summary popup with error details
+            const errorDetails = failedOnes.map(mangaId => {
+                const error = console.error(`Error favoriting manga ${mangaId}`);
+                return `Manga ${mangaId}: ${error}`;
+            }).join('\n');
+            showPopup(`Failed to favorite the following manga:\n${errorDetails}`, {
+                timeout: 10000,
+                width: '400px',
+                buttons: [
+                    {
+                        text: "OK",
+                        callback: () => {}
+                    }
+                ]
+            });
         } else {
             // Clear stored favorites after processing
             await GM.setValue('toFavorite', []);
             console.log("Cleared stored favorites");
         }
-        
+    
         // Update final result in popup
         progressPopup.updateMessage(`Completed: ${successfulOnes.length} successful, ${failedOnes.length} failed`);
-        
+    
         // Add a "Done" button to close the popup
         const content = progressPopup.close();
-        
+    
         // Show a summary popup that auto-closes
         showPopup(`Completed: ${successfulOnes.length} successful, ${failedOnes.length} failed`, {
             timeout: 5000,
