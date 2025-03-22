@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      6.10
+// @version      6.10.1
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -3829,52 +3829,51 @@ async function appendButton() {
         // Pre-fetch the bookmarks outside the observer
         const bookmarks = await getBookmarksFromStorage();
         
-        // Create a MutationObserver to wait for the element to be available
-        const observer = new MutationObserver((mutations) => {
-            const target = document.querySelector("#bookmarksContainer > h2:nth-child(1)");
-            if (target) {
-                // Append the button
-                const button = $('<button class="random-button"><i class="fas fa-random"></i> Random</button>');
-                $(target).after(button);
-                $(target).css('display', 'inline-block');
-                button.css({
-                    'display': 'inline-block',
-                    'margin-left': '10px',
-                    'position': 'relative',
-                    'top': '-3px'
+// Create a function to check for the element and append the button
+function checkAndAppendButton() {
+    const target = document.querySelector("#bookmarksContainer > h2:nth-child(1)");
+    if (target) {
+        // Append the button
+        const button = $('<button class="random-button"><i class="fas fa-random"></i> Random</button>');
+        $(target).after(button);
+        $(target).css('display', 'inline-block');
+        button.css({
+            'display': 'inline-block',
+            'margin-left': '10px',
+            'position': 'relative',
+            'top': '-3px'
+        });
+
+        button.on('click', () => {
+            if (bookmarks.length > 0) {
+                const randomIndex = Math.floor(Math.random() * bookmarks.length);
+                const randomBookmark = bookmarks[randomIndex];
+                const link = `https://nhentai.net/g/${randomBookmark.id}`;
+                
+                // Store bookmark info in localStorage for the next page
+                localStorage.setItem('randomMangaSource', JSON.stringify({
+                    source: randomBookmark.source,
+                    id: randomBookmark.id
+                }));
+
+                // Redirect to the manga page
+                window.open(link, '_blank');
+            } else {
+                showPopup("No bookmarks found.", {
+                    timeout: 3000
                 });
-
-                button.on('click', () => {
-                    if (bookmarks.length > 0) {
-                        const randomIndex = Math.floor(Math.random() * bookmarks.length);
-                        const randomBookmark = bookmarks[randomIndex];
-                        const link = `https://nhentai.net/g/${randomBookmark.id}`;
-                        
-                        // Store bookmark info in localStorage for the next page
-                        localStorage.setItem('randomMangaSource', JSON.stringify({
-                            source: randomBookmark.source,
-                            id: randomBookmark.id
-                        }));
-
-                        // Redirect to the manga page
-                        window.open(link, '_blank');
-                    } else {
-                        showPopup("No bookmarks found.", {
-                            timeout: 3000
-                        });
-                    }
-                });
-
-                // Disconnect the observer since we've found the element
-                observer.disconnect();
             }
         });
 
-        // Observe the #bookmarksContainer element
-        observer.observe(document.body, {
-            childList: true,
-            subtree: true
-        });
+        // Clear the interval since we've found the element
+        clearInterval(intervalId);
+    }
+}
+
+// Set an interval to check for the element every second
+const intervalId = setInterval(checkAndAppendButton, 100);
+
+
     } else {
         // Check if we're on a manga page and show the popup
         checkRandomMangaSource();
