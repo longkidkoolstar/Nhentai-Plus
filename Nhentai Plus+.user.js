@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      7.0.6
+// @version      7.1
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -25,7 +25,7 @@ $(document).ready(function() {
     var styles = `
         @media (max-width: 644px) {
             nav .collapse.open {
-                max-height: 450px;
+                max-height: 600px;
             }
         }
     `;
@@ -36,18 +36,18 @@ $(document).ready(function() {
 /**
  * Detects and removes old-format cache entries while preserving important data
  */
-async function cleanupOldCacheEntries() {
-    console.log("Starting cleanup of old cache format entries...");
+async function cleanupOldData() {
+    console.log("Starting cleanup of old format entries...");
     const allKeys = await GM.listValues();
     let removedCount = 0;
-    
+
     // Find and delete old manga_URL_ID format keys
     const oldMangaKeys = allKeys.filter(key => key.startsWith('manga_http'));
     for (const key of oldMangaKeys) {
         await GM.deleteValue(key);
         removedCount++;
     }
-    
+
     // Find and handle URL to title mappings (old format bookmarks)
     for (const key of allKeys) {
         // Skip keys that are part of the new format or important lists
@@ -73,13 +73,7 @@ async function cleanupOldCacheEntries() {
             removedCount++;
         }
     }
-    
-    console.log(`Cleanup complete! Removed ${removedCount} old format entries.`);
-    return removedCount;
-}
 
-// Function to clean up old title storage
-async function cleanupOldTitleStorage() {
     // Get all stored keys
     const storedKeys = await GM.listValues();
 
@@ -90,18 +84,17 @@ async function cleanupOldTitleStorage() {
     for (const key of oldTitleKeys) {
         await GM.deleteValue(key);
         console.log(`Deleted old title storage key: ${key}`);
+        removedCount++;
     }
 
-    console.log(`Cleaned up ${oldTitleKeys.length} old title storage keys`);
+    console.log(`Cleanup complete! Removed ${removedCount} old format entries.`);
+    return removedCount;
 }
 
-cleanupOldTitleStorage();
-cleanupOldCacheEntries();
-
+cleanupOldData();
 /**
  * Detects and removes old-format cache entries while preserving important data
  */
-
 //------------------------  **Nhentai Related Manga Button**  ------------------
 
 // Initialize maxTagsToSelect from localStorage or default to 5
@@ -901,7 +894,9 @@ if (window.location.href.indexOf('nhentai.net/settings') === -1 && window.locati
 
 
 
-function addBookmarkButton() {
+async function addBookmarkButton() {
+    const bookmarksPageEnabled = await GM.getValue('bookmarksPageEnabled', true);
+    if (!bookmarksPageEnabled) return;
     // Create the bookmark button
     const bookmarkButtonHtml = `
       <li>
@@ -1958,397 +1953,453 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
             notFoundMessage.remove();
         }
 
-       // Add settings form and random hentai preferences
-       const settingsHtml = `
-       <style>
-           #content {
-               padding: 20px;
-               background: #1a1a1a;
-               color: #fff;
-               border-radius: 5px;
-           }
-       
-           #settingsForm {
-               display: flex;
-               flex-direction: column;
-               gap: 10px;
-           }
-           .tooltip {
-               display: inline-block;
-               position: relative;
-               cursor: pointer;
-               font-size: 14px;
-               background: #444;
-               color: #fff;
-               border-radius: 50%;
-               width: 18px;
-               height: 18px;
-               text-align: center;
-               line-height: 18px;
-               font-weight: bold;
-           }
-       
-           .tooltip:hover::after {
-               content: attr(data-tooltip);
-               position: absolute;
-               left: 50%;
-               bottom: 100%;
-               transform: translateX(-50%);
-               background: #666;
-               color: #fff;
-               padding: 5px;
-               border-radius: 3px;
-               white-space: nowrap;
-               font-size: 12px;
-           }
-           #settingsForm label {
-               display: flex;
-               align-items: center;
-               gap: 10px;
-           }
-       
-           #settingsForm input[type="text"],
-           #settingsForm input[type="password"],
-           #settingsForm input[type="number"] {
-               width: calc(100% - 12px); /* Adjust for padding and borders */
-               padding: 5px;
-               border-radius: 3px;
-               border: 1px solid #333;
-               background: #333;
-               color: #fff;
-           }
-       
-           #settingsForm button {
-               padding: 10px;
-               background: #2a2a2a;
-               border: 1px solid #333;
-               border-radius: 3px;
-               color: #fff;
-               cursor: pointer;
-           }
-       
-           #settingsForm button:hover {
-               background: #333;
-           }
-       
-           #autoLoginCredentials {
-               display: block;
-               margin-top: 10px;
-           }
-       
-           #random-settings {
-               margin-top: 20px;
-           }
-       
-           #random-settings label {
-               display: flex;
-               align-items: center;
-               gap: 10px;
-           }
-       
-           #random-settings input[type="text"],
-           #random-settings input[type="number"] {
-               width: calc(100% - 12px); /* Adjust for padding and borders */
-               padding: 5px;
-               border-radius: 3px;
-               border: 1px solid #333;
-               background: #333;
-               color: #fff;
-               margin-bottom: 10px; /* Add spacing between fields */
-           }
-       
-           /* Bookmark Import/Export Buttons */
-           .bookmark-actions {
-               display: flex;
-               gap: 10px;
-               margin-top: 10px;
-           }
-       
-           .bookmark-actions button {
-               padding: 10px;
-               background-color: #007bff;
-               border: none;
-               color: white;
-               cursor: pointer;
-           }
-       
-           .bookmark-actions button:hover {
-               background-color: #0056b3;
-           }
-       
-           #importBookmarksFile {
-               display: none;
-           }
-           
-           /* Advanced Settings Section */
-           #advanced-settings {
-               margin-top: 30px;
-               border-top: 1px solid #333;
-               padding-top: 20px;
-           }
-           
-           #advanced-settings h3 {
-               display: flex;
-               align-items: center;
-               gap: 10px;
-               cursor: pointer;
-           }
-           
-           #advanced-settings-content {
-               display: none;
-               margin-top: 15px;
-           }
-           
-           #storage-data {
-               width: 100%;
-               height: 200px;
-               background: #333;
-               color: #fff;
-               border: 1px solid #444;
-               padding: 10px;
-               font-family: monospace;
-               margin-bottom: 10px;
-               white-space: pre;
-               overflow: auto;
-           }
-           
-           .storage-key-item {
-               display: flex;
-               align-items: center;
-               margin-bottom: 5px;
-               background: #2a2a2a;
-               padding: 5px;
-               border-radius: 3px;
-           }
-           
-           .storage-key {
-               flex: 1;
-               padding: 5px;
-               overflow: hidden;
-               text-overflow: ellipsis;
-           }
-           
-           .storage-actions {
-               display: flex;
-               gap: 5px;
-           }
-           
-           .storage-actions button {
-               background: #444;
-               border: none;
-               color: white;
-               padding: 3px 8px;
-               border-radius: 2px;
-               cursor: pointer;
-           }
-           
-           .storage-actions button:hover {
-               background: #555;
-           }
-           
-           .action-btn-danger {
-               background: #d9534f !important;
-           }
-           
-           .action-btn-danger:hover {
-               background: #c9302c !important;
-           }
-           
-           #edit-value-modal {
-               display: none;
-               position: fixed;
-               top: 0;
-               left: 0;
-               width: 100%;
-               height: 100%;
-               background: rgba(0, 0, 0, 0.8);
-               z-index: 999;
-           }
-           
-           #edit-value-content {
-               position: absolute;
-               top: 50%;
-               left: 50%;
-               transform: translate(-50%, -50%);
-               background: #222;
-               padding: 20px;
-               border-radius: 5px;
-               width: 80%;
-               max-width: 600px;
-           }
-           
-           #edit-value-textarea {
-               width: 100%;
-               height: 200px;
-               background: #333;
-               color: #fff;
-               border: 1px solid #444;
-               padding: 10px;
-               font-family: monospace;
-               margin-bottom: 15px;
-           }
-           
-           .modal-buttons {
-               display: flex;
-               gap: 10px;
-               justify-content: flex-end;
-           }
-           
+// Add settings form and random hentai preferences
+const settingsHtml = `
+<style>
+    #content {
+        padding: 20px;
+        background: #1a1a1a;
+        color: #fff;
+        border-radius: 5px;
+    }
+
+    #settingsForm {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    .tooltip {
+        display: inline-block;
+        position: relative;
+        cursor: pointer;
+        font-size: 14px;
+        background: #444;
+        color: #fff;
+        border-radius: 50%;
+        width: 18px;
+        height: 18px;
+        text-align: center;
+        line-height: 18px;
+        font-weight: bold;
+    }
+
+    .tooltip:hover::after {
+        content: attr(data-tooltip);
+        position: absolute;
+        left: 50%;
+        bottom: 100%;
+        transform: translateX(-50%);
+        background: #666;
+        color: #fff;
+        padding: 5px;
+        border-radius: 3px;
+        white-space: nowrap;
+        font-size: 12px;
+    }
+    #settingsForm label {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    #settingsForm input[type="text"],
+    #settingsForm input[type="password"],
+    #settingsForm input[type="number"] {
+        width: calc(100% - 12px); /* Adjust for padding and borders */
+        padding: 5px;
+        border-radius: 3px;
+        border: 1px solid #333;
+        background: #333;
+        color: #fff;
+    }
+
+    #settingsForm button {
+        padding: 10px;
+        background: #2a2a2a;
+        border: 1px solid #333;
+        border-radius: 3px;
+        color: #fff;
+        cursor: pointer;
+    }
+
+    #settingsForm button:hover {
+        background: #333;
+    }
+
+    #autoLoginCredentials {
+        display: block;
+        margin-top: 10px;
+    }
+
+    #random-settings {
+        margin-top: 20px;
+    }
+
+    #random-settings label {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    #random-settings input[type="text"],
+    #random-settings input[type="number"] {
+        width: calc(100% - 12px); /* Adjust for padding and borders */
+        padding: 5px;
+        border-radius: 3px;
+        border: 1px solid #333;
+        background: #333;
+        color: #fff;
+        margin-bottom: 10px; /* Add spacing between fields */
+    }
+
+    /* Bookmark Import/Export Buttons */
+    .bookmark-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 10px;
+    }
+
+    .bookmark-actions button {
+        padding: 10px;
+        background-color: #007bff;
+        border: none;
+        color: white;
+        cursor: pointer;
+    }
+
+    .bookmark-actions button:hover {
+        background-color: #0056b3;
+    }
+
+    #importBookmarksFile {
+        display: none;
+    }
+    
+    /* Advanced Settings Section */
+    #advanced-settings {
+        margin-top: 30px;
+        border-top: 1px solid #333;
+        padding-top: 20px;
+    }
+    
+    #advanced-settings h3 {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+    }
+    
+    #advanced-settings-content {
+        display: none;
+        margin-top: 15px;
+    }
+    
+    #storage-data {
+        width: 100%;
+        height: 200px;
+        background: #333;
+        color: #fff;
+        border: 1px solid #444;
+        padding: 10px;
+        font-family: monospace;
+        margin-bottom: 10px;
+        white-space: pre;
+        overflow: auto;
+    }
+    
+    .storage-key-item {
+        display: flex;
+        align-items: center;
+        margin-bottom: 5px;
+        background: #2a2a2a;
+        padding: 5px;
+        border-radius: 3px;
+    }
+    
+    .storage-key {
+        flex: 1;
+        padding: 5px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .storage-actions {
+        display: flex;
+        gap: 5px;
+    }
+    
+    .storage-actions button {
+        background: #444;
+        border: none;
+        color: white;
+        padding: 3px 8px;
+        border-radius: 2px;
+        cursor: pointer;
+    }
+    
+    .storage-actions button:hover {
+        background: #555;
+    }
+    
+    .action-btn-danger {
+        background: #d9534f !important;
+    }
+    
+    .action-btn-danger:hover {
+        background: #c9302c !important;
+    }
+    
+    #edit-value-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        z-index: 999;
+    }
+    
+    #edit-value-content {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: #222;
+        padding: 20px;
+        border-radius: 5px;
+        width: 80%;
+        max-width: 600px;
+    }
+    
+    #edit-value-textarea {
+        width: 100%;
+        height: 200px;
+        background: #333;
+        color: #fff;
+        border: 1px solid #444;
+        padding: 10px;
+        font-family: monospace;
+        margin-bottom: 15px;
+    }
+    
+    .modal-buttons {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+    }
+    
+    /* Page Management Section */
+    #page-management {
+        margin-top: 20px;
+        border-top: 1px solid #333;
+        border-bottom: 1px solid #333;
+        padding-top: 20px;
+        padding-bottom: 30px;
+
+        
+    }
+    
+    #page-management h3 {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .section-header {
+        font-weight: bold;
+        margin: 10px 0 5px 0;
+        color: #ccc;
+    }
+    
 .expand-icon::after {
-    content: "❯"; /* Chevron Right */
-    margin-left: 5px;
-    font-size: 14px;
-    display: inline-block;
-    transition: transform 0.2s ease;
+ content: "❯"; /* Chevron Right */
+ margin-left: 5px;
+ font-size: 14px;
+ display: inline-block;
+ transition: transform 0.2s ease;
 }
 
 .expand-icon.expanded::after {
-    content: "❯"; /* Keep the same content */
-    transform: rotate(90deg); /* Rotate to mimic Chevron Down */
-    font-size: 14px;
+ content: "❯"; /* Keep the same content */
+ transform: rotate(90deg); /* Rotate to mimic Chevron Down */
+ font-size: 14px;
 }
 
-       </style>
-       
-       <div id="content">
-           <h1>Settings</h1>
-           <form id="settingsForm">
-                <label>
-                   <input type="checkbox" id="offlineFavoritingEnabled">
-                   Enable Offline Favoriting <span class="tooltip" data-tooltip="Allows favoriting manga even without being logged in.">?</span>
-               </label>
-               <label>
-                   <input type="checkbox" id="findSimilarEnabled">
-                   Enable Find Similar Button <span class="tooltip" data-tooltip="Finds similar manga based on the current one.">?</span>
-               </label>
-               <label>
-                   <input type="checkbox" id="englishFilterEnabled">
-                   Enable English Filter Button <span class="tooltip" data-tooltip="Filters manga to show only English translations.">?</span>
-               </label>
-               <label>
-                   <input type="checkbox" id="autoLoginEnabled">
-                   Enable Auto Login <span class="tooltip" data-tooltip="Automatically logs in with saved credentials.">?</span>
-               </label>
-               <div id="autoLoginCredentials">
-                   <label>
-                       Email: <input type="text" id="email">
-                   </label>
-                   <label>
-                       Password: <input type="password" id="password">
-                   </label>
-               </div>
-               <label>
-                   <input type="checkbox" id="findAltmangaEnabled">
-                   Enable Find Altmanga Button <span class="tooltip" data-tooltip="Finds alternative sources for the manga.">?</span>
-               </label>
-               <label>
-                   <input type="checkbox" id="findAltMangaThumbnailEnabled">
-                   Enable Find Alt Manga (Thumbnail Version) <span class="tooltip" data-tooltip="Displays alternative manga sources as thumbnails.">?</span>
-               </label>
-               <div id="find-Alt-Manga-Thumbnail-options" style="display: none;">
-                   <label>
-                       <input type="checkbox" id="mangagroupingenabled" name="manga-grouping-type" value="grouping">
-                       Find Alt Manga Grouping <span class="tooltip" data-tooltip="Groups alternative versions of manga together on the page.">?</span>
-                   </label>
-                </div>
-               <label>
-                   <input type="checkbox" id="openInNewTabEnabled">
-                   Enable Open in New Tab Button <span class="tooltip" data-tooltip="Opens manga links in a new tab.">?</span>
-               </label>
-                              <div id="open-in-New-Tab-options" style="display: none;">
-                   <label>
-                       <input type="radio" id="open-in-new-tab-background" name="open-in-new-tab" value="background">
-                       Open in New Tab (Background) <span class="tooltip" data-tooltip="Opens the link in a new tab without focusing on it.">?</span>
-                   </label>
-                   <label>
-                       <input type="radio" id="open-in-new-tab-foreground" name="open-in-new-tab" value="foreground">
-                       Open in New Tab (Foreground) <span class="tooltip" data-tooltip="Opens the link in a new tab and focuses on it.">?</span>
-                   </label>
-                </div>
-               <label>
-                   <input type="checkbox" id="monthFilterEnabled">
-                   Enable Month Filter Button <span class="tooltip" data-tooltip="Filters manga by publication month.">?</span>
-               </label>
-               <label>
-                   <input type="checkbox" id="mangaBookMarkingButtonEnabled">
-                   Enable Manga Bookmarking Button <span class="tooltip" data-tooltip="Allows bookmarking manga for quick access.">?</span>
-               </label>
-               <div id="manga-bookmarking-options" style="display: none;">
-                   <label>
-                       <input type="radio" id="manga-bookmarking-cover" name="manga-bookmarking-type" value="cover">
-                       Show Cover <span class="tooltip" data-tooltip="Displays the cover image for bookmarks.">?</span>
-                   </label>
-                   <label>
-                       <input type="radio" id="manga-bookmarking-title" name="manga-bookmarking-type" value="title">
-                       Show Title <span class="tooltip" data-tooltip="Displays the title only for bookmarks.">?</span>
-                   </label>
-                   <label>
-                       <input type="radio" id="manga-bookmarking-both" name="manga-bookmarking-type" value="both">
-                       Show Both <span class="tooltip" data-tooltip="Displays both the cover and title for bookmarks.">?</span>
-                   </label>
-               </div>
-               <label>
-                   <input type="checkbox" id="bookmarksEnabled">
-                   Enable Bookmarks Button <span class="tooltip" data-tooltip="Enables the bookmarks feature.">?</span>
-               </label>
-               <div class="bookmark-actions">
-                   <button type="button" id="exportBookmarks">Export Bookmarks</button>
-                   <button type="button" id="importBookmarks">Import Bookmarks</button>
-                   <input type="file" id="importBookmarksFile" accept=".json">
-               </div>
-               <div>
-                 <label for="max-manga-per-bookmark-slider">Max Manga per Bookmark:</label>
-                 <input type="range" id="max-manga-per-bookmark-slider" min="1" max="25" value="5">
-                 <span id="max-manga-per-bookmark-on-mobile-value">5</span>
-                 <span class="tooltip" data-tooltip="Sets the maximum number of manga to display per bookmark.">?</span>
-               </div>
-       
-               <div id="random-settings">
-                   <h3>Random Hentai Preferences</h3>
-                   <label>Language: <input type="text" id="pref-language"> <span class="tooltip" data-tooltip="Preferred language for random hentai.">?</span></label>
-                   <label>Tags: <input type="text" id="pref-tags"> <span class="tooltip" data-tooltip="Preferred tags for filtering hentai.">?</span></label>
-                   <label>Blacklisted Tags: <input type="text" id="blacklisted-tags"> <span class="tooltip" data-tooltip="Tags to exclude from search results.">?</span></label>
-                   <label>Minimum Pages: <input type="number" id="pref-pages-min"> <span class="tooltip" data-tooltip="Minimum number of pages for random hentai.">?</span></label>
-                   <label>Maximum Pages: <input type="number" id="pref-pages-max"> <span class="tooltip" data-tooltip="Maximum number of pages for random hentai.">?</span></label>
-                   <label>
-                       <input type="checkbox" id="matchAllTags">
-                       Match All Tags (unchecked = match any) <span class="tooltip" data-tooltip="If enabled, all tags must match instead of any.">?</span>
-                   </label>
-               </div>
-               <label>
-                   <input type="checkbox" id="tooltipsEnabled">
-                   Enable Tooltips <span class="tooltip" data-tooltip="Enables or disables tooltips.">?</span>
-               </label>
-               
-               <!-- Advanced Storage Section -->
-               <div id="advanced-settings">
-                   <h3 class="expand-icon">Advanced Storage Management <span class="tooltip" data-tooltip="View and modify all data stored in GM.getValue">?</span></h3>
-                   <div id="advanced-settings-content">
-                       <p>This section allows you to view and modify all data stored by this userscript.</p>
-                       <button type="button" id="refresh-storage">Refresh Storage Data</button>
-                       <div id="storage-keys-list"></div>
-                       
-                       <div id="edit-value-modal">
-                           <div id="edit-value-content">
-                               <h3>Edit Storage Value</h3>
-                               <p id="editing-key-name">Key: </p>
-                               <textarea id="edit-value-textarea"></textarea>
-                               <div class="modal-buttons">
-                                   <button type="button" id="cancel-edit">Cancel</button>
-                                   <button type="button" id="save-edit">Save Changes</button>
-                               </div>
-                           </div>
-                       </div>
-                   </div>
-               </div>
-               
-               <button type="submit">Save Settings</button>
-           </form>
-       </div>
-       `;
+</style>
 
-       // Append settings form to the container
-       $('div.container').append(settingsHtml);
+<div id="content">
+    <h1>Settings</h1>
+    <form id="settingsForm">
+         <label>
+            <input type="checkbox" id="offlineFavoritingEnabled">
+            Enable Offline Favoriting <span class="tooltip" data-tooltip="Allows favoriting manga even without being logged in.">?</span>
+        </label>
+        <label>
+            <input type="checkbox" id="findSimilarEnabled">
+            Enable Find Similar Button <span class="tooltip" data-tooltip="Finds similar manga based on the current one.">?</span>
+        </label>
+        <label>
+            <input type="checkbox" id="englishFilterEnabled">
+            Enable English Filter Button <span class="tooltip" data-tooltip="Filters manga to show only English translations.">?</span>
+        </label>
+        <label>
+            <input type="checkbox" id="autoLoginEnabled">
+            Enable Auto Login <span class="tooltip" data-tooltip="Automatically logs in with saved credentials.">?</span>
+        </label>
+        <div id="autoLoginCredentials">
+            <label>
+                Email: <input type="text" id="email">
+            </label>
+            <label>
+                Password: <input type="password" id="password">
+            </label>
+        </div>
+        <label>
+            <input type="checkbox" id="findAltmangaEnabled">
+            Enable Find Altmanga Button <span class="tooltip" data-tooltip="Finds alternative sources for the manga.">?</span>
+        </label>
+        <label>
+            <input type="checkbox" id="findAltMangaThumbnailEnabled">
+            Enable Find Alt Manga (Thumbnail Version) <span class="tooltip" data-tooltip="Displays alternative manga sources as thumbnails.">?</span>
+        </label>
+        <div id="find-Alt-Manga-Thumbnail-options" style="display: none;">
+            <label>
+                <input type="checkbox" id="mangagroupingenabled" name="manga-grouping-type" value="grouping">
+                Find Alt Manga Grouping <span class="tooltip" data-tooltip="Groups alternative versions of manga together on the page.">?</span>
+            </label>
+         </div>
+        <label>
+            <input type="checkbox" id="openInNewTabEnabled">
+            Enable Open in New Tab Button <span class="tooltip" data-tooltip="Opens manga links in a new tab.">?</span>
+        </label>
+                       <div id="open-in-New-Tab-options" style="display: none;">
+            <label>
+                <input type="radio" id="open-in-new-tab-background" name="open-in-new-tab" value="background">
+                Open in New Tab (Background) <span class="tooltip" data-tooltip="Opens the link in a new tab without focusing on it.">?</span>
+            </label>
+            <label>
+                <input type="radio" id="open-in-new-tab-foreground" name="open-in-new-tab" value="foreground">
+                Open in New Tab (Foreground) <span class="tooltip" data-tooltip="Opens the link in a new tab and focuses on it.">?</span>
+            </label>
+         </div>
+        <label>
+            <input type="checkbox" id="monthFilterEnabled">
+            Enable Month Filter Button <span class="tooltip" data-tooltip="Filters manga by publication month.">?</span>
+        </label>
+        <label>
+            <input type="checkbox" id="mangaBookMarkingButtonEnabled">
+            Enable Manga Bookmarking Button <span class="tooltip" data-tooltip="Allows bookmarking manga for quick access.">?</span>
+        </label>
+        <div id="manga-bookmarking-options" style="display: none;">
+            <label>
+                <input type="radio" id="manga-bookmarking-cover" name="manga-bookmarking-type" value="cover">
+                Show Cover <span class="tooltip" data-tooltip="Displays the cover image for bookmarks.">?</span>
+            </label>
+            <label>
+                <input type="radio" id="manga-bookmarking-title" name="manga-bookmarking-type" value="title">
+                Show Title <span class="tooltip" data-tooltip="Displays the title only for bookmarks.">?</span>
+            </label>
+            <label>
+                <input type="radio" id="manga-bookmarking-both" name="manga-bookmarking-type" value="both">
+                Show Both <span class="tooltip" data-tooltip="Displays both the cover and title for bookmarks.">?</span>
+            </label>
+        </div>
+        <label>
+            <input type="checkbox" id="bookmarksEnabled">
+            Enable Bookmarks Button <span class="tooltip" data-tooltip="Enables the bookmarks feature.">?</span>
+        </label>
+        <div class="bookmark-actions">
+            <button type="button" id="exportBookmarks">Export Bookmarks</button>
+            <button type="button" id="importBookmarks">Import Bookmarks</button>
+            <input type="file" id="importBookmarksFile" accept=".json">
+        </div>
+        <div>
+          <label for="max-manga-per-bookmark-slider">Max Manga per Bookmark:</label>
+          <input type="range" id="max-manga-per-bookmark-slider" min="1" max="25" value="5">
+          <span id="max-manga-per-bookmark-on-mobile-value">5</span>
+          <span class="tooltip" data-tooltip="Sets the maximum number of manga to display per bookmark.">?</span>
+        </div>
+
+        <!-- Page Management Section -->
+        <div id="page-management">
+            <h3 class="expand-icon">Page Management <span class="tooltip" data-tooltip="Enable or disable custom pages and features.">?</span></h3>
+            <div id="page-management-content">
+                <p>Control which custom pages and navigation elements are enabled:</p>
+                
+                <div class="section-header">Feature Pages</div>
+                <label>
+                    <input type="checkbox" id="nfmPageEnabled">
+                    Enable NFM (Nhentai Favorite Manager) Page <span class="tooltip" data-tooltip="Enables the Nhentai Favorite Manager page for favorite management.">?</span>
+                </label>
+                <label>
+                    <input type="checkbox" id="bookmarksPageEnabled">
+                    Enable Bookmarks Page <span class="tooltip" data-tooltip="Enables the dedicated Bookmarks page for managing saved bookmarks.">?</span>
+                </label>
+            <div id="bookmark-page-options" style="display: none;">
+                <label>
+                    <input type="checkbox" id="enableRandomButton">
+                    Enable Random Button <span class="tooltip" data-tooltip="Randomly selects a bookmarked manga for reading.">?</span>
+                </label>
+            </div>
+                <div class="section-header">Navigation</div>
+
+                <label>
+                    <input type="checkbox" id="twitterButtonEnabled">
+                    Delete Twitter Button <span class="tooltip" data-tooltip="Deletes the Twitter button.">?</span>
+                </label>
+        </div>
+     </div>
+
+        <div id="random-settings">
+            <h3>Random Hentai Preferences</h3>
+            <label>Language: <input type="text" id="pref-language"> <span class="tooltip" data-tooltip="Preferred language for random hentai.">?</span></label>
+            <label>Tags: <input type="text" id="pref-tags"> <span class="tooltip" data-tooltip="Preferred tags for filtering hentai.">?</span></label>
+            <label>Blacklisted Tags: <input type="text" id="blacklisted-tags"> <span class="tooltip" data-tooltip="Tags to exclude from search results.">?</span></label>
+            <label>Minimum Pages: <input type="number" id="pref-pages-min"> <span class="tooltip" data-tooltip="Minimum number of pages for random hentai.">?</span></label>
+            <label>Maximum Pages: <input type="number" id="pref-pages-max"> <span class="tooltip" data-tooltip="Maximum number of pages for random hentai.">?</span></label>
+            <label>
+                <input type="checkbox" id="matchAllTags">
+                Match All Tags (unchecked = match any) <span class="tooltip" data-tooltip="If enabled, all tags must match instead of any.">?</span>
+            </label>
+        </div>
+        <label>
+            <input type="checkbox" id="tooltipsEnabled">
+            Enable Tooltips <span class="tooltip" data-tooltip="Enables or disables tooltips.">?</span>
+        </label>
+        
+        <!-- Advanced Storage Section -->
+        <div id="advanced-settings">
+            <h3 class="expand-icon">Advanced Storage Management <span class="tooltip" data-tooltip="View and modify all data stored in GM.getValue">?</span></h3>
+            <div id="advanced-settings-content">
+                <p>This section allows you to view and modify all data stored by this userscript.</p>
+                <button type="button" id="refresh-storage">Refresh Storage Data</button>
+                <div id="storage-keys-list"></div>
+                
+                <div id="edit-value-modal">
+                    <div id="edit-value-content">
+                        <h3>Edit Storage Value</h3>
+                        <p id="editing-key-name">Key: </p>
+                        <textarea id="edit-value-textarea"></textarea>
+                        <div class="modal-buttons">
+                            <button type="button" id="cancel-edit">Cancel</button>
+                            <button type="button" id="save-edit">Save Changes</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <button type="submit">Save Settings</button>
+    </form>
+</div>
+`;
+
+// Append settings form to the container
+$('div.container').append(settingsHtml);
+
+
+
         
 
         // Load settings
@@ -2376,6 +2427,13 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
             const maxMangaPerBookmark = await GM.getValue('maxMangaPerBookmark', 5);
             const openInNewTabType = await GM.getValue('openInNewTabType', 'background');
             const offlineFavoritingEnabled = await GM.getValue('offlineFavoritingEnabled', true);
+            const nfmPageEnabled = await GM.getValue('nfmPageEnabled', true);
+            const bookmarksPageEnabled = await GM.getValue('bookmarksPageEnabled', true);
+            const twitterButtonEnabled = await GM.getValue('twitterButtonEnabled', true);
+            const enableRandomButton = await GM.getValue('enableRandomButton', true);
+            
+
+
 
 
             $('#findSimilarEnabled').prop('checked', findSimilarEnabled);
@@ -2400,6 +2458,22 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
             $('#mangagroupingenabled').prop('checked', mangagroupingenabled);
             $('#max-manga-per-bookmark-slider').val(maxMangaPerBookmark);
             $('#offlineFavoritingEnabled').prop('checked', offlineFavoritingEnabled);
+            $('#nfmPageEnabled').prop('checked', nfmPageEnabled);
+            $('#bookmarksPageEnabled').prop('checked', bookmarksPageEnabled);
+            $('#twitterButtonEnabled').prop('checked', twitterButtonEnabled);
+            $('#enableRandomButton').prop('checked', enableRandomButton);
+
+
+
+
+$('#page-management-content').hide();
+    
+    // Add expand/collapse functionality for new page management section
+    $('#page-management h3').click(function() {
+        $(this).toggleClass('expanded');
+        $('#page-management-content').slideToggle();
+    });
+
 
             $('#max-manga-per-bookmark-slider').on('input', function() {
                 const value = parseInt($(this).val());
@@ -2429,7 +2503,19 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
                     $('#find-Alt-Manga-Thumbnail-options').hide();
                 }
             });
-            
+            if(bookmarksPageEnabled){
+
+                $('#bookmark-page-options').show();
+            }
+
+            $('#bookmarksPageEnabled').on('change', function() {
+                if ($(this).prop('checked')) {
+                    $('#bookmark-page-options').show();
+                } else {
+                    $('#bookmark-page-options').hide();
+                }
+            });
+
             if (mangaBookMarkingButtonEnabled) {
                 $('#manga-bookmarking-options').show();
             }
@@ -2515,6 +2601,11 @@ $('#openInNewTabEnabled').change(function() {
             const maxMangaPerBookmark = parseInt($('#max-manga-per-bookmark-slider').val());
             const openInNewTabType = $('input[name="open-in-new-tab"]:checked').val();
             const offlineFavoritingEnabled = $('#offlineFavoritingEnabled').prop('checked');
+            const nfmPageEnabled = $('#nfmPageEnabled').prop('checked');
+            const bookmarksPageEnabled = $('#bookmarksPageEnabled').prop('checked');
+            const twitterButtonEnabled = $('#twitterButtonEnabled').prop('checked');
+            const enableRandomButton = $('#enableRandomButton').prop('checked');
+
 
 
 
@@ -2542,6 +2633,10 @@ $('#openInNewTabEnabled').change(function() {
             await GM.setValue('maxMangaPerBookmark', maxMangaPerBookmark);
             await GM.setValue('openInNewTabType', openInNewTabType);
             await GM.setValue('offlineFavoritingEnabled', offlineFavoritingEnabled);
+            await GM.setValue('nfmPageEnabled', nfmPageEnabled);
+            await GM.setValue('bookmarksPageEnabled', bookmarksPageEnabled);
+            await GM.setValue('twitterButtonEnabled', twitterButtonEnabled);
+            await GM.setValue('enableRandomButton', enableRandomButton);
 
 
 
@@ -3888,6 +3983,9 @@ addMonthFilter();
 
 //---------------------------**BookMark-Random-Button**-----------------------------
 async function appendButton() {
+    const enableRandomButton = await GM.getValue('enableRandomButton', true);
+    if (!enableRandomButton) return;
+
     // Check if we're on the bookmarks page
     if (window.location.pathname.includes('/bookmarks')) {
         // Pre-fetch the bookmarks outside the observer
@@ -4578,8 +4676,15 @@ async function processFavorites(favorites) {
 init();
 //--------------------------**Offline Favoriting**----------------------------------------------
 
+
+//-----------------------------------------------------NFM-Debugging------------------------------------------------------------------
+
 // Add this function to create a settings menu
 async function createSettingsMenu() {
+
+    const nfmPageEnabled = await GM.getValue('nfmPageEnabled', true);
+    if (!nfmPageEnabled) return;
+
     // Create settings button
     const nav = document.querySelector('nav .menu.left');
     if (!nav) return;
@@ -4681,3 +4786,14 @@ async function createSettingsMenu() {
 
 // Add this to your init function
 createSettingsMenu();
+
+//-----------------------------------------------------NFM-Debugging------------------------------------------------------------------
+
+async function deleteTwitterButton() {
+    const twitterButtonEnabled = await GM.getValue('twitterButtonEnabled', true);
+    if (!twitterButtonEnabled) return;
+
+    $('a[href="https://twitter.com/nhentaiOfficial"]').remove();
+}
+
+deleteTwitterButton();
