@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      6.10.1
+// @version      6.10.2
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -3644,7 +3644,8 @@ async function addNewTabButtons() {
 
                 if (mangaUrl) {
                     const fullUrl = baseUrl + mangaUrl; // Construct the full URL
-                    GM.openInTab(fullUrl, { active: true }); // Open in new tab using GM_openInTab
+                    console.log(fullUrl);
+                    window.open(fullUrl, '_blank'); // Open in new tab using window.open
                 } else {
                     console.error('No URL found for this cover.'); // Error log if no URL
                 }
@@ -3871,7 +3872,7 @@ function checkAndAppendButton() {
 }
 
 // Set an interval to check for the element every second
-const intervalId = setInterval(checkAndAppendButton, 100);
+const intervalId = setInterval(checkAndAppendButton, 1);
 
 
     } else {
