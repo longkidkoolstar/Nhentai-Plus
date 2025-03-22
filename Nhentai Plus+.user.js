@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      6.10.2
+// @version      6.10.3
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -2250,6 +2250,16 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
                    <input type="checkbox" id="openInNewTabEnabled">
                    Enable Open in New Tab Button <span class="tooltip" data-tooltip="Opens manga links in a new tab.">?</span>
                </label>
+                              <div id="open-in-New-Tab-options" style="display: none;">
+                   <label>
+                       <input type="radio" id="open-in-new-tab-background" name="open-in-new-tab" value="background">
+                       Open in New Tab (Background) <span class="tooltip" data-tooltip="Opens the link in a new tab without focusing on it.">?</span>
+                   </label>
+                   <label>
+                       <input type="radio" id="open-in-new-tab-foreground" name="open-in-new-tab" value="foreground">
+                       Open in New Tab (Foreground) <span class="tooltip" data-tooltip="Opens the link in a new tab and focuses on it.">?</span>
+                   </label>
+                </div>
                <label>
                    <input type="checkbox" id="monthFilterEnabled">
                    Enable Month Filter Button <span class="tooltip" data-tooltip="Filters manga by publication month.">?</span>
@@ -2359,6 +2369,7 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
             const tooltipsEnabled = await GM.getValue('tooltipsEnabled', true);
             const mangagroupingenabled = await GM.getValue('mangagroupingenabled', true);
             const maxMangaPerBookmark = await GM.getValue('maxMangaPerBookmark', 5);
+            const openInNewTabType = await GM.getValue('openInNewTabType', 'background');
 
 
             $('#findSimilarEnabled').prop('checked', findSimilarEnabled);
@@ -2431,6 +2442,41 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
                     $('#manga-bookmarking-options').hide();
                 }
             });
+
+// Check if openInNewTabEnabled is true, if not, hide the options
+if (openInNewTabEnabled) {
+  $('#open-in-New-Tab-options').show();
+}
+
+// Add event listeners to the radio buttons
+$('#open-in-new-tab-background').change(function() {
+  if (this.checked) {
+    GM.setValue('openInNewTabType', 'background');
+  }
+});
+
+$('#open-in-new-tab-foreground').change(function() {
+  if (this.checked) {
+    GM.setValue('openInNewTabType', 'foreground');
+  }
+});
+
+// Initialize the radio buttons based on the stored value
+if (openInNewTabType === 'background') {
+  $('#open-in-new-tab-background').prop('checked', true);
+} else {
+  $('#open-in-new-tab-foreground').prop('checked', true);
+}
+
+// Update the openInNewTabEnabled value in storage when the checkbox is changed
+$('#openInNewTabEnabled').change(function() {
+  const openInNewTabEnabled = this.checked;
+  GM.setValue('openInNewTabEnabled', openInNewTabEnabled);
+  if (!openInNewTabEnabled) {
+    GM.setValue('openInNewTabType', null);
+  }
+  $('#open-in-New-Tab-options').toggle(openInNewTabEnabled);
+});
         })();
 
         // Save settings
@@ -2460,6 +2506,7 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
             const tooltipsEnabled = $('#tooltipsEnabled').prop('checked');
             const mangagroupingenabled = $('#mangagroupingenabled').prop('checked');
             const maxMangaPerBookmark = parseInt($('#max-manga-per-bookmark-slider').val());
+            const openInNewTabType = $('input[name="open-in-new-tab"]:checked').val();
 
 
 
@@ -2485,6 +2532,7 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
             await GM.setValue('tooltipsEnabled', tooltipsEnabled);
             await GM.setValue('mangagroupingenabled', mangagroupingenabled);
             await GM.setValue('maxMangaPerBookmark', maxMangaPerBookmark);
+            await GM.setValue('openInNewTabType', openInNewTabType);
 
 
 
@@ -3623,7 +3671,7 @@ async function addNewTabButtons() {
     // Check if the feature is enabled
     const openInNewTabEnabled = await GM.getValue('openInNewTabEnabled', true);
     if (!openInNewTabEnabled) return;
-
+    const openInNewTabType = await GM.getValue('openInNewTabType', 'background');
     const baseUrl = 'https://nhentai.net';
     const covers = document.querySelectorAll('.cover');
     covers.forEach(cover => {
@@ -3644,9 +3692,15 @@ async function addNewTabButtons() {
 
                 if (mangaUrl) {
                     const fullUrl = baseUrl + mangaUrl; // Construct the full URL
-                    console.log(fullUrl);
-                    window.open(fullUrl, '_blank'); // Open in new tab using window.open
-                } else {
+                    
+                    if (openInNewTabType === 'foreground') {
+                        console.log("foreground");
+                      window.open(fullUrl, '_blank'); // Open in new tab and focus on it
+                    } else {
+                        console.log("background");
+                      GM.openInTab(fullUrl, { active: false }); // Open in new tab without focusing on it
+                    }
+                  }else {
                     console.error('No URL found for this cover.'); // Error log if no URL
                 }
             });
@@ -3823,7 +3877,7 @@ addMonthFilter();
 
 //--------------------------*Month Filter**----------------------------------------
 
-
+//---------------------------**BookMark-Random-Button**-----------------------------
 async function appendButton() {
     // Check if we're on the bookmarks page
     if (window.location.pathname.includes('/bookmarks')) {
@@ -4005,3 +4059,4 @@ return bookmarks;
 function getMangaLink(mangaID) {
     return `https://nhentai.net/g/${mangaID}`;
 }
+//---------------------------**BookMark-Random-Button**-----------------------------
