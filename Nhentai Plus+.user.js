@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      7.1
+// @version      7.2
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -95,7 +95,7 @@ cleanupOldData();
 /**
  * Detects and removes old-format cache entries while preserving important data
  */
-//------------------------  **Nhentai Related Manga Button**  ------------------
+//------------------------  **Find Similar Button**  ------------------
 
 // Initialize maxTagsToSelect from localStorage or default to 5
 let maxTagsToSelect = GM.getValue('maxTagsToSelect');
@@ -151,54 +151,58 @@ async function createFindSimilarButton() {
 
     $('#lockedTagsCount').hide();
 
-    // Handle click event for 'Find Similar' button
-    findSimilarButton.click(async function() {
-        const tagsContainer = $('div.tag-container.field-name:contains("Tags:")');
-        if (!tagsContainer.length) {
-            console.log('Tags container not found.');
-            return;
-        }
+// Nhentai Plus+.user.js (154-221)
+// Handle click event for 'Find Similar' button
+findSimilarButton.click(async function() {
+    const tagsContainer = $('div.tag-container.field-name:contains("Tags:")');
+    if (!tagsContainer.length) {
+        console.log('Tags container not found.');
+        return;
+    }
 
-        // Find all tag links within the container
-        const tagLinks = tagsContainer.find('a.tag');
+    // Find all tag links within the container
+    const tagLinks = tagsContainer.find('a.tag');
 
-        // Update locked tags counter
-        if (!tagLinks.length) {
-            console.log('No tag links found.');
-            return;
-        }
+    // Update locked tags counter
+    if (!tagLinks.length) {
+        console.log('No tag links found.');
+        return;
+    }
 
-        // Extract tag data (name and count) and assign probabilities based on count
-        const tagsData = Array.from(tagLinks).map(tagLink => {
-            const tagName = $(tagLink).find('.name').text().trim();
-            const tagCount = parseInt($(tagLink).find('.count').text().replace('K', '')) || 0;
-            const probability = Math.sqrt(tagCount); // Adjust this formula as needed
-            return { name: tagName, count: tagCount, probability: probability };
-        });
+    // Extract tag data (name and count) and assign probabilities based on count
+    const tagsData = Array.from(tagLinks).map(tagLink => {
+        const tagName = $(tagLink).find('.name').text().trim();
+        const tagCount = parseInt($(tagLink).find('.count').text().replace('K', '')) || 0;
+        const probability = Math.sqrt(tagCount); // Adjust this formula as needed
+        return { name: tagName, count: tagCount, probability: probability };
+    });
 
-        // Shuffle tag data array to randomize selection
-        shuffleArray(tagsData);
+    // Shuffle tag data array to randomize selection
+    shuffleArray(tagsData);
 
-        const selectedTags = [];
-        let numTagsSelected = 0;
+    const selectedTags = [];
+    let numTagsSelected = 0;
 
-        // Add locked tags to the selected tags array
-        lockedTags.forEach(tag => {
-            selectedTags.push(tag);
+    // Add locked tags to the selected tags array
+    lockedTags.forEach(tag => {
+        selectedTags.push(tag);
+        numTagsSelected++;
+    });
+
+    tagsData.forEach(tag => {
+        if (numTagsSelected < maxTagsToSelect && !lockedTags.includes(tag.name) && Math.random() < tag.probability) {
+            selectedTags.push(tag.name);
             numTagsSelected++;
-        });
+        }
+    });
 
-        tagsData.forEach(tag => {
-            if (numTagsSelected < maxTagsToSelect && !lockedTags.includes(tag.name) && Math.random() < tag.probability) {
-                selectedTags.push(tag.name);
-                numTagsSelected++;
-            }
-        });
+    // Join selected tag names into a search string
+    const searchTags = selectedTags.join(' ');
 
-        // Join selected tag names into a search string
-        const searchTags = selectedTags.join(' ');
+    const findSimilarType = await GM.getValue('findSimilarType', 'immediately');
+    const searchInput = $('input[name="q"]');
 
-        const searchInput = $('input[name="q"]');
+    if (findSimilarType === 'immediately') {
         if (searchInput.length > 0) {
             // Update search input value with selected tags
             searchInput.val(searchTags);
@@ -213,12 +217,27 @@ async function createFindSimilarButton() {
             $('body').append(hiddenSearchForm);
             hiddenSearchForm.submit();
         }
-
-        // Create and display the slider (only once)
-        if (!$('#tagSlider').length) {
-            createSlider();
+        // Submit the form
+        $('button[type="submit"]').click();
+    } else if (findSimilarType === 'input-tags') {
+        if (searchInput.length > 0) {
+            // Update search input value with selected tags
+            searchInput.val(searchTags);
+        } else {
+            // If search input not found, create a hidden input
+            const hiddenSearchInputHtml = `
+                <input type="hidden" name="q" value="${searchTags}" />
+            `;
+            const hiddenSearchInput = $(hiddenSearchInputHtml);
+            $('body').append(hiddenSearchInput);
         }
-    });
+    }
+
+    // Create and display the slider (only once)
+    if (!$('#tagSlider').length) {
+        createSlider();
+    }
+});
 
     // Handle double-click event for 'Find Similar' button
     findSimilarButton.dblclick(async function() {
@@ -354,7 +373,7 @@ function shuffleArray(array) {
 }
 
 
-//------------------------  **Nhentai Related Manga Button**  ------------------
+//------------------------  **Find Similar Button**  ------------------
 
 //-----------------------  **Find Alternative Manga Button**  ------------------
 
@@ -2231,7 +2250,7 @@ const settingsHtml = `
 <div id="content">
     <h1>Settings</h1>
     <form id="settingsForm">
-         <label>
+        <label>
             <input type="checkbox" id="offlineFavoritingEnabled">
             Enable Offline Favoriting <span class="tooltip" data-tooltip="Allows favoriting manga even without being logged in.">?</span>
         </label>
@@ -2239,6 +2258,16 @@ const settingsHtml = `
             <input type="checkbox" id="findSimilarEnabled">
             Enable Find Similar Button <span class="tooltip" data-tooltip="Finds similar manga based on the current one.">?</span>
         </label>
+        <div id="find-similar-options" style="display: none;">
+            <label>
+                <input type="radio" id="open-immediately" name="find-similar-type" value="immediately">
+                Open Immediately <span class="tooltip" data-tooltip="Opens the similar manga immediately.">?</span>
+            </label>
+            <label>
+                <input type="radio" id="input-tags" name="find-similar-type" value="input-tags">
+                Input Tags <span class="tooltip" data-tooltip="Allows inputting tags to find similar manga.">?</span>
+            </label>
+        </div>
         <label>
             <input type="checkbox" id="englishFilterEnabled">
             Enable English Filter Button <span class="tooltip" data-tooltip="Filters manga to show only English translations.">?</span>
@@ -2246,6 +2275,10 @@ const settingsHtml = `
         <label>
             <input type="checkbox" id="autoLoginEnabled">
             Enable Auto Login <span class="tooltip" data-tooltip="Automatically logs in with saved credentials.">?</span>
+        </label>
+        <label>
+            <input type="checkbox" id="bookmarkLinkEnabled">
+            Enable Bookmark Link <span class="tooltip" data-tooltip="Adds a link to your bookmark in the manga title.">?</span>
         </label>
         <div id="autoLoginCredentials">
             <label>
@@ -2341,6 +2374,16 @@ const settingsHtml = `
                     <input type="checkbox" id="enableRandomButton">
                     Enable Random Button <span class="tooltip" data-tooltip="Randomly selects a bookmarked manga for reading.">?</span>
                 </label>
+                <div id="random-options" style="display: none;">
+                    <label>
+                        <input type="radio" id="random-open-in-new-tab" name="random-open-type" value="new-tab">
+                        Open Random Manga in New Tab <span class="tooltip" data-tooltip="Opens the randomly selected manga in a new tab.">?</span>
+                    </label>
+                    <label>
+                        <input type="radio" id="random-open-in-current-tab" name="random-open-type" value="current-tab">
+                        Open Random Manga in Current Tab <span class="tooltip" data-tooltip="Opens the randomly selected manga in the current tab.">?</span>
+                    </label>
+                </div>
             </div>
                 <div class="section-header">Navigation</div>
 
@@ -2348,6 +2391,18 @@ const settingsHtml = `
                     <input type="checkbox" id="twitterButtonEnabled">
                     Delete Twitter Button <span class="tooltip" data-tooltip="Deletes the Twitter button.">?</span>
                 </label>
+                <label>
+                    <input type="checkbox" id="profileButtonEnabled">
+                    Delete Profile Button <span class="tooltip" data-tooltip="Deletes the Profile button.">?</span>
+                </label>
+                <label>
+                    <input type="checkbox" id="infoButtonEnabled">
+                    Delete Info Button <span class="tooltip" data-tooltip="Deletes the Info button.">?</span>
+                </label>
+                <label>
+                    <input type="checkbox" id="logoutButtonEnabled">
+                    Delete Logout Button <span class="tooltip" data-tooltip="Deletes the Logout button.">?</span>
+             </label>
         </div>
      </div>
 
@@ -2402,6 +2457,7 @@ $('div.container').append(settingsHtml);
 
         
 
+        // Nhentai Plus+.user.js (2441-2516)
         // Load settings
         (async function() {
             const findSimilarEnabled = await GM.getValue('findSimilarEnabled', true);
@@ -2431,12 +2487,16 @@ $('div.container').append(settingsHtml);
             const bookmarksPageEnabled = await GM.getValue('bookmarksPageEnabled', true);
             const twitterButtonEnabled = await GM.getValue('twitterButtonEnabled', true);
             const enableRandomButton = await GM.getValue('enableRandomButton', true);
-            
-
-
-
+            const randomOpenType = await GM.getValue('randomOpenType', 'new-tab');
+            const profileButtonEnabled = await GM.getValue('profileButtonEnabled', true);
+            const infoButtonEnabled = await GM.getValue('infoButtonEnabled', true);
+            const logoutButtonEnabled = await GM.getValue('logoutButtonEnabled', true);
+            const bookmarkLinkEnabled = await GM.getValue('bookmarkLinkEnabled', true);
+            const findSimilarType = await GM.getValue('findSimilarType', 'immediately');
 
             $('#findSimilarEnabled').prop('checked', findSimilarEnabled);
+            $('#find-similar-options').toggle(findSimilarEnabled);
+
             $('#englishFilterEnabled').prop('checked', englishFilterEnabled);
             $('#autoLoginEnabled').prop('checked', autoLoginEnabled);
             $('#email').val(email);
@@ -2462,17 +2522,53 @@ $('div.container').append(settingsHtml);
             $('#bookmarksPageEnabled').prop('checked', bookmarksPageEnabled);
             $('#twitterButtonEnabled').prop('checked', twitterButtonEnabled);
             $('#enableRandomButton').prop('checked', enableRandomButton);
+            $('#random-open-in-new-tab').prop('checked', randomOpenType === 'new-tab');
+            $('#random-open-in-current-tab').prop('checked', randomOpenType === 'current-tab');
+            $('#profileButtonEnabled').prop('checked', profileButtonEnabled);
+            $('#infoButtonEnabled').prop('checked', infoButtonEnabled);
+            $('#logoutButtonEnabled').prop('checked', logoutButtonEnabled);
+            $('#bookmarkLinkEnabled').prop('checked', bookmarkLinkEnabled);
+            $('#open-immediately').prop('checked', findSimilarType === 'immediately');
+            $('#input-tags').prop('checked', findSimilarType === 'input-tags');
 
 
 
 
-$('#page-management-content').hide();
-    
-    // Add expand/collapse functionality for new page management section
-    $('#page-management h3').click(function() {
-        $(this).toggleClass('expanded');
-        $('#page-management-content').slideToggle();
-    });
+
+// Nhentai Plus+.user.js (2522-2535)
+// Initialize the visibility of the find-similar-options div based on the initial state of the findSimilarEnabled checkbox
+$('#find-similar-options').toggle(findSimilarEnabled);
+
+// Add event listener to toggle the find-similar-options div when the findSimilarEnabled checkbox is changed
+$('#findSimilarEnabled').on('change', function() {
+    const isChecked = $(this).is(':checked');
+    $('#find-similar-options').toggle(isChecked);
+});
+
+        $('#page-management-content').hide();
+            
+            // Add expand/collapse functionality for new page management section
+            $('#page-management h3').click(function() {
+                $(this).toggleClass('expanded');
+                $('#page-management-content').slideToggle();
+            });
+
+
+                // Show or hide the random options based on the enableRandomButton value
+            if (enableRandomButton) {
+                $('#random-options').show();
+            } else {
+                $('#random-options').hide();
+            }
+
+            // Add an event listener to the enableRandomButton to show or hide the random options
+            $('#enableRandomButton').on('change', function() {
+                if ($(this).is(':checked')) {
+                    $('#random-options').show();
+                } else {
+                    $('#random-options').hide();
+                }
+            });
 
 
             $('#max-manga-per-bookmark-slider').on('input', function() {
@@ -2605,6 +2701,15 @@ $('#openInNewTabEnabled').change(function() {
             const bookmarksPageEnabled = $('#bookmarksPageEnabled').prop('checked');
             const twitterButtonEnabled = $('#twitterButtonEnabled').prop('checked');
             const enableRandomButton = $('#enableRandomButton').prop('checked');
+            const randomOpenType = $('input[name="random-open-type"]:checked').val();
+            const profileButtonEnabled = $('#profileButtonEnabled').prop('checked');
+            const infoButtonEnabled = $('#infoButtonEnabled').prop('checked');
+            const logoutButtonEnabled = $('#logoutButtonEnabled').prop('checked');
+            const bookmarkLinkEnabled = $('#bookmarkLinkEnabled').prop('checked');
+            const findSimilarType = $('input[name="find-similar-type"]:checked').val();
+
+
+
 
 
 
@@ -2637,6 +2742,18 @@ $('#openInNewTabEnabled').change(function() {
             await GM.setValue('bookmarksPageEnabled', bookmarksPageEnabled);
             await GM.setValue('twitterButtonEnabled', twitterButtonEnabled);
             await GM.setValue('enableRandomButton', enableRandomButton);
+            await GM.setValue('randomOpenType', randomOpenType);
+            await GM.setValue('profileButtonEnabled', profileButtonEnabled);
+            await GM.setValue('infoButtonEnabled', infoButtonEnabled);
+            await GM.setValue('logoutButtonEnabled', logoutButtonEnabled);
+            await GM.setValue('bookmarkLinkEnabled', bookmarkLinkEnabled);
+            await GM.setValue('findSimilarType', findSimilarType);
+
+
+
+
+
+            
 
 
 
@@ -3991,6 +4108,7 @@ async function appendButton() {
         // Pre-fetch the bookmarks outside the observer
         const bookmarks = await getBookmarksFromStorage();
         
+
 // Create a function to check for the element and append the button
 function checkAndAppendButton() {
     const target = document.querySelector("#bookmarksContainer > h2:nth-child(1)");
@@ -4006,20 +4124,37 @@ function checkAndAppendButton() {
             'top': '-3px'
         });
 
-        button.on('click', () => {
+        button.on('click', async () => {
             if (bookmarks.length > 0) {
                 const randomIndex = Math.floor(Math.random() * bookmarks.length);
                 const randomBookmark = bookmarks[randomIndex];
                 const link = `https://nhentai.net/g/${randomBookmark.id}`;
-                
+
                 // Store bookmark info in localStorage for the next page
                 localStorage.setItem('randomMangaSource', JSON.stringify({
                     source: randomBookmark.source,
                     id: randomBookmark.id
                 }));
 
-                // Redirect to the manga page
-                window.open(link, '_blank');
+                // Get the openInNewTabType value from storage
+                const openInNewTabType = await GM.getValue('openInNewTabType', 'new-tab');
+                const enableRandomButton = await GM.getValue('enableRandomButton', true);
+                const randomOpenType = await GM.getValue('randomOpenType', 'new-tab');
+
+                // Determine how to open the link based on the openInNewTabType value
+                if (enableRandomButton && randomOpenType === 'new-tab') {
+                    // Open the link in a new tab
+                    window.open(link, '_blank');
+                } else if (enableRandomButton && randomOpenType === 'current-tab') {
+                    // Open the link in the current tab
+                    window.location.href = link;
+                } else if (openInNewTabType === 'new-tab') {
+                    // Open the link in a new tab
+                    window.open(link, '_blank');
+                } else if (openInNewTabType === 'current-tab') {
+                    // Open the link in the current tab
+                    window.location.href = link;
+                }
             } else {
                 showPopup("No bookmarks found.", {
                     timeout: 3000
@@ -4693,7 +4828,7 @@ async function createSettingsMenu() {
     settingsLi.className = 'desktop';
     const settingsLink = document.createElement('a');
     settingsLink.href = '#';
-    settingsLink.innerHTML = '<i class="fas fa-cog"></i> NFM';
+    settingsLink.innerHTML = '<i class="fas fa-cog" style="color:pink;"></i> NFM';
     settingsLi.appendChild(settingsLink);
     nav.appendChild(settingsLi);
     
@@ -4789,6 +4924,7 @@ createSettingsMenu();
 
 //-----------------------------------------------------NFM-Debugging------------------------------------------------------------------
 
+//-------------------------------------------------**Delete-Twitter-Button**-----------------------------------------------
 async function deleteTwitterButton() {
     const twitterButtonEnabled = await GM.getValue('twitterButtonEnabled', true);
     if (!twitterButtonEnabled) return;
@@ -4797,3 +4933,82 @@ async function deleteTwitterButton() {
 }
 
 deleteTwitterButton();
+
+//-------------------------------------------------**Delete-Twitter-Button**-----------------------------------------------
+
+//-------------------------------------------------**Delete-Info-Button**-----------------------------------------------
+async function deleteInfoButton() {
+    const infoButtonEnabled = await GM.getValue('infoButtonEnabled', true);
+    if (!infoButtonEnabled) return;
+
+    $("a[href='/info/']").remove();
+  }
+  
+  //Call the function to execute
+  deleteInfoButton();
+//-------------------------------------------------**Delete-Info-Button**-----------------------------------------------
+
+//-------------------------------------------------**Delete-Profile-Button**-----------------------------------------------
+
+  
+async  function deleteProfileButton() {
+    const profileButtonEnabled = await GM.getValue('profileButtonEnabled', true);
+    if (!profileButtonEnabled) return;
+
+    $("li a[href^='/users/']").remove();
+  }
+  
+  //Call the function to execute.
+  deleteProfileButton();
+  
+  //-------------------------------------------------**Delete-Profile-Button**-----------------------------------------------
+
+//-------------------------------------------------**Delete-Logout-Button**-----------------------------------------------
+
+async  function deleteLogoutButton() {
+    const logoutButtonEnabled = await GM.getValue('logoutButtonEnabled', true);
+    if (!logoutButtonEnabled) return;
+
+    $("li a[href='/logout/?next=/settings/']").parent().remove();
+  }
+  
+  deleteLogoutButton();
+
+//-------------------------------------------------**Delete-Logout-Button**-----------------------------------------------
+
+
+//-------------------------------------------------**BookMark-Link**---------------------------------------------------------
+async function createBookmarkLink() {
+    const bookmarkLinkEnabled = await GM.getValue('bookmarkLinkEnabled', true);
+    if (!bookmarkLinkEnabled) return;
+
+
+    // Extract current manga ID from URL
+    const currentMangaId = window.location.pathname.split('/')[2];
+    
+    // Get all GM keys
+    const allKeys = await GM.listValues();
+    
+    // Filter bookmark keys and check for current ID
+    let bookmarkUrl = null;
+    for (const key of allKeys) {
+        if (key.startsWith('bookmark_manga_ids_')) {
+            const mangaIds = await GM.getValue(key, []);
+            if (mangaIds.includes(currentMangaId)) {
+                // Extract original bookmark URL from key
+                bookmarkUrl = key.replace('bookmark_manga_ids_', '');
+                break;
+            }
+        }
+    }
+
+    // Update title if bookmark found
+    if (bookmarkUrl) {
+        const $title = $('h1.title');
+        const linkHtml = `<a href="${bookmarkUrl}" class="bookmark-link" style="color: inherit; text-decoration: none;"><u>${$title.html()}</u></a>`;
+        $title.html(linkHtml).css('cursor', 'pointer');
+    }
+}
+createBookmarkLink();
+
+//-------------------------------------------------**BookMark-Link**---------------------------------------------------------
