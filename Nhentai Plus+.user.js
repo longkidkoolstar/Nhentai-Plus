@@ -1,11 +1,12 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      7.2
+// @version      7.3
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
 // @require      https://code.jquery.com/jquery-3.6.0.min.js
+// @require      https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js
 // @icon         https://i.imgur.com/AOs1HMS.png
 // @license      MIT
 // @grant        GM.setValue
@@ -2107,6 +2108,77 @@ const settingsHtml = `
         gap: 10px;
         cursor: pointer;
     }
+
+    /* Tab Arrangement Styles */
+    .sortable-list {
+        list-style: none;
+        padding: 0;
+        margin: 10px 0;
+        touch-action: pan-y;
+    }
+
+    .tab-item {
+        display: flex;
+        align-items: center;
+        padding: 10px;
+        margin: 5px 0;
+        background: #2a2a2a;
+        border: 1px solid #333;
+        border-radius: 3px;
+        user-select: none;
+        transition: background 0.2s, transform 0.2s;
+        touch-action: none;
+    }
+
+    .handle {
+        cursor: grab;
+        margin-right: 8px;
+        touch-action: none;
+    }
+
+    .tab-item.sortable-ghost {
+        opacity: 0.5;
+    }
+
+    .tab-item.sortable-drag,
+    .tab-item.dragging {
+        cursor: grabbing !important;
+        background: #333;
+        transform: scale(1.02);
+        z-index: 1000;
+    }
+
+    .tab-item:hover {
+        background: #333;
+    }
+
+    .tab-item .handle:hover {
+        opacity: 0.8;
+    }
+    }
+
+    .tab-item:hover {
+        background: #333;
+    }
+
+    .tab-item .handle {
+        margin-right: 10px;
+        color: #666;
+    }
+
+    .btn-secondary {
+        background: #444;
+        color: #fff;
+        border: none;
+        padding: 8px 15px;
+        border-radius: 3px;
+        cursor: pointer;
+        margin-top: 10px;
+    }
+
+    .btn-secondary:hover {
+        background: #555;
+    }
     
     #advanced-settings-content {
         display: none;
@@ -2276,10 +2348,6 @@ const settingsHtml = `
             <input type="checkbox" id="autoLoginEnabled">
             Enable Auto Login <span class="tooltip" data-tooltip="Automatically logs in with saved credentials.">?</span>
         </label>
-        <label>
-            <input type="checkbox" id="bookmarkLinkEnabled">
-            Enable Bookmark Link <span class="tooltip" data-tooltip="Adds a link to your bookmark in the manga title.">?</span>
-        </label>
         <div id="autoLoginCredentials">
             <label>
                 Email: <input type="text" id="email">
@@ -2288,6 +2356,10 @@ const settingsHtml = `
                 Password: <input type="password" id="password">
             </label>
         </div>
+        <label>
+            <input type="checkbox" id="bookmarkLinkEnabled">
+            Enable Bookmark Link <span class="tooltip" data-tooltip="Adds a link to your bookmark in the manga title.">?</span>
+        </label>
         <label>
             <input type="checkbox" id="findAltmangaEnabled">
             Enable Find Altmanga Button <span class="tooltip" data-tooltip="Finds alternative sources for the manga.">?</span>
@@ -2398,6 +2470,21 @@ const settingsHtml = `
                 <label>
                     <input type="checkbox" id="infoButtonEnabled">
                     Delete Info Button <span class="tooltip" data-tooltip="Deletes the Info button.">?</span>
+                </label>
+                
+                <div class="section-header">Tab Arrangement</div>
+                <div id="tab-arrangement">
+                    <p>Drag and drop tabs to rearrange their order:</p>
+                    <ul id="tab-list" class="sortable-list">
+                        <li data-tab="random" class="tab-item"><i class="fa fa-bars handle"></i> Random</li>
+                        <li data-tab="tags" class="tab-item"><i class="fa fa-bars handle"></i> Tags</li>
+                        <li data-tab="artists" class="tab-item"><i class="fa fa-bars handle"></i> Artists</li>
+                        <li data-tab="characters" class="tab-item"><i class="fa fa-bars handle"></i> Characters</li>
+                        <li data-tab="parodies" class="tab-item"><i class="fa fa-bars handle"></i> Parodies</li>
+                        <li data-tab="groups" class="tab-item"><i class="fa fa-bars handle"></i> Groups</li>
+                    </ul>
+                    <button type="button" id="resetTabOrder" class="btn-secondary">Reset to Default Order</button>
+                </div>
                 </label>
                 <label>
                     <input type="checkbox" id="logoutButtonEnabled">
@@ -2544,6 +2631,11 @@ $('#findSimilarEnabled').on('change', function() {
     const isChecked = $(this).is(':checked');
     $('#find-similar-options').toggle(isChecked);
 });
+
+        // Toggle auto login credentials
+        $('#autoLoginEnabled').on('change', function() {
+            $('#autoLoginCredentials').toggle(this.checked);
+        });
 
         $('#page-management-content').hide();
             
@@ -2761,10 +2853,110 @@ $('#openInNewTabEnabled').change(function() {
     showPopup('Settings saved!');
         });
 
-        // Toggle auto login credentials
-        $('#autoLoginEnabled').on('change', function() {
-            $('#autoLoginCredentials').toggle(this.checked);
+
+            // Initialize tab arrangement functionality
+    initializeTabSorting();
+    updateMenuOrder();
+
+
+
+    // Initialize tab order from storage or use default order
+    async function initializeTabOrder() {
+        const defaultOrder = ['random', 'tags', 'artists', 'characters', 'parodies', 'groups'];
+        const savedOrder = await GM.getValue('tabOrder');
+        return savedOrder || defaultOrder;
+    }
+
+    // Function to update the menu based on tab order
+    async function updateMenuOrder() {
+        const tabOrder = await initializeTabOrder();
+        const menu = document.querySelector('ul.menu.left');
+        const dropdown = document.querySelector('ul.dropdown-menu');
+        
+        if (!menu || !dropdown) return;
+
+        // Reorder desktop menu items
+        tabOrder.forEach(tabId => {
+            const desktopItem = Array.from(menu.querySelectorAll('li.desktop')).find(li => {
+                const link = li.querySelector('a');
+                return link && link.getAttribute('href').includes(tabId);
+            });
+            if (desktopItem) menu.insertBefore(desktopItem, menu.querySelector('.dropdown'));
         });
+
+        // Reorder dropdown menu items
+        tabOrder.forEach(tabId => {
+            const dropdownItem = Array.from(dropdown.querySelectorAll('li')).find(li => {
+                const link = li.querySelector('a');
+                return link && link.getAttribute('href').includes(tabId);
+            });
+            if (dropdownItem) dropdown.appendChild(dropdownItem);
+        });
+    }
+
+    // Initialize Sortable.js for tab arrangement
+    function initializeTabSorting() {
+        const tabList = document.getElementById('tab-list');
+        if (!tabList) return;
+
+        new Sortable(tabList, {
+            animation: 150,
+            handle: '.handle',
+            ghostClass: 'sortable-ghost',
+            dragClass: 'sortable-drag',
+            forceFallback: true,
+            fallbackTolerance: 1,
+            delayOnTouchOnly: false,
+            delay: 0,
+            touchStartThreshold: 1,
+            preventTextSelection: true,
+            onStart: function(evt) {
+                evt.item.classList.add('dragging');
+                document.body.style.userSelect = 'none';
+                document.body.style.webkitUserSelect = 'none';
+                document.body.style.mozUserSelect = 'none';
+                document.body.style.msUserSelect = 'none';
+            },
+            onEnd: async function(evt) {
+                evt.item.classList.remove('dragging');
+                document.body.style.userSelect = '';
+                document.body.style.webkitUserSelect = '';
+                document.body.style.mozUserSelect = '';
+                document.body.style.msUserSelect = '';
+                const newOrder = Array.from(tabList.children).map(item => item.dataset.tab);
+                await GM.setValue('tabOrder', newOrder);
+                updateMenuOrder();
+            }
+        });
+
+        // Add mouse event listeners to improve drag handle feedback
+        tabList.querySelectorAll('.handle').forEach(handle => {
+            handle.addEventListener('mousedown', () => {
+                handle.style.cursor = 'grabbing';
+            });
+            handle.addEventListener('mouseup', () => {
+                handle.style.cursor = 'grab';
+            });
+        });
+
+        // Reset button handler
+        document.getElementById('resetTabOrder').addEventListener('click', async function() {
+            const defaultOrder = ['random', 'tags', 'artists', 'characters', 'parodies', 'groups'];
+            await GM.setValue('tabOrder', defaultOrder);
+
+            showPopup('Tab order reset!', {timeout: 1000});
+
+            // Reset visual order in settings
+            const tabList = document.getElementById('tab-list');
+            defaultOrder.forEach(tabId => {
+                const item = tabList.querySelector(`[data-tab="${tabId}"]`);
+                if (item) tabList.appendChild(item);
+            });
+            
+            updateMenuOrder();
+        });
+    }
+
 
 
   // Import Bookmarked Pages
