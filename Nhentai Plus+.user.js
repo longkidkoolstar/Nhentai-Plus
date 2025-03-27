@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      7.3
+// @version      7.3.1
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -2471,7 +2471,10 @@ const settingsHtml = `
                     <input type="checkbox" id="infoButtonEnabled">
                     Delete Info Button <span class="tooltip" data-tooltip="Deletes the Info button.">?</span>
                 </label>
-                
+                <label>
+                    <input type="checkbox" id="logoutButtonEnabled">
+                    Delete Logout Button <span class="tooltip" data-tooltip="Deletes the Logout button.">?</span>
+             </label>
                 <div class="section-header">Tab Arrangement</div>
                 <div id="tab-arrangement">
                     <p>Drag and drop tabs to rearrange their order:</p>
@@ -2486,10 +2489,6 @@ const settingsHtml = `
                     <button type="button" id="resetTabOrder" class="btn-secondary">Reset to Default Order</button>
                 </div>
                 </label>
-                <label>
-                    <input type="checkbox" id="logoutButtonEnabled">
-                    Delete Logout Button <span class="tooltip" data-tooltip="Deletes the Logout button.">?</span>
-             </label>
         </div>
      </div>
 
@@ -2898,6 +2897,14 @@ $('#openInNewTabEnabled').change(function() {
     function initializeTabSorting() {
         const tabList = document.getElementById('tab-list');
         if (!tabList) return;
+
+        // Initialize tab list with saved order
+        initializeTabOrder().then(tabOrder => {
+            tabOrder.forEach(tabId => {
+                const item = tabList.querySelector(`[data-tab="${tabId}"]`);
+                if (item) tabList.appendChild(item);
+            });
+        });
 
         new Sortable(tabList, {
             animation: 150,
