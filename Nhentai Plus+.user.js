@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      7.3.1
+// @version      7.4
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -2861,7 +2861,7 @@ $('#openInNewTabEnabled').change(function() {
 
     // Initialize tab order from storage or use default order
     async function initializeTabOrder() {
-        const defaultOrder = ['random', 'tags', 'artists', 'characters', 'parodies', 'groups'];
+        const defaultOrder = ['random', 'tags', 'artists', 'characters', 'parodies', 'groups', 'bookmarks', 'continue_reading'];
         const savedOrder = await GM.getValue('tabOrder');
         return savedOrder || defaultOrder;
     }
@@ -2874,23 +2874,88 @@ $('#openInNewTabEnabled').change(function() {
         
         if (!menu || !dropdown) return;
 
-        // Reorder desktop menu items
-        tabOrder.forEach(tabId => {
-            const desktopItem = Array.from(menu.querySelectorAll('li.desktop')).find(li => {
+        // Get all menu items (both desktop and injected)
+        const allMenuItems = Array.from(menu.querySelectorAll('li:not(.dropdown)'));
+        
+        // Create a temporary container to hold items during reordering
+        const tempContainer = document.createDocumentFragment();
+        
+        // Process each tab in the desired order
+        for (const tabId of tabOrder) {
+            // Find the menu item for this tab
+            const menuItem = allMenuItems.find(li => {
                 const link = li.querySelector('a');
-                return link && link.getAttribute('href').includes(tabId);
+                return link && link.getAttribute('href').includes(`/${tabId}/`);
             });
-            if (desktopItem) menu.insertBefore(desktopItem, menu.querySelector('.dropdown'));
+            
+            // If found, move it to our temporary container
+            if (menuItem) {
+                tempContainer.appendChild(menuItem);
+            }
+        }
+        
+        // Find special items that weren't in our tab order (like Settings)
+        const settingsItem = Array.from(menu.querySelectorAll('li')).find(li => {
+            const link = li.querySelector('a');
+            return link && link.getAttribute('href').includes('/settings/');
         });
+        
+        // Add the dropdown menu item
+        const dropdownItem = menu.querySelector('li.dropdown');
+        if (dropdownItem) {
+            tempContainer.appendChild(dropdownItem);
+        }
+        
+        // Add the settings item at the end
+        if (settingsItem) {
+            tempContainer.appendChild(settingsItem);
+        }
+        
+        // Clear the menu and add all items in the new order
+        while (menu.firstChild) {
+            menu.removeChild(menu.firstChild);
+        }
+        
+        menu.appendChild(tempContainer);
+        
+        // Now update the dropdown menu
+        // Clear the dropdown menu first
+        while (dropdown.firstChild) {
+            dropdown.removeChild(dropdown.firstChild);
+        }
+        
+        // Add items to dropdown in the same order
+        for (const tabId of tabOrder) {
+            // Find the corresponding desktop item
+            const desktopItem = Array.from(menu.querySelectorAll('li')).find(li => {
+                const link = li.querySelector('a');
+                return link && link.getAttribute('href').includes(`/${tabId}/`);
+            });
+            
+            if (desktopItem) {
+                // Clone the link and create a new dropdown item
+                const link = desktopItem.querySelector('a');
+                if (link) {
+                    const dropdownLi = document.createElement('li');
+                    dropdownLi.innerHTML = `<a href="${link.getAttribute('href')}">${link.textContent}</a>`;
+                    dropdown.appendChild(dropdownLi);
+                }
+            }
+        }
+    }
 
-        // Reorder dropdown menu items
-        tabOrder.forEach(tabId => {
-            const dropdownItem = Array.from(dropdown.querySelectorAll('li')).find(li => {
+    // Helper function to find the reference item for insertion
+    function findReferenceItem(menu, tabOrder, currentIndex) {
+        // Find the previous item in the order that exists in the menu
+        for (let i = currentIndex - 1; i >= 0; i--) {
+            const prevTabId = tabOrder[i];
+            const prevItem = Array.from(menu.querySelectorAll('li')).find(li => {
                 const link = li.querySelector('a');
-                return link && link.getAttribute('href').includes(tabId);
+                return link && link.getAttribute('href').includes(prevTabId);
             });
-            if (dropdownItem) dropdown.appendChild(dropdownItem);
-        });
+            if (prevItem) return prevItem;
+        }
+        return null;
     }
 
     // Initialize Sortable.js for tab arrangement
@@ -2900,11 +2965,89 @@ $('#openInNewTabEnabled').change(function() {
 
         // Initialize tab list with saved order
         initializeTabOrder().then(tabOrder => {
+            // First, check if we need to create the dynamic tab items
+            const bookmarksExists = tabOrder.includes('bookmarks') && !tabList.querySelector('[data-tab="bookmarks"]');
+            const continueReadingExists = tabOrder.includes('continue_reading') && !tabList.querySelector('[data-tab="continue_reading"]');
+            
+            // Create bookmarks tab item if it's in the saved order but not in the DOM
+            if (bookmarksExists) {
+                const bookmarksTabItem = document.createElement('li');
+                bookmarksTabItem.className = 'tab-item';
+                bookmarksTabItem.dataset.tab = 'bookmarks';
+                bookmarksTabItem.innerHTML = '<i class="fa fa-bars handle"></i> Bookmarks';
+                tabList.appendChild(bookmarksTabItem);
+            }
+            
+            // Create continue reading tab item if it's in the saved order but not in the DOM
+            if (continueReadingExists) {
+                const continueReadingTabItem = document.createElement('li');
+                continueReadingTabItem.className = 'tab-item';
+                continueReadingTabItem.dataset.tab = 'continue_reading';
+                continueReadingTabItem.innerHTML = '<i class="fa fa-bars handle"></i> Continue Reading';
+                tabList.appendChild(continueReadingTabItem);
+            }
+            
+            // Now reorder all tabs according to the saved order
             tabOrder.forEach(tabId => {
                 const item = tabList.querySelector(`[data-tab="${tabId}"]`);
                 if (item) tabList.appendChild(item);
             });
         });
+
+        // Check for dynamically added menu items and add them to the tab list
+        function checkForDynamicItems() {
+            const menu = document.querySelector('ul.menu.left');
+            if (!menu) return;
+
+            // Check for Bookmarks
+            const bookmarksItem = Array.from(menu.querySelectorAll('li')).find(li => {
+                const link = li.querySelector('a');
+                return link && link.getAttribute('href').includes('/bookmarks/');
+            });
+
+            if (bookmarksItem && !tabList.querySelector('[data-tab="bookmarks"]')) {
+                const bookmarksTabItem = document.createElement('li');
+                bookmarksTabItem.className = 'tab-item';
+                bookmarksTabItem.dataset.tab = 'bookmarks';
+                bookmarksTabItem.innerHTML = '<i class="fa fa-bars handle"></i> Bookmarks';
+                tabList.appendChild(bookmarksTabItem);
+                
+                // Reapply the saved order after adding a new item
+                initializeTabOrder().then(tabOrder => {
+                    tabOrder.forEach(tabId => {
+                        const item = tabList.querySelector(`[data-tab="${tabId}"]`);
+                        if (item) tabList.appendChild(item);
+                    });
+                });
+            }
+
+            // Check for Continue Reading
+            const continueReadingItem = Array.from(menu.querySelectorAll('li')).find(li => {
+                const link = li.querySelector('a');
+                return link && link.getAttribute('href').includes('/continue_reading/');
+            });
+
+            if (continueReadingItem && !tabList.querySelector('[data-tab="continue_reading"]')) {
+                const continueReadingTabItem = document.createElement('li');
+                continueReadingTabItem.className = 'tab-item';
+                continueReadingTabItem.dataset.tab = 'continue_reading';
+                continueReadingTabItem.innerHTML = '<i class="fa fa-bars handle"></i> Continue Reading';
+                tabList.appendChild(continueReadingTabItem);
+                
+                // Reapply the saved order after adding a new item
+                initializeTabOrder().then(tabOrder => {
+                    tabOrder.forEach(tabId => {
+                        const item = tabList.querySelector(`[data-tab="${tabId}"]`);
+                        if (item) tabList.appendChild(item);
+                    });
+                });
+            }
+        }
+
+        // Check for dynamic items initially and then every second
+        checkForDynamicItems();
+        setInterval(checkForDynamicItems, 1000);
+
 
         new Sortable(tabList, {
             animation: 150,
@@ -2948,7 +3091,7 @@ $('#openInNewTabEnabled').change(function() {
 
         // Reset button handler
         document.getElementById('resetTabOrder').addEventListener('click', async function() {
-            const defaultOrder = ['random', 'tags', 'artists', 'characters', 'parodies', 'groups'];
+            const defaultOrder = ['random', 'tags', 'artists', 'characters', 'parodies', 'groups', 'bookmarks', 'continue_reading'];
             await GM.setValue('tabOrder', defaultOrder);
 
             showPopup('Tab order reset!', {timeout: 1000});
@@ -2963,6 +3106,9 @@ $('#openInNewTabEnabled').change(function() {
             updateMenuOrder();
         });
     }
+
+    // Call updateMenuOrder periodically to handle dynamically injected items
+    setInterval(updateMenuOrder, 1000);
 
 
 
