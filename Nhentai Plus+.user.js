@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      7.4
+// @version      7.4.1
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -421,7 +421,7 @@ async function addFindAltButton() {
         }
 
         // Remove text inside square brackets [], parentheses (), 'Ch.', 'ch.', 'Vol.', 'vol.', and all Chinese and Japanese characters
-        const cleanedTitleText = titleText.replace(/[\[\]\(\)\d\-]|Ch\.|ch\.|Vol\.|vol\.|[\u3002\uFF01-\uFF5E\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF]/g, '').trim();
+        const cleanedTitleText = titleText.replace(/[\[\]\(\)\d\-]|Ch\.|ch\.|Vol\.|vol\.|\|[\u3002\uFF01-\uFF5E\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF]/g, '').trim();
 
         // Find the search input
         const searchInput = $('input[name="q"]');
@@ -572,66 +572,205 @@ addFindAltButton();
             return true;
         }
 
-        function AddAltVersionsToThis(target) {
+        async function AddAltVersionsToThis(target) {
             let place = target;
-            let title = place.parent().find(".cover:visible > .caption").text();
-            $.get(BuildUrl(title), function(data) {
-                let found = $(data).find(".container > .gallery");
-                if (!found || found.length <= 0) {
-                    alert("error reading data");
+            const coverElement = place.parent().find(".cover:visible");
+            const href = coverElement.attr('href');
+            const captionTitle = place.parent().find(".cover:visible > .caption").text();
+            
+            try {
+                let titles = [captionTitle]; // Start with the caption title
+                
+                // Try to get the title from the manga page if href exists
+                if (href) {
+                    try {
+                        const response = await fetch(`https://nhentai.net${href}`);
+                        
+                        if (response.ok) {
+                            const html = await response.text();
+                            const parser = new DOMParser();
+                            const doc = parser.parseFromString(html, 'text/html');
+                            
+                            const titleElement = doc.querySelector('.title');
+                            
+                            if (titleElement) {
+                                const prettySpan = titleElement.querySelector('.pretty');
+                                let titleText = prettySpan ? prettySpan.textContent.trim() : titleElement.textContent.trim();
+                                const cleanedTitleText = titleText.replace(/[\[\]\(\)\d\-]|Ch\.|ch\.|Vol\.|vol\.|\|[\u3002\uFF01-\uFF5E\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF]/g, '').trim();
+                                
+                                // Add the cleaned title if it's different from the caption title
+                                if (cleanedTitleText && cleanedTitleText !== captionTitle) {
+                                    titles.push(cleanedTitleText);
+                                }
+                            }
+                        }
+                    } catch (error) {
+                        console.error("Error fetching title from manga page:", error);
+                    }
+                }
+                
+                // Process search with all collected titles
+                await processSearchWithMultipleTitles(titles);
+                
+            } catch (error) {
+                console.error("Error in AddAltVersionsToThis:", error);
+                // Fallback to just the caption title if there's an error
+                processSearch(captionTitle);
+            }
+            
+            // Function to process search with multiple titles and combine results
+            async function processSearchWithMultipleTitles(titles) {
+                let allResults = [];
+                let processedHrefs = new Set(); // To track unique results
+                
+                for (const title of titles) {
+                    if (!title || title.trim() === '') continue;
+                    
+                    try {
+                        const data = await $.get(BuildUrl(title));
+                        const found = $(data).find(".container > .gallery");
+                        
+                        if (found && found.length > 0) {
+                            // Add unique results to allResults
+                            for (let i = 0; i < found.length; i++) {
+                                const resultHref = $(found[i]).find(".cover").attr('href');
+                                
+                                if (resultHref && !processedHrefs.has(resultHref)) {
+                                    processedHrefs.add(resultHref);
+                                    allResults.push(found[i]);
+                                }
+                            }
+                        }
+                    } catch (error) {
+                        console.error(`Error searching for title "${title}":`, error);
+                    }
+                }
+                
+                if (allResults.length === 0) {
+                    alert("No results found for any of the search terms");
                     return;
                 }
+                
+                // Process the combined results
                 place.parent().find(".cover").remove();
                 try {
-                    for (let i = 0; i < found.length; i++) {
+                    for (let i = 0; i < allResults.length; i++) {
                         if (partially_fade_all_non_english) {
-                            $(found[i]).find(".cover > img, .cover > .caption").css("opacity", non_english_fade_opacity);
+                            $(allResults[i]).find(".cover > img, .cover > .caption").css("opacity", non_english_fade_opacity);
                         }
 
-                        if ($(found[i]).attr("data-tags").includes("12227")) {
-                            $(found[i]).find(".caption").append(`<img class="overlayFlag" src="` + flagEn + `">`);
-                            $(found[i]).find(".cover > img, .cover > .caption").css("opacity", "1");
+                        if ($(allResults[i]).attr("data-tags").includes("12227")) {
+                            $(allResults[i]).find(".caption").append(`<img class="overlayFlag" src="` + flagEn + `">`);
+                            $(allResults[i]).find(".cover > img, .cover > .caption").css("opacity", "1");
                         } else {
-                            if ($(found[i]).attr("data-tags").includes("6346")) {
-                                $(found[i]).find(".caption").append(`<img class="overlayFlag" src="` + flagJp + `">`);
-                            } else if ($(found[i]).attr("data-tags").includes("29963")) {
-                                $(found[i]).find(".caption").append(`<img class="overlayFlag" src="` + flagCh + `">`);
+                            if ($(allResults[i]).attr("data-tags").includes("6346")) {
+                                $(allResults[i]).find(".caption").append(`<img class="overlayFlag" src="` + flagJp + `">`);
+                            } else if ($(allResults[i]).attr("data-tags").includes("29963")) {
+                                $(allResults[i]).find(".caption").append(`<img class="overlayFlag" src="` + flagCh + `">`);
                             }
                             if (!partially_fade_all_non_english) {
-                                $(found[i]).find(".cover > img, .cover > .caption").css("opacity", "1");
+                                $(allResults[i]).find(".cover > img, .cover > .caption").css("opacity", "1");
                             }
                         }
 
                         if (mark_as_read_system_enabled) {
                             let MARArraySelector = MARArray.join("'], .cover[href='");
-                            $(found[i]).find(".cover[href='" + MARArraySelector + "']").append("<div class='readTag'>READ</div>");
-                            let readTag = $(found[i]).find(".readTag");
+                            $(allResults[i]).find(".cover[href='" + MARArraySelector + "']").append("<div class='readTag'>READ</div>");
+                            let readTag = $(allResults[i]).find(".readTag");
                             if (!!readTag && readTag.length > 0) {
                                 readTag.parent().parent().find(".cover > img, .cover > .caption").css("opacity", marked_as_read_fade_opacity);
                             }
                         }
 
-                        let thumbnailReplacement;
-                        if (!!$(found[i]).find(".cover > img").attr("data-src")) {
-                            thumbnailReplacement = $(found[i]).find(".cover > img").attr("data-src").replace(/\/\/.+?\.nhentai/g, "//i.nhentai").replace("thumb.jpg", "1.jpg").replace("thumb.png", "1.png");
-                        } else {
-                            thumbnailReplacement = $(found[i]).find(".cover > img").attr("src").replace(/\/\/.+?\.nhentai/g, "//i.nhentai").replace("thumb.jpg", "1.jpg").replace("thumb.png", "1.png");
-                        }
 
-                        $(found[i]).find(".cover > img").attr("src", thumbnailReplacement);
-                        place.parent().append($(found[i]).find(".cover"));
+
+            let thumbnailReplacement;
+            if (!!$(allResults[i]).find(".cover > img").attr("data-src")) {
+                thumbnailReplacement = $(allResults[i]).find(".cover > img").attr("data-src")
+                    .replace(/\/\/.+?\.nhentai/g, "//i1.nhentai")  // Fixed CDN path
+                    .replace("thumb.", "1.");  // Generic replacement for all extensions
+            } else {
+                thumbnailReplacement = $(allResults[i]).find(".cover > img").attr("src")
+                    .replace(/\/\/.+?\.nhentai/g, "//i1.nhentai")  // Fixed CDN path
+                    .replace("thumb.", "1.");  // Generic replacement for all extensions
+            }
+
+
+
+                        $(allResults[i]).find(".cover > img").attr("src", thumbnailReplacement);
+                        place.parent().append($(allResults[i]).find(".cover"));
                     }
                 } catch (er) {
-                    alert("error modifying data: " + er);
+                    alert("Error modifying data: " + er);
                     return;
                 }
+                
                 place.parent().find(".cover:not(:first)").css("display", "none");
                 place.parent().find(".versionPrevButton, .versionNextButton, .numOfVersions").show(200);
-                place.parent().find(".numOfVersions").text("1/" + (found.length));
+                place.parent().find(".numOfVersions").text("1/" + (allResults.length));
                 place.hide(200);
-            }).fail(function(e) {
-                alert("error getting data: " + e);
-            });
+            }
+            
+            // Original search function as fallback
+            function processSearch(title) {
+                $.get(BuildUrl(title), function(data) {
+                    let found = $(data).find(".container > .gallery");
+                    if (!found || found.length <= 0) {
+                        alert("error reading data");
+                        return;
+                    }
+                    place.parent().find(".cover").remove();
+                    try {
+                        for (let i = 0; i < found.length; i++) {
+                            if (partially_fade_all_non_english) {
+                                $(found[i]).find(".cover > img, .cover > .caption").css("opacity", non_english_fade_opacity);
+                            }
+
+                            if ($(found[i]).attr("data-tags").includes("12227")) {
+                                $(found[i]).find(".caption").append(`<img class="overlayFlag" src="` + flagEn + `">`);
+                                $(found[i]).find(".cover > img, .cover > .caption").css("opacity", "1");
+                            } else {
+                                if ($(found[i]).attr("data-tags").includes("6346")) {
+                                    $(found[i]).find(".caption").append(`<img class="overlayFlag" src="` + flagJp + `">`);
+                                } else if ($(found[i]).attr("data-tags").includes("29963")) {
+                                    $(found[i]).find(".caption").append(`<img class="overlayFlag" src="` + flagCh + `">`);
+                                }
+                                if (!partially_fade_all_non_english) {
+                                    $(found[i]).find(".cover > img, .cover > .caption").css("opacity", "1");
+                                }
+                            }
+
+                            if (mark_as_read_system_enabled) {
+                                let MARArraySelector = MARArray.join("'], .cover[href='");
+                                $(found[i]).find(".cover[href='" + MARArraySelector + "']").append("<div class='readTag'>READ</div>");
+                                let readTag = $(found[i]).find(".readTag");
+                                if (!!readTag && readTag.length > 0) {
+                                    readTag.parent().parent().find(".cover > img, .cover > .caption").css("opacity", marked_as_read_fade_opacity);
+                                }
+                            }
+
+                            let thumbnailReplacement;
+                            if (!!$(found[i]).find(".cover > img").attr("data-src")) {
+                                thumbnailReplacement = $(found[i]).find(".cover > img").attr("data-src").replace(/\/\/.+?\.nhentai/g, "//i1.nhentai").replace("thumb.jpg", "1.jpg").replace("thumb.png", "1.png");
+                            } else {
+                                thumbnailReplacement = $(found[i]).find(".cover > img").attr("src").replace(/\/\/.+?\.nhentai/g, "//i1.nhentai").replace("thumb.jpg", "1.jpg").replace("thumb.png", "1.png");
+                            }
+
+                            $(found[i]).find(".cover > img").attr("src", thumbnailReplacement);
+                            place.parent().append($(found[i]).find(".cover"));
+                        }
+                    } catch (er) {
+                        alert("error modifying data: " + er);
+                        return;
+                    }
+                    place.parent().find(".cover:not(:first)").css("display", "none");
+                    place.parent().find(".versionPrevButton, .versionNextButton, .numOfVersions").show(200);
+                    place.parent().find(".numOfVersions").text("1/" + (found.length));
+                    place.hide(200);
+                }).fail(function(e) {
+                    alert("error getting data: " + e);
+                });
+            }
         }
 
         function CleanupSearchString(title) {
@@ -779,7 +918,6 @@ addFindAltButton();
 })(); // Self-invoking function for the toggle check
 
 //------------------------  **Find Alternative Manga Button(Thumbnail Version)**  ------------------
-
 
 // ------------------------  *Bookmarks**  ------------------
 function injectCSS() {
@@ -2853,262 +2991,7 @@ $('#openInNewTabEnabled').change(function() {
         });
 
 
-            // Initialize tab arrangement functionality
-    initializeTabSorting();
-    updateMenuOrder();
 
-
-
-    // Initialize tab order from storage or use default order
-    async function initializeTabOrder() {
-        const defaultOrder = ['random', 'tags', 'artists', 'characters', 'parodies', 'groups', 'bookmarks', 'continue_reading'];
-        const savedOrder = await GM.getValue('tabOrder');
-        return savedOrder || defaultOrder;
-    }
-
-    // Function to update the menu based on tab order
-    async function updateMenuOrder() {
-        const tabOrder = await initializeTabOrder();
-        const menu = document.querySelector('ul.menu.left');
-        const dropdown = document.querySelector('ul.dropdown-menu');
-        
-        if (!menu || !dropdown) return;
-
-        // Get all menu items (both desktop and injected)
-        const allMenuItems = Array.from(menu.querySelectorAll('li:not(.dropdown)'));
-        
-        // Create a temporary container to hold items during reordering
-        const tempContainer = document.createDocumentFragment();
-        
-        // Process each tab in the desired order
-        for (const tabId of tabOrder) {
-            // Find the menu item for this tab
-            const menuItem = allMenuItems.find(li => {
-                const link = li.querySelector('a');
-                return link && link.getAttribute('href').includes(`/${tabId}/`);
-            });
-            
-            // If found, move it to our temporary container
-            if (menuItem) {
-                tempContainer.appendChild(menuItem);
-            }
-        }
-        
-        // Find special items that weren't in our tab order (like Settings)
-        const settingsItem = Array.from(menu.querySelectorAll('li')).find(li => {
-            const link = li.querySelector('a');
-            return link && link.getAttribute('href').includes('/settings/');
-        });
-        
-        // Add the dropdown menu item
-        const dropdownItem = menu.querySelector('li.dropdown');
-        if (dropdownItem) {
-            tempContainer.appendChild(dropdownItem);
-        }
-        
-        // Add the settings item at the end
-        if (settingsItem) {
-            tempContainer.appendChild(settingsItem);
-        }
-        
-        // Clear the menu and add all items in the new order
-        while (menu.firstChild) {
-            menu.removeChild(menu.firstChild);
-        }
-        
-        menu.appendChild(tempContainer);
-        
-        // Now update the dropdown menu
-        // Clear the dropdown menu first
-        while (dropdown.firstChild) {
-            dropdown.removeChild(dropdown.firstChild);
-        }
-        
-        // Add items to dropdown in the same order
-        for (const tabId of tabOrder) {
-            // Find the corresponding desktop item
-            const desktopItem = Array.from(menu.querySelectorAll('li')).find(li => {
-                const link = li.querySelector('a');
-                return link && link.getAttribute('href').includes(`/${tabId}/`);
-            });
-            
-            if (desktopItem) {
-                // Clone the link and create a new dropdown item
-                const link = desktopItem.querySelector('a');
-                if (link) {
-                    const dropdownLi = document.createElement('li');
-                    dropdownLi.innerHTML = `<a href="${link.getAttribute('href')}">${link.textContent}</a>`;
-                    dropdown.appendChild(dropdownLi);
-                }
-            }
-        }
-    }
-
-    // Helper function to find the reference item for insertion
-    function findReferenceItem(menu, tabOrder, currentIndex) {
-        // Find the previous item in the order that exists in the menu
-        for (let i = currentIndex - 1; i >= 0; i--) {
-            const prevTabId = tabOrder[i];
-            const prevItem = Array.from(menu.querySelectorAll('li')).find(li => {
-                const link = li.querySelector('a');
-                return link && link.getAttribute('href').includes(prevTabId);
-            });
-            if (prevItem) return prevItem;
-        }
-        return null;
-    }
-
-    // Initialize Sortable.js for tab arrangement
-    function initializeTabSorting() {
-        const tabList = document.getElementById('tab-list');
-        if (!tabList) return;
-
-        // Initialize tab list with saved order
-        initializeTabOrder().then(tabOrder => {
-            // First, check if we need to create the dynamic tab items
-            const bookmarksExists = tabOrder.includes('bookmarks') && !tabList.querySelector('[data-tab="bookmarks"]');
-            const continueReadingExists = tabOrder.includes('continue_reading') && !tabList.querySelector('[data-tab="continue_reading"]');
-            
-            // Create bookmarks tab item if it's in the saved order but not in the DOM
-            if (bookmarksExists) {
-                const bookmarksTabItem = document.createElement('li');
-                bookmarksTabItem.className = 'tab-item';
-                bookmarksTabItem.dataset.tab = 'bookmarks';
-                bookmarksTabItem.innerHTML = '<i class="fa fa-bars handle"></i> Bookmarks';
-                tabList.appendChild(bookmarksTabItem);
-            }
-            
-            // Create continue reading tab item if it's in the saved order but not in the DOM
-            if (continueReadingExists) {
-                const continueReadingTabItem = document.createElement('li');
-                continueReadingTabItem.className = 'tab-item';
-                continueReadingTabItem.dataset.tab = 'continue_reading';
-                continueReadingTabItem.innerHTML = '<i class="fa fa-bars handle"></i> Continue Reading';
-                tabList.appendChild(continueReadingTabItem);
-            }
-            
-            // Now reorder all tabs according to the saved order
-            tabOrder.forEach(tabId => {
-                const item = tabList.querySelector(`[data-tab="${tabId}"]`);
-                if (item) tabList.appendChild(item);
-            });
-        });
-
-        // Check for dynamically added menu items and add them to the tab list
-        function checkForDynamicItems() {
-            const menu = document.querySelector('ul.menu.left');
-            if (!menu) return;
-
-            // Check for Bookmarks
-            const bookmarksItem = Array.from(menu.querySelectorAll('li')).find(li => {
-                const link = li.querySelector('a');
-                return link && link.getAttribute('href').includes('/bookmarks/');
-            });
-
-            if (bookmarksItem && !tabList.querySelector('[data-tab="bookmarks"]')) {
-                const bookmarksTabItem = document.createElement('li');
-                bookmarksTabItem.className = 'tab-item';
-                bookmarksTabItem.dataset.tab = 'bookmarks';
-                bookmarksTabItem.innerHTML = '<i class="fa fa-bars handle"></i> Bookmarks';
-                tabList.appendChild(bookmarksTabItem);
-                
-                // Reapply the saved order after adding a new item
-                initializeTabOrder().then(tabOrder => {
-                    tabOrder.forEach(tabId => {
-                        const item = tabList.querySelector(`[data-tab="${tabId}"]`);
-                        if (item) tabList.appendChild(item);
-                    });
-                });
-            }
-
-            // Check for Continue Reading
-            const continueReadingItem = Array.from(menu.querySelectorAll('li')).find(li => {
-                const link = li.querySelector('a');
-                return link && link.getAttribute('href').includes('/continue_reading/');
-            });
-
-            if (continueReadingItem && !tabList.querySelector('[data-tab="continue_reading"]')) {
-                const continueReadingTabItem = document.createElement('li');
-                continueReadingTabItem.className = 'tab-item';
-                continueReadingTabItem.dataset.tab = 'continue_reading';
-                continueReadingTabItem.innerHTML = '<i class="fa fa-bars handle"></i> Continue Reading';
-                tabList.appendChild(continueReadingTabItem);
-                
-                // Reapply the saved order after adding a new item
-                initializeTabOrder().then(tabOrder => {
-                    tabOrder.forEach(tabId => {
-                        const item = tabList.querySelector(`[data-tab="${tabId}"]`);
-                        if (item) tabList.appendChild(item);
-                    });
-                });
-            }
-        }
-
-        // Check for dynamic items initially and then every second
-        checkForDynamicItems();
-        setInterval(checkForDynamicItems, 1000);
-
-
-        new Sortable(tabList, {
-            animation: 150,
-            handle: '.handle',
-            ghostClass: 'sortable-ghost',
-            dragClass: 'sortable-drag',
-            forceFallback: true,
-            fallbackTolerance: 1,
-            delayOnTouchOnly: false,
-            delay: 0,
-            touchStartThreshold: 1,
-            preventTextSelection: true,
-            onStart: function(evt) {
-                evt.item.classList.add('dragging');
-                document.body.style.userSelect = 'none';
-                document.body.style.webkitUserSelect = 'none';
-                document.body.style.mozUserSelect = 'none';
-                document.body.style.msUserSelect = 'none';
-            },
-            onEnd: async function(evt) {
-                evt.item.classList.remove('dragging');
-                document.body.style.userSelect = '';
-                document.body.style.webkitUserSelect = '';
-                document.body.style.mozUserSelect = '';
-                document.body.style.msUserSelect = '';
-                const newOrder = Array.from(tabList.children).map(item => item.dataset.tab);
-                await GM.setValue('tabOrder', newOrder);
-                updateMenuOrder();
-            }
-        });
-
-        // Add mouse event listeners to improve drag handle feedback
-        tabList.querySelectorAll('.handle').forEach(handle => {
-            handle.addEventListener('mousedown', () => {
-                handle.style.cursor = 'grabbing';
-            });
-            handle.addEventListener('mouseup', () => {
-                handle.style.cursor = 'grab';
-            });
-        });
-
-        // Reset button handler
-        document.getElementById('resetTabOrder').addEventListener('click', async function() {
-            const defaultOrder = ['random', 'tags', 'artists', 'characters', 'parodies', 'groups', 'bookmarks', 'continue_reading'];
-            await GM.setValue('tabOrder', defaultOrder);
-
-            showPopup('Tab order reset!', {timeout: 1000});
-
-            // Reset visual order in settings
-            const tabList = document.getElementById('tab-list');
-            defaultOrder.forEach(tabId => {
-                const item = tabList.querySelector(`[data-tab="${tabId}"]`);
-                if (item) tabList.appendChild(item);
-            });
-            
-            updateMenuOrder();
-        });
-    }
-
-    // Call updateMenuOrder periodically to handle dynamically injected items
-    setInterval(updateMenuOrder, 1000);
 
 
 
@@ -3681,6 +3564,374 @@ function refreshStorageData() {
 
 
     }
+
+            // Initialize tab arrangement functionality
+            initializeTabSorting();
+            updateMenuOrder();
+        
+        
+        
+            // Initialize tab order from storage or use default order
+            async function initializeTabOrder() {
+                const defaultOrder = ['random', 'tags', 'artists', 'characters', 'parodies', 'groups', 'bookmarks', 'continue_reading', 'settings'];
+                const savedOrder = await GM.getValue('tabOrder');
+                return savedOrder || defaultOrder;
+            }
+        
+            // Function to update the menu based on tab order
+            async function updateMenuOrder() {
+                const tabOrder = await initializeTabOrder();
+                const menu = document.querySelector('ul.menu.left');
+                const dropdown = document.querySelector('ul.dropdown-menu');
+                
+                if (!menu || !dropdown) return;
+        
+                // Get all menu items (both desktop and injected)
+                const allMenuItems = Array.from(menu.querySelectorAll('li:not(.dropdown)'));
+                
+                // Create a temporary container to hold items during reordering
+                const tempContainer = document.createDocumentFragment();
+                
+                // Process each tab in the desired order
+                for (const tabId of tabOrder) {
+                    // Find the menu item for this tab
+                    const menuItem = allMenuItems.find(li => {
+                        const link = li.querySelector('a');
+                        return link && link.getAttribute('href').includes(`/${tabId}/`);
+                    });
+                    
+                    // If found, move it to our temporary container
+                    if (menuItem) {
+                        tempContainer.appendChild(menuItem);
+                    }
+                }
+                
+                // Add the dropdown menu item
+                const dropdownItem = menu.querySelector('li.dropdown');
+                if (dropdownItem) {
+                    tempContainer.appendChild(dropdownItem);
+                }
+                
+                // Clear the menu and add all items in the new order
+                while (menu.firstChild) {
+                    menu.removeChild(menu.firstChild);
+                }
+                
+                menu.appendChild(tempContainer);
+                
+                // Now update the dropdown menu
+                // Clear the dropdown menu first
+                while (dropdown.firstChild) {
+                    dropdown.removeChild(dropdown.firstChild);
+                }
+                
+                // Add items to dropdown in the same order
+                for (const tabId of tabOrder) {
+                    // Find the corresponding desktop item
+                    const desktopItem = Array.from(menu.querySelectorAll('li')).find(li => {
+                        const link = li.querySelector('a');
+                        return link && link.getAttribute('href').includes(`/${tabId}/`);
+                    });
+                    
+                    if (desktopItem) {
+                        // Clone the link and create a new dropdown item
+                        const link = desktopItem.querySelector('a');
+                        if (link) {
+                            const dropdownLi = document.createElement('li');
+                            dropdownLi.innerHTML = `<a href="${link.getAttribute('href')}">${link.textContent}</a>`;
+                            dropdown.appendChild(dropdownLi);
+                        }
+                    }
+                }
+            }
+        
+            // Helper function to find the reference item for insertion
+            function findReferenceItem(menu, tabOrder, currentIndex) {
+                // Find the previous item in the order that exists in the menu
+                for (let i = currentIndex - 1; i >= 0; i--) {
+                    const prevTabId = tabOrder[i];
+                    const prevItem = Array.from(menu.querySelectorAll('li')).find(li => {
+                        const link = li.querySelector('a');
+                        return link && link.getAttribute('href').includes(prevTabId);
+                    });
+                    if (prevItem) return prevItem;
+                }
+                return null;
+            }
+        
+            // Initialize Sortable.js for tab arrangement
+            function initializeTabSorting() {
+                const tabList = document.getElementById('tab-list');
+                if (!tabList) return;
+        
+                // Initialize tab list with saved order
+                initializeTabOrder().then(tabOrder => {
+                    // First, check if we need to create the dynamic tab items
+                    const bookmarksExists = tabOrder.includes('bookmarks') && !tabList.querySelector('[data-tab="bookmarks"]');
+                    const continueReadingExists = tabOrder.includes('continue_reading') && !tabList.querySelector('[data-tab="continue_reading"]');
+                    const settingsExists = tabOrder.includes('settings') && !tabList.querySelector('[data-tab="settings"]');
+                    
+                    // Check if these items exist in the actual menu before adding them to the sortable list
+                    const menu = document.querySelector('ul.menu.left');
+                    if (menu) {
+                        // Only create bookmarks tab item if it exists in the actual menu and not in the DOM
+                        const bookmarksInMenu = Array.from(menu.querySelectorAll('li')).some(li => {
+                            const link = li.querySelector('a');
+                            return link && link.getAttribute('href').includes('/bookmarks/');
+                        });
+                        
+                        if (bookmarksInMenu && bookmarksExists) {
+                            const bookmarksTabItem = document.createElement('li');
+                            bookmarksTabItem.className = 'tab-item';
+                            bookmarksTabItem.dataset.tab = 'bookmarks';
+                            bookmarksTabItem.innerHTML = '<i class="fa fa-bars handle"></i> Bookmarks';
+                            tabList.appendChild(bookmarksTabItem);
+                        }
+                        
+                        // Only create continue reading tab item if it exists in the actual menu and not in the DOM
+                        const continueReadingInMenu = Array.from(menu.querySelectorAll('li')).some(li => {
+                            const link = li.querySelector('a');
+                            return link && link.getAttribute('href').includes('/continue_reading/');
+                        });
+                        
+                        if (continueReadingInMenu && continueReadingExists) {
+                            const continueReadingTabItem = document.createElement('li');
+                            continueReadingTabItem.className = 'tab-item';
+                            continueReadingTabItem.dataset.tab = 'continue_reading';
+                            continueReadingTabItem.innerHTML = '<i class="fa fa-bars handle"></i> Continue Reading';
+                            tabList.appendChild(continueReadingTabItem);
+                        }
+                        
+                        // Only create settings tab item if it exists in the actual menu and not in the DOM
+                        const settingsInMenu = Array.from(menu.querySelectorAll('li')).some(li => {
+                            const link = li.querySelector('a');
+                            return link && link.getAttribute('href').includes('/settings/');
+                        });
+                        
+                        if (settingsInMenu && settingsExists) {
+                            const settingsTabItem = document.createElement('li');
+                            settingsTabItem.className = 'tab-item';
+                            settingsTabItem.dataset.tab = 'settings';
+                            settingsTabItem.innerHTML = '<i class="fa fa-bars handle"></i> Settings';
+                            tabList.appendChild(settingsTabItem);
+                        }
+                    }
+                    
+                    // Now reorder all tabs according to the saved order
+                    tabOrder.forEach(tabId => {
+                        const item = tabList.querySelector(`[data-tab="${tabId}"]`);
+                        if (item) tabList.appendChild(item);
+                    });
+                });
+        
+                // Check for dynamically added menu items and add them to the tab list
+                function checkForDynamicItems() {
+                    const menu = document.querySelector('ul.menu.left');
+                    if (!menu) return;
+        
+                    // Check for Bookmarks
+                    const bookmarksItem = Array.from(menu.querySelectorAll('li')).find(li => {
+                        const link = li.querySelector('a');
+                        return link && link.getAttribute('href').includes('/bookmarks/');
+                    });
+        
+                    if (bookmarksItem && !tabList.querySelector('[data-tab="bookmarks"]')) {
+                        const bookmarksTabItem = document.createElement('li');
+                        bookmarksTabItem.className = 'tab-item';
+                        bookmarksTabItem.dataset.tab = 'bookmarks';
+                        bookmarksTabItem.innerHTML = '<i class="fa fa-bars handle"></i> Bookmarks';
+                        tabList.appendChild(bookmarksTabItem);
+                        
+                        // Reapply the saved order after adding a new item
+                        initializeTabOrder().then(tabOrder => {
+                            tabOrder.forEach(tabId => {
+                                const item = tabList.querySelector(`[data-tab="${tabId}"]`);
+                                if (item) tabList.appendChild(item);
+                            });
+                        });
+                    }
+        
+                    // Check for Continue Reading
+                    const continueReadingItem = Array.from(menu.querySelectorAll('li')).find(li => {
+                        const link = li.querySelector('a');
+                        return link && link.getAttribute('href').includes('/continue_reading/');
+                    });
+        
+                    if (continueReadingItem && !tabList.querySelector('[data-tab="continue_reading"]')) {
+                        const continueReadingTabItem = document.createElement('li');
+                        continueReadingTabItem.className = 'tab-item';
+                        continueReadingTabItem.dataset.tab = 'continue_reading';
+                        continueReadingTabItem.innerHTML = '<i class="fa fa-bars handle"></i> Continue Reading';
+                        tabList.appendChild(continueReadingTabItem);
+                        
+                        // Reapply the saved order after adding a new item
+                        initializeTabOrder().then(tabOrder => {
+                            tabOrder.forEach(tabId => {
+                                const item = tabList.querySelector(`[data-tab="${tabId}"]`);
+                                if (item) tabList.appendChild(item);
+                            });
+                        });
+                    }
+                    
+                    // Check for Settings
+                    const settingsItem = Array.from(menu.querySelectorAll('li')).find(li => {
+                        const link = li.querySelector('a');
+                        return link && link.getAttribute('href').includes('/settings/');
+                    });
+        
+                    if (settingsItem && !tabList.querySelector('[data-tab="settings"]')) {
+                        const settingsTabItem = document.createElement('li');
+                        settingsTabItem.className = 'tab-item';
+                        settingsTabItem.dataset.tab = 'settings';
+                        settingsTabItem.innerHTML = '<i class="fa fa-bars handle"></i> Settings';
+                        tabList.appendChild(settingsTabItem);
+                        
+                        // Reapply the saved order after adding a new item
+                        initializeTabOrder().then(tabOrder => {
+                            tabOrder.forEach(tabId => {
+                                const item = tabList.querySelector(`[data-tab="${tabId}"]`);
+                                if (item) tabList.appendChild(item);
+                            });
+                        });
+                    }
+                }
+        
+                // Check for dynamic items initially and then every second
+                checkForDynamicItems();
+                setInterval(checkForDynamicItems, 1000);
+        
+        
+                new Sortable(tabList, {
+                    animation: 150,
+                    handle: '.handle',
+                    ghostClass: 'sortable-ghost',
+                    dragClass: 'sortable-drag',
+                    forceFallback: true,
+                    fallbackTolerance: 1,
+                    delayOnTouchOnly: false,
+                    delay: 0,
+                    touchStartThreshold: 1,
+                    preventTextSelection: true,
+                    onStart: function(evt) {
+                        evt.item.classList.add('dragging');
+                        document.body.style.userSelect = 'none';
+                        document.body.style.webkitUserSelect = 'none';
+                        document.body.style.mozUserSelect = 'none';
+                        document.body.style.msUserSelect = 'none';
+                    },
+                    onEnd: async function(evt) {
+                        evt.item.classList.remove('dragging');
+                        document.body.style.userSelect = '';
+                        document.body.style.webkitUserSelect = '';
+                        document.body.style.mozUserSelect = '';
+                        document.body.style.msUserSelect = '';
+                        const newOrder = Array.from(tabList.children).map(item => item.dataset.tab);
+                        await GM.setValue('tabOrder', newOrder);
+                        updateMenuOrder();
+                    }
+                });
+        
+                // Add mouse event listeners to improve drag handle feedback
+                tabList.querySelectorAll('.handle').forEach(handle => {
+                    handle.addEventListener('mousedown', () => {
+                        handle.style.cursor = 'grabbing';
+                    });
+                    handle.addEventListener('mouseup', () => {
+                        handle.style.cursor = 'grab';
+                    });
+                });
+        
+                // Reset button handler
+                document.getElementById('resetTabOrder').addEventListener('click', async function() {
+                    const defaultOrder = ['random', 'tags', 'artists', 'characters', 'parodies', 'groups', 'bookmarks', 'continue_reading', 'settings'];
+                    await GM.setValue('tabOrder', defaultOrder);
+        
+                    showPopup('Tab order reset!', {timeout: 1000});
+        
+                    // Reset visual order in settings
+                    const tabList = document.getElementById('tab-list');
+                    defaultOrder.forEach(tabId => {
+                        const item = tabList.querySelector(`[data-tab="${tabId}"]`);
+                        if (item) tabList.appendChild(item);
+                    });
+                    
+                    updateMenuOrder();
+                });
+            }
+            
+            // Function to check if the menu is in the correct order
+            async function isMenuInOrder() {
+//                console.log("Checking if menu is in order...");
+                const menu = document.querySelector('ul.menu.left');
+                if (!menu) return false;
+                
+//                console.log("Menu:", menu);
+                const tabOrder = await initializeTabOrder(); // Wait for the promise to resolve
+//                console.log("Tab order:", tabOrder);
+                
+                // Get all menu items except dropdown in their DOM order
+                const allMenuItems = Array.from(menu.querySelectorAll('li:not(.dropdown)'));
+//                console.log("All menu items:", allMenuItems);
+                
+                // Create a map of tab IDs to their desired position
+                const tabPositions = {};
+                tabOrder.forEach((tabId, index) => {
+                    tabPositions[tabId] = index;
+                });
+                
+                // Extract the tab IDs from the DOM in order
+                const currentTabOrder = [];
+                for (const menuItem of allMenuItems) {
+                    const link = menuItem.querySelector('a');
+                    if (link) {
+                        const href = link.getAttribute('href');
+                        // Extract the tab ID from the href
+                        const match = href.match(/\/([^\/]+)\//);
+                        if (match && match[1]) {
+                            currentTabOrder.push(match[1]);
+                        }
+                    }
+                }
+                
+//                console.log("Current tab order from DOM:", currentTabOrder);
+//                console.log("Desired tab order:", tabOrder);
+                
+                // Check if all tabs in tabOrder are present in currentTabOrder
+                const allTabsPresent = tabOrder.every(tabId => 
+                    currentTabOrder.includes(tabId)
+                );
+                
+                if (!allTabsPresent) {
+                    console.log("Not all tabs are present in the menu");
+                    return false;
+                }
+                
+                // Now check if the relative order is correct for the tabs that exist
+                // Skip tabs that don't exist in the current DOM
+                let lastFoundIndex = -1;
+                for (const tabId of tabOrder) {
+                    const currentIndex = currentTabOrder.indexOf(tabId);
+                    if (currentIndex !== -1) {
+                        // If this tab exists in the DOM, it should come after the last found tab
+                        if (currentIndex < lastFoundIndex) {
+                            console.log(`Tab ${tabId} is out of order: found at ${currentIndex}, should be after ${lastFoundIndex}`);
+                            return false;
+                        }
+                        lastFoundIndex = currentIndex;
+                    }
+                }
+                
+                // If we get here, all existing tabs are in the correct relative order
+//                console.log("Menu is in correct order");
+                return true;
+            }
+
+        // Call updateMenuOrder only when the menu is not in the correct order
+        setInterval(async () => {
+            if (!await isMenuInOrder()) {
+                updateMenuOrder();
+            }
+        }, 10);
 
 //------------------------------------------------ Advanced Settings Management Functions---------------------------------------------------------
 
