@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      7.4.1
+// @version      7.5
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -1152,10 +1152,27 @@ async function fetchTitleWithCacheAndRetry(url, retries = 3) {
 
 // Function to display bookmarked pages with active loading for unfetched bookmarks
 async function displayBookmarkedPages() {
-    const bookmarkedPages = await GM.getValue('bookmarkedPages', []);
-    const bookmarkedMangas = await GM.getValue('bookmarkedMangas', []);
+    let bookmarkedPages = await GM.getValue('bookmarkedPages', []);
+    let bookmarkedMangas = await GM.getValue('bookmarkedMangas', []);
+    const bookmarkArrangementType = await GM.getValue('bookmarkArrangementType', 'default');
 
     if (Array.isArray(bookmarkedPages) && Array.isArray(bookmarkedMangas)) {
+        // Sort bookmarked mangas based on arrangement type
+        if (bookmarkArrangementType === 'alphabetical') {
+            bookmarkedMangas.sort((a, b) => {
+                const titleA = a.title ? a.title.toLowerCase() : '';
+                const titleB = b.title ? b.title.toLowerCase() : '';
+                return titleA.localeCompare(titleB);
+            });
+        } else if (bookmarkArrangementType === 'reverse-alphabetical') {
+            bookmarkedMangas.sort((a, b) => {
+                const titleA = a.title ? a.title.toLowerCase() : '';
+                const titleB = b.title ? b.title.toLowerCase() : '';
+                return titleB.localeCompare(titleA);
+            });
+        }
+        // Note: bookmarkedPages will be sorted after titles are fetched
+        
         const bookmarksContainer = $('<div id="bookmarksContainer" class="container">');
         const bookmarksTitle = $('<h2 class="bookmarks-title">Bookmarked Pages</h2>');
         const bookmarksList = $('<ul class="bookmarks-list">');
@@ -1164,12 +1181,26 @@ async function displayBookmarkedPages() {
         const mangaBookmarksList = $('<ul class="bookmarks-grid">');
         const tagSearchInput = $('<input type="text" id="searchMangaTags" placeholder="Search manga tags..." class="search-input">');
 
-        bookmarksContainer.append(bookmarksTitle);
-        bookmarksContainer.append(searchInput);
-        bookmarksContainer.append(tagSearchInput); // Append the new search input
-        bookmarksContainer.append(bookmarksList);
-        bookmarksContainer.append(mangaBookmarksTitle);
-        bookmarksContainer.append(mangaBookmarksList);
+        // Get the bookmarks page order from storage or use default order
+        const defaultOrder = ['bookmarksTitle', 'searchInput', 'tagSearchInput', 'bookmarksList', 'mangaBookmarksTitle', 'mangaBookmarksList'];
+        const bookmarksOrder = await GM.getValue('bookmarksContainerOrder', defaultOrder);
+        
+        // Create a map of element names to their actual elements
+        const elementsMap = {
+            'bookmarksTitle': bookmarksTitle,
+            'searchInput': searchInput,
+            'tagSearchInput': tagSearchInput,
+            'bookmarksList': bookmarksList,
+            'mangaBookmarksTitle': mangaBookmarksTitle,
+            'mangaBookmarksList': mangaBookmarksList
+        };
+        
+        // Append elements in the order specified by bookmarksOrder
+        bookmarksOrder.forEach(elementName => {
+            if (elementsMap[elementName]) {
+                bookmarksContainer.append(elementsMap[elementName]);
+            }
+        });
         $('body').append(bookmarksContainer);
 
         // Add CSS styles
@@ -2547,6 +2578,7 @@ const settingsHtml = `
                 <input type="radio" id="manga-bookmarking-both" name="manga-bookmarking-type" value="both">
                 Show Both <span class="tooltip" data-tooltip="Displays both the cover and title for bookmarks.">?</span>
             </label>
+
         </div>
         <label>
             <input type="checkbox" id="bookmarksEnabled">
@@ -2626,6 +2658,20 @@ const settingsHtml = `
                     </ul>
                     <button type="button" id="resetTabOrder" class="btn-secondary">Reset to Default Order</button>
                 </div>
+                
+                <div class="section-header">Bookmarks Page Arrangement</div>
+                <div id="bookmarks-arrangement">
+                    <p>Drag and drop elements to rearrange their order in the bookmarks page:</p>
+                    <ul id="bookmarks-list" class="sortable-list">
+                        <li data-element="bookmarksTitle" class="tab-item"><i class="fa fa-bars handle"></i> Bookmarked Pages Title</li>
+                        <li data-element="searchInput" class="tab-item"><i class="fa fa-bars handle"></i> Search Input</li>
+                        <li data-element="tagSearchInput" class="tab-item"><i class="fa fa-bars handle"></i> Tag Search Input</li>
+                        <li data-element="bookmarksList" class="tab-item"><i class="fa fa-bars handle"></i> Bookmarks List</li>
+                        <li data-element="mangaBookmarksTitle" class="tab-item"><i class="fa fa-bars handle"></i> Manga Bookmarks Title</li>
+                        <li data-element="mangaBookmarksList" class="tab-item"><i class="fa fa-bars handle"></i> Manga Bookmarks List</li>
+                    </ul>
+                    <button type="button" id="resetBookmarksOrder" class="btn-secondary">Reset to Default Order</button>
+                </div>
                 </label>
         </div>
      </div>
@@ -2701,6 +2747,7 @@ $('div.container').append(settingsHtml);
             const openInNewTabEnabled = await GM.getValue('openInNewTabEnabled', true); 
             const mangaBookMarkingButtonEnabled = await GM.getValue('mangaBookMarkingButtonEnabled', true);
             const mangaBookMarkingType = await GM.getValue('mangaBookMarkingType', 'cover');
+            const bookmarkArrangementType = await GM.getValue('bookmarkArrangementType', 'default');
             const monthFilterEnabled = await GM.getValue('monthFilterEnabled', true);
             const tooltipsEnabled = await GM.getValue('tooltipsEnabled', true);
             const mangagroupingenabled = await GM.getValue('mangagroupingenabled', true);
@@ -2852,6 +2899,9 @@ $('#findSimilarEnabled').on('change', function() {
             } else if (mangaBookMarkingType === 'both') {
                 $('#manga-bookmarking-both').prop('checked', true);
             }
+            
+            // Initialize bookmark arrangement dropdown
+            $('#bookmark-arrangement-type').val(bookmarkArrangementType);
 
             $('#mangaBookMarkingButtonEnabled').on('change', function() {
                 if ($(this).prop('checked')) {
@@ -2920,6 +2970,7 @@ $('#openInNewTabEnabled').change(function() {
             const openInNewTabEnabled = $('#openInNewTabEnabled').prop('checked'); 
             const mangaBookMarkingButtonEnabled = $('#mangaBookMarkingButtonEnabled').prop('checked');
             const mangaBookMarkingType = $('input[name="manga-bookmarking-type"]:checked').val();
+            const bookmarkArrangementType = $('#bookmark-arrangement-type').val();
             const monthFilterEnabled = $('#monthFilterEnabled').prop('checked');
             const tooltipsEnabled = $('#tooltipsEnabled').prop('checked');
             const mangagroupingenabled = $('#mangagroupingenabled').prop('checked');
@@ -2961,6 +3012,7 @@ $('#openInNewTabEnabled').change(function() {
             await GM.setValue('openInNewTabEnabled', openInNewTabEnabled); 
             await GM.setValue('mangaBookMarkingButtonEnabled', mangaBookMarkingButtonEnabled);
             await GM.setValue('mangaBookMarkingType', mangaBookMarkingType);
+            await GM.setValue('bookmarkArrangementType', bookmarkArrangementType);
             await GM.setValue('monthFilterEnabled', monthFilterEnabled);
             await GM.setValue('tooltipsEnabled', tooltipsEnabled);
             await GM.setValue('mangagroupingenabled', mangagroupingenabled);
@@ -3568,6 +3620,96 @@ function refreshStorageData() {
             // Initialize tab arrangement functionality
             initializeTabSorting();
             updateMenuOrder();
+            
+            // Initialize Bookmarks Page Arrangement functionality
+            initializeBookmarksSorting();
+            
+            // Initialize bookmarks page order from storage or use default order
+            async function initializeBookmarksOrder() {
+                const defaultOrder = ['bookmarksTitle', 'searchInput', 'tagSearchInput', 'bookmarksList', 'mangaBookmarksTitle', 'mangaBookmarksList'];
+                const savedOrder = await GM.getValue('bookmarksContainerOrder');
+                return savedOrder || defaultOrder;
+            }
+            
+            // Function to initialize the bookmarks page sorting functionality
+            function initializeBookmarksSorting() {
+                const bookmarksList = document.getElementById('bookmarks-list');
+                if (!bookmarksList) return;
+                
+                // Initialize bookmarks list with saved order
+                initializeBookmarksOrder().then(bookmarksOrder => {
+                    // Reorder the list items according to the saved order
+                    const listItems = Array.from(bookmarksList.children);
+                    const tempContainer = document.createDocumentFragment();
+                    
+                    bookmarksOrder.forEach(elementName => {
+                        const item = listItems.find(li => li.dataset.element === elementName);
+                        if (item) tempContainer.appendChild(item);
+                    });
+                    
+                    // Clear the list and add all items in the new order
+                    while (bookmarksList.firstChild) {
+                        bookmarksList.removeChild(bookmarksList.firstChild);
+                    }
+                    
+                    bookmarksList.appendChild(tempContainer);
+                });
+                
+                // Initialize Sortable.js for Bookmarks Page Arrangement
+                new Sortable(bookmarksList, {
+                    animation: 150,
+                    handle: '.handle',
+                    ghostClass: 'sortable-ghost',
+                    dragClass: 'sortable-drag',
+                    forceFallback: true,
+                    fallbackTolerance: 1,
+                    delayOnTouchOnly: false,
+                    delay: 0,
+                    touchStartThreshold: 1,
+                    preventTextSelection: true,
+                    onStart: function(evt) {
+                        evt.item.classList.add('dragging');
+                        document.body.style.userSelect = 'none';
+                        document.body.style.webkitUserSelect = 'none';
+                        document.body.style.mozUserSelect = 'none';
+                        document.body.style.msUserSelect = 'none';
+                    },
+                    onEnd: async function(evt) {
+                        evt.item.classList.remove('dragging');
+                        document.body.style.userSelect = '';
+                        document.body.style.webkitUserSelect = '';
+                        document.body.style.mozUserSelect = '';
+                        document.body.style.msUserSelect = '';
+                        const newOrder = Array.from(bookmarksList.children).map(item => item.dataset.element);
+                        await GM.setValue('bookmarksContainerOrder', newOrder);
+                    }
+                });
+                
+                // Add mouse event listeners to improve drag handle feedback
+                bookmarksList.querySelectorAll('.handle').forEach(handle => {
+                    handle.addEventListener('mousedown', () => {
+                        handle.style.cursor = 'grabbing';
+                    });
+                    handle.addEventListener('mouseup', () => {
+                        handle.style.cursor = 'grab';
+                    });
+                });
+                
+                // Reset button handler
+                document.getElementById('resetBookmarksOrder').addEventListener('click', async function() {
+                    const defaultOrder = ['bookmarksTitle', 'searchInput', 'tagSearchInput', 'bookmarksList', 'mangaBookmarksTitle', 'mangaBookmarksList'];
+                    await GM.setValue('bookmarksContainerOrder', defaultOrder);
+                    
+                    showPopup('Bookmarks page order reset!', {timeout: 1000});
+                    
+                    // Reset visual order in settings
+                    const bookmarksList = document.getElementById('bookmarks-list');
+                    defaultOrder.forEach(elementName => {
+                        const item = bookmarksList.querySelector(`[data-element="${elementName}"]`);
+                        if (item) bookmarksList.appendChild(item);
+                    });
+                });
+            }
         
         
         
