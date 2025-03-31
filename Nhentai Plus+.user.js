@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      7.5
+// @version      7.5.1
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -421,7 +421,7 @@ async function addFindAltButton() {
         }
 
         // Remove text inside square brackets [], parentheses (), 'Ch.', 'ch.', 'Vol.', 'vol.', and all Chinese and Japanese characters
-        const cleanedTitleText = titleText.replace(/[\[\]\(\)\d\-]|Ch\.|ch\.|Vol\.|vol\.|\|[\u3002\uFF01-\uFF5E\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF]/g, '').trim();
+        const cleanedTitleText = titleText.replace(/[\[\]\(\)]|Ch\.|ch\.|Vol\.|vol\.|Ep\.|Ep|ep\.|ep|\|[\u3002\uFF01-\uFF5E\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF]|(?<!\w)-(?!\w)|(?<=\W)\d+(?=\W)/g, '').trim();
 
         // Find the search input
         const searchInput = $('input[name="q"]');
@@ -596,7 +596,7 @@ addFindAltButton();
                             if (titleElement) {
                                 const prettySpan = titleElement.querySelector('.pretty');
                                 let titleText = prettySpan ? prettySpan.textContent.trim() : titleElement.textContent.trim();
-                                const cleanedTitleText = titleText.replace(/[\[\]\(\)\d\-]|Ch\.|ch\.|Vol\.|vol\.|\|[\u3002\uFF01-\uFF5E\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF]/g, '').trim();
+                                const cleanedTitleText = titleText.replace(/[\[\]\(\)]|Ch\.|ch\.|Vol\.|vol\.|Ep\.|Ep|ep\.|ep|\|[\u3002\uFF01-\uFF5E\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF]|(?<!\w)-(?!\w)|(?<=\W)\d+(?=\W)/g, '').trim();
                                 
                                 // Add the cleaned title if it's different from the caption title
                                 if (cleanedTitleText && cleanedTitleText !== captionTitle) {
