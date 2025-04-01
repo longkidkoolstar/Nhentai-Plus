@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      7.5.1
+// @version      7.5.2
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -2655,6 +2655,8 @@ const settingsHtml = `
                         <li data-tab="characters" class="tab-item"><i class="fa fa-bars handle"></i> Characters</li>
                         <li data-tab="parodies" class="tab-item"><i class="fa fa-bars handle"></i> Parodies</li>
                         <li data-tab="groups" class="tab-item"><i class="fa fa-bars handle"></i> Groups</li>
+                        <li data-tab="info" class="tab-item"><i class="fa fa-bars handle"></i> Info</li>
+                        <li data-tab="twitter" class="tab-item"><i class="fa fa-bars handle"></i> Twitter</li>
                     </ul>
                     <button type="button" id="resetTabOrder" class="btn-secondary">Reset to Default Order</button>
                 </div>
@@ -3715,7 +3717,7 @@ function refreshStorageData() {
         
             // Initialize tab order from storage or use default order
             async function initializeTabOrder() {
-                const defaultOrder = ['random', 'tags', 'artists', 'characters', 'parodies', 'groups', 'bookmarks', 'continue_reading', 'settings'];
+                const defaultOrder = ['random', 'tags', 'artists', 'characters', 'parodies', 'groups', 'info', 'twitter', 'bookmarks', 'continue_reading', 'settings'];
                 const savedOrder = await GM.getValue('tabOrder');
                 return savedOrder || defaultOrder;
             }
@@ -3739,7 +3741,15 @@ function refreshStorageData() {
                     // Find the menu item for this tab
                     const menuItem = allMenuItems.find(li => {
                         const link = li.querySelector('a');
-                        return link && link.getAttribute('href').includes(`/${tabId}/`);
+                        if (!link) return false;
+                        
+                        const href = link.getAttribute('href');
+                        // Special case for Twitter which is an external link
+                        if (tabId === 'twitter' && href.includes('twitter.com/nhentaiOfficial')) {
+                            return true;
+                        }
+                        // Regular case for internal links
+                        return href.includes(`/${tabId}/`);
                     });
                     
                     // If found, move it to our temporary container
@@ -3772,7 +3782,15 @@ function refreshStorageData() {
                     // Find the corresponding desktop item
                     const desktopItem = Array.from(menu.querySelectorAll('li')).find(li => {
                         const link = li.querySelector('a');
-                        return link && link.getAttribute('href').includes(`/${tabId}/`);
+                        if (!link) return false;
+                        
+                        const href = link.getAttribute('href');
+                        // Special case for Twitter which is an external link
+                        if (tabId === 'twitter' && href.includes('twitter.com/nhentaiOfficial')) {
+                            return true;
+                        }
+                        // Regular case for internal links
+                        return href.includes(`/${tabId}/`);
                     });
                     
                     if (desktopItem) {
@@ -3915,6 +3933,50 @@ function refreshStorageData() {
                         });
                     }
                     
+                    // Check for Info
+                    const infoItem = Array.from(menu.querySelectorAll('li')).find(li => {
+                        const link = li.querySelector('a');
+                        return link && link.getAttribute('href').includes('/info/');
+                    });
+
+                    if (infoItem && !tabList.querySelector('[data-tab="info"]')) {
+                        const infoTabItem = document.createElement('li');
+                        infoTabItem.className = 'tab-item';
+                        infoTabItem.dataset.tab = 'info';
+                        infoTabItem.innerHTML = '<i class="fa fa-bars handle"></i> Info';
+                        tabList.appendChild(infoTabItem);
+                        
+                        // Reapply the saved order after adding a new item
+                        initializeTabOrder().then(tabOrder => {
+                            tabOrder.forEach(tabId => {
+                                const item = tabList.querySelector(`[data-tab="${tabId}"]`);
+                                if (item) tabList.appendChild(item);
+                            });
+                        });
+                    }
+
+                    // Check for Twitter
+                    const twitterItem = Array.from(menu.querySelectorAll('li')).find(li => {
+                        const link = li.querySelector('a');
+                        return link && link.getAttribute('href').includes('twitter.com/nhentaiOfficial');
+                    });
+
+                    if (twitterItem && !tabList.querySelector('[data-tab="twitter"]')) {
+                        const twitterTabItem = document.createElement('li');
+                        twitterTabItem.className = 'tab-item';
+                        twitterTabItem.dataset.tab = 'twitter';
+                        twitterTabItem.innerHTML = '<i class="fa fa-bars handle"></i> Twitter';
+                        tabList.appendChild(twitterTabItem);
+                        
+                        // Reapply the saved order after adding a new item
+                        initializeTabOrder().then(tabOrder => {
+                            tabOrder.forEach(tabId => {
+                                const item = tabList.querySelector(`[data-tab="${tabId}"]`);
+                                if (item) tabList.appendChild(item);
+                            });
+                        });
+                    }
+
                     // Check for Settings
                     const settingsItem = Array.from(menu.querySelectorAll('li')).find(li => {
                         const link = li.querySelector('a');
@@ -3985,7 +4047,7 @@ function refreshStorageData() {
         
                 // Reset button handler
                 document.getElementById('resetTabOrder').addEventListener('click', async function() {
-                    const defaultOrder = ['random', 'tags', 'artists', 'characters', 'parodies', 'groups', 'bookmarks', 'continue_reading', 'settings'];
+                    const defaultOrder = ['random', 'tags', 'artists', 'characters', 'parodies', 'groups', 'info', 'twitter', 'bookmarks', 'continue_reading', 'settings'];
                     await GM.setValue('tabOrder', defaultOrder);
         
                     showPopup('Tab order reset!', {timeout: 1000});
@@ -4027,7 +4089,12 @@ function refreshStorageData() {
                     const link = menuItem.querySelector('a');
                     if (link) {
                         const href = link.getAttribute('href');
-                        // Extract the tab ID from the href
+                        // Special case for Twitter which is an external link
+                        if (href.includes('twitter.com/nhentaiOfficial')) {
+                            currentTabOrder.push('twitter');
+                            continue;
+                        }
+                        // Extract the tab ID from the href for internal links
                         const match = href.match(/\/([^\/]+)\//);
                         if (match && match[1]) {
                             currentTabOrder.push(match[1]);
@@ -4043,8 +4110,9 @@ function refreshStorageData() {
                     currentTabOrder.includes(tabId)
                 );
                 
+                //Debug for checking if all tabs are in the menu
                 if (!allTabsPresent) {
-                    console.log("Not all tabs are present in the menu");
+                    //console.log("Not all tabs are present in the menu");
                     return false;
                 }
                 
