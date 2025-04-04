@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      7.6
+// @version      7.6.1
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -2065,6 +2065,8 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
             } else if (pathname.startsWith('/group/')) { // group pages
                 document.getElementsByClassName('sort')[0].innerHTML += namespaceSearchLink;
             } else if (pathname.startsWith('/category/')) { // category pages
+                document.getElementsByClassName('sort')[0].innerHTML += namespaceSearchLink;
+            } else if (pathname.startsWith('/character/')) { // character pages
                 document.getElementsByClassName('sort')[0].innerHTML += namespaceSearchLink;
             } else if (pathname.startsWith('/search/')) { // search pages
                 document.getElementsByClassName('sort')[0].innerHTML += siteSearchLink;
