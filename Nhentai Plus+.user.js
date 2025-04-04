@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      7.5.3
+// @version      7.6
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -2486,11 +2486,69 @@ const settingsHtml = `
  font-size: 14px;
 }
 
+/* Style for the Show Non-English dropdown to match NHentai theme */
+#showNonEnglishSelect {
+    /* Basic styling */
+    padding: 6px 10px;
+    margin: 0 5px;
+    min-width: 110px;
+    
+    /* Colors */
+    background-color: #2b2b2b;
+    color: #e6e6e6;
+    border: 1px solid #3d3d3d;
+    
+    /* Typography */
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    font-size: 14px;
+    font-weight: 400;
+    
+    /* Effects */
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+/* Hover state */
+#showNonEnglishSelect:hover {
+    border-color: #4e4e4e;
+    background-color: #323232;
+}
+
+/* Focus state */
+#showNonEnglishSelect:focus {
+    outline: none;
+    border-color: #616161;
+    box-shadow: 0 0 0 2px rgba(82, 82, 82, 0.35);
+}
+
+/* Dropdown options */
+#showNonEnglishSelect option {
+    padding: 8px 12px;
+    background-color: #2b2b2b;
+    color: #e6e6e6;
+}
+
+/* Tooltip integration */
+label:hover .tooltip {
+    opacity: 1;
+    visibility: visible;
+}
+
 </style>
 
 <div id="content">
     <h1>Settings</h1>
     <form id="settingsForm">
+        <label>
+            Show Non-English:
+            <select id="showNonEnglishSelect">
+                <option value="show">Show</option>
+                <option value="hide">Hide</option>
+                <option value="fade">Fade</option>
+            </select>
+            <span class="tooltip" data-tooltip="Control the visibility of non-English manga.">?</span>
+        </label>
         <label>
             <input type="checkbox" id="offlineFavoritingEnabled">
             Enable Offline Favoriting <span class="tooltip" data-tooltip="Allows favoriting manga even without being logged in.">?</span>
@@ -2593,7 +2651,7 @@ const settingsHtml = `
           <label for="max-manga-per-bookmark-slider">Max Manga per Bookmark:</label>
           <input type="range" id="max-manga-per-bookmark-slider" min="1" max="25" value="5">
           <span id="max-manga-per-bookmark-on-mobile-value">5</span>
-          <span class="tooltip" data-tooltip="Sets the maximum number of manga to display per bookmark.">?</span>
+          <span class="tooltip" data-tooltip="Sets the maximum number of manga fetched per bookmarked page.">?</span>
         </div>
 
         <!-- Page Management Section -->
@@ -2766,9 +2824,12 @@ $('div.container').append(settingsHtml);
             const logoutButtonEnabled = await GM.getValue('logoutButtonEnabled', true);
             const bookmarkLinkEnabled = await GM.getValue('bookmarkLinkEnabled', true);
             const findSimilarType = await GM.getValue('findSimilarType', 'immediately');
+            const showNonEnglish = await GM.getValue('showNonEnglish', 'show');
+
 
             $('#findSimilarEnabled').prop('checked', findSimilarEnabled);
             $('#find-similar-options').toggle(findSimilarEnabled);
+            $('#showNonEnglishSelect').val(showNonEnglish);
 
             $('#englishFilterEnabled').prop('checked', englishFilterEnabled);
             $('#autoLoginEnabled').prop('checked', autoLoginEnabled);
@@ -2913,6 +2974,12 @@ $('#findSimilarEnabled').on('change', function() {
                 }
             });
 
+            $('#showNonEnglishSelect').on('change', async () => {
+                const showNonEnglish = $('#showNonEnglishSelect').val();
+                await GM.setValue('showNonEnglish', showNonEnglish);
+                applyNonEnglishStyles();
+            });
+
 // Check if openInNewTabEnabled is true, if not, hide the options
 if (openInNewTabEnabled) {
   $('#open-in-New-Tab-options').show();
@@ -2989,6 +3056,7 @@ $('#openInNewTabEnabled').change(function() {
             const logoutButtonEnabled = $('#logoutButtonEnabled').prop('checked');
             const bookmarkLinkEnabled = $('#bookmarkLinkEnabled').prop('checked');
             const findSimilarType = $('input[name="find-similar-type"]:checked').val();
+            const showNonEnglish = await GM.getValue('showNonEnglish', 'show');
 
 
 
@@ -2997,6 +3065,7 @@ $('#openInNewTabEnabled').change(function() {
 
 
 
+            await GM.setValue('showNonEnglish', showNonEnglish);
             await GM.setValue('findSimilarEnabled', findSimilarEnabled);
             await GM.setValue('englishFilterEnabled', englishFilterEnabled);
             await GM.setValue('autoLoginEnabled', autoLoginEnabled);
@@ -5818,3 +5887,31 @@ async function createBookmarkLink() {
 createBookmarkLink();
 
 //-------------------------------------------------**BookMark-Link**---------------------------------------------------------
+
+
+//-------------------------------------------------**Non-English-Manga**--------------------------------------------------------
+
+async function applyNonEnglishStyles() {
+    // Remove existing styles
+    $('style[data-non-english]').remove();
+
+    const showNonEnglish = await GM.getValue('showNonEnglish', 'show');
+    let style = '';
+    if (showNonEnglish === 'hide') {
+        style = `.gallery:not([data-tags~='12227']) { display: none; }`;
+    } else if (showNonEnglish === 'fade') {
+        const nonEnglishFadeOpacity = 0.5; // Or get this from settings
+        style = `.gallery:not([data-tags~='12227']) > .cover > img, .gallery:not([data-tags~='12227']) > .cover > .caption { opacity: ${nonEnglishFadeOpacity}; }`;
+    }
+    if (style) {
+        const newStyle = document.createElement('style');
+        newStyle.dataset.nonEnglish = true;
+        newStyle.innerHTML = style;
+        document.head.appendChild(newStyle);
+    }
+}
+
+applyNonEnglishStyles(); // Apply styles on initial load
+
+
+//-------------------------------------------------**Non-English-Manga**--------------------------------------------------------
