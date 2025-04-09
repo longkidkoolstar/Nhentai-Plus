@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      7.6.1
+// @version      7.7
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -2552,6 +2552,10 @@ label:hover .tooltip {
             <span class="tooltip" data-tooltip="Control the visibility of non-English manga.">?</span>
         </label>
         <label>
+            <input type="checkbox" id="showPageNumbersEnabled">
+            Show Page Numbers <span class="tooltip" data-tooltip="Displays the page count for each manga thumbnail.">?</span>
+        </label>
+        <label>
             <input type="checkbox" id="offlineFavoritingEnabled">
             Enable Offline Favoriting <span class="tooltip" data-tooltip="Allows favoriting manga even without being logged in.">?</span>
         </label>
@@ -2827,11 +2831,13 @@ $('div.container').append(settingsHtml);
             const bookmarkLinkEnabled = await GM.getValue('bookmarkLinkEnabled', true);
             const findSimilarType = await GM.getValue('findSimilarType', 'immediately');
             const showNonEnglish = await GM.getValue('showNonEnglish', 'show');
+            const showPageNumbersEnabled = await GM.getValue('showPageNumbersEnabled', true);
 
 
             $('#findSimilarEnabled').prop('checked', findSimilarEnabled);
             $('#find-similar-options').toggle(findSimilarEnabled);
             $('#showNonEnglishSelect').val(showNonEnglish);
+            $('#showPageNumbersEnabled').prop('checked', showPageNumbersEnabled);
 
             $('#englishFilterEnabled').prop('checked', englishFilterEnabled);
             $('#autoLoginEnabled').prop('checked', autoLoginEnabled);
@@ -3059,6 +3065,7 @@ $('#openInNewTabEnabled').change(function() {
             const bookmarkLinkEnabled = $('#bookmarkLinkEnabled').prop('checked');
             const findSimilarType = $('input[name="find-similar-type"]:checked').val();
             const showNonEnglish = await GM.getValue('showNonEnglish', 'show');
+            const showPageNumbersEnabled = $('#showPageNumbersEnabled').prop('checked');
 
 
 
@@ -3068,6 +3075,7 @@ $('#openInNewTabEnabled').change(function() {
 
 
             await GM.setValue('showNonEnglish', showNonEnglish);
+            await GM.setValue('showPageNumbersEnabled', showPageNumbersEnabled);
             await GM.setValue('findSimilarEnabled', findSimilarEnabled);
             await GM.setValue('englishFilterEnabled', englishFilterEnabled);
             await GM.setValue('autoLoginEnabled', autoLoginEnabled);
@@ -5917,3 +5925,120 @@ applyNonEnglishStyles(); // Apply styles on initial load
 
 
 //-------------------------------------------------**Non-English-Manga**--------------------------------------------------------
+
+// -----------------------------------------------**Thumbnail-Page-Numbers**--------------------------------------------------------
+
+// Function to add page numbers to manga thumbnails
+async function addPageNumbersToThumbnails() {
+    // Check if the feature is enabled
+    const showPageNumbersEnabled = await GM.getValue('showPageNumbersEnabled', true);
+    if (!showPageNumbersEnabled) return;
+
+    // Add CSS for page number display
+    const pageNumberCSS = `
+        .page-number-display {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: bold;
+            z-index: 10;
+        }
+    `;
+    GM.addStyle(pageNumberCSS);
+
+    // Function to extract page count from a manga page
+    async function getPageCount(url) {
+        try {
+            const response = await fetch(url);
+            const html = await response.text();
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            
+            // Look for the page count in the tags section
+            const pageElement = doc.querySelector('#tags .tag-container:nth-last-child(2) .name');
+            if (pageElement) {
+                const pageCount = parseInt(pageElement.textContent.trim(), 10);
+                if (!isNaN(pageCount)) {
+                    return pageCount;
+                }
+            }
+            return null;
+        } catch (error) {
+            console.error('Error fetching page count:', error);
+            return null;
+        }
+    }
+
+    // Function to add page number display to a gallery item
+    async function addPageNumberToGallery(galleryItem) {
+        // Check if this gallery already has a page number display
+        if (galleryItem.querySelector('.page-number-display')) {
+            return;
+        }
+
+        // Get the manga URL
+        const coverLink = galleryItem.querySelector('.cover');
+        if (!coverLink) return;
+        
+        const mangaUrl = coverLink.getAttribute('href');
+        if (!mangaUrl) return;
+        
+        const fullUrl = `https://nhentai.net${mangaUrl}`;
+        
+        // Try to get page count
+        const pageCount = await getPageCount(fullUrl);
+        if (pageCount) {
+            // Create and add the page number display
+            const pageNumberDisplay = document.createElement('div');
+            pageNumberDisplay.className = 'page-number-display';
+            pageNumberDisplay.textContent = `${pageCount} ${pageCount === 1 ? 'page' : 'pages'}`;
+            
+            // Add to the cover element
+            coverLink.style.position = 'relative';
+            coverLink.appendChild(pageNumberDisplay);
+        }
+    }
+
+    // Process all gallery items on the page
+    function processGalleryItems() {
+        const galleryItems = document.querySelectorAll('.gallery');
+        galleryItems.forEach(galleryItem => {
+            addPageNumberToGallery(galleryItem);
+        });
+    }
+
+    // Initial processing
+    processGalleryItems();
+
+    // Set up a MutationObserver to handle dynamically added content
+    const observer = new MutationObserver(mutations => {
+        mutations.forEach(mutation => {
+            if (mutation.addedNodes && mutation.addedNodes.length > 0) {
+                mutation.addedNodes.forEach(node => {
+                    // Check if the added node is a gallery or contains galleries
+                    if (node.classList && node.classList.contains('gallery')) {
+                        addPageNumberToGallery(node);
+                    } else if (node.querySelectorAll) {
+                        const galleries = node.querySelectorAll('.gallery');
+                        galleries.forEach(gallery => {
+                            addPageNumberToGallery(gallery);
+                        });
+                    }
+                });
+            }
+        });
+    });
+
+    // Start observing the document with the configured parameters
+    observer.observe(document.body, { childList: true, subtree: true });
+}
+
+// Call the function to add page numbers to thumbnails
+addPageNumbersToThumbnails();
+
+// -----------------------------------------------**Thumbnail-Page-Numbers**--------------------------------------------------------
