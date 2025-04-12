@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      7.7
+// @version      7.7.1
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -5947,6 +5947,8 @@ async function addPageNumbersToThumbnails() {
             font-size: 12px;
             font-weight: bold;
             z-index: 10;
+            background-color: rgba(0,0,0,.4);
+            opacity: 1;
         }
     `;
     GM.addStyle(pageNumberCSS);
