@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      7.8
+// @version      7.8.1
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -6072,18 +6072,24 @@ async function handleOfflineFavoritesPage() {
     document.getElementById('content').appendChild(container);
 
     // Add CSS styles
-    GM.addStyle(`
+     // Add CSS styles
+     GM.addStyle(`
         #offline-favorites-container {
             padding: 20px 0;
+            max-width: 1200px;
+            margin: 0 auto;
         }
 
         #offline-favorites-container h1 {
             margin-bottom: 10px;
+            color: #ed2553;
+            font-size: 2em;
         }
 
         #offline-favorites-container p {
             margin-bottom: 20px;
             color: #888;
+            font-size: 1em;
         }
 
         .sort-controls {
@@ -6091,35 +6097,46 @@ async function handleOfflineFavoritesPage() {
         }
 
         .sort-controls select {
-            background-color: #1f1f1f;
+            background-color: #252525;
             color: #f1f1f1;
-            border: 1px solid #333;
-            padding: 5px 10px;
+            border: 1px solid #3d3d3d;
+            padding: 8px 12px;
             border-radius: 3px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .sort-controls select:hover {
+            background-color: #3d3d3d;
         }
 
         .gallery-container {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 25px;
+            padding: 0 10px;
         }
 
         .favorite-item {
             position: relative;
-            border-radius: 5px;
+            border-radius: 3px;
             overflow: hidden;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-            transition: transform 0.2s;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+            transition: all 0.3s ease;
+            background: #252525;
         }
 
         .favorite-item:hover {
             transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(237, 37, 83, 0.2);
         }
 
         .favorite-item img {
             width: 100%;
             height: auto;
             display: block;
+            aspect-ratio: 3/4;
+            object-fit: cover;
         }
 
         .favorite-item .title {
@@ -6127,9 +6144,9 @@ async function handleOfflineFavoritesPage() {
             bottom: 0;
             left: 0;
             right: 0;
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
-            padding: 8px;
+            background: linear-gradient(transparent, rgba(0, 0, 0, 0.9));
+            color: #ffffff;
+            padding: 15px 10px;
             font-size: 14px;
             text-align: center;
             white-space: nowrap;
@@ -6139,32 +6156,53 @@ async function handleOfflineFavoritesPage() {
 
         .favorite-item .remove-btn {
             position: absolute;
-            top: 5px;
-            right: 5px;
-            background: rgba(0, 0, 0, 0.7);
+            top: 10px;
+            right: 10px;
+            background: rgba(237, 37, 83, 0.9);
             color: white;
             border: none;
             border-radius: 50%;
-            width: 24px;
-            height: 24px;
-            font-size: 14px;
+            width: 28px;
+            height: 28px;
+            font-size: 16px;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
             opacity: 0;
-            transition: opacity 0.2s;
+            transition: all 0.2s ease;
         }
 
         .favorite-item:hover .remove-btn {
             opacity: 1;
         }
 
+        .favorite-item .remove-btn:hover {
+            background: #ed2553;
+            transform: scale(1.1);
+        }
+
         .no-favorites {
             grid-column: 1 / -1;
             text-align: center;
-            padding: 50px 0;
+            padding: 80px 0;
             color: #888;
+            font-size: 1.2em;
+            background: #252525;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+
+        @media (max-width: 768px) {
+            .gallery-container {
+                grid-template-columns: repeat(auto-fill, minmax(115px, .5fr));
+                gap: 15px;
+            }
+            
+            #offline-favorites-container h1 {
+                font-size: 1.5em;
+                text-align: center;
+            }
         }
     `);
 
