@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      7.8.1
+// @version      7.8.2
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -2593,10 +2593,6 @@ label:hover .tooltip {
             Enable Offline Favoriting <span class="tooltip" data-tooltip="Allows favoriting manga even without being logged in.">?</span>
         </label>
         <label>
-            <input type="checkbox" id="offlineFavoritesPageEnabled">
-            Enable Offline Favorites Page <span class="tooltip" data-tooltip="Adds a page to view all your offline favorites.">?</span>
-        </label>
-        <label>
             <input type="checkbox" id="findSimilarEnabled">
             Enable Find Similar Button <span class="tooltip" data-tooltip="Finds similar manga based on the current one.">?</span>
         </label>
@@ -2704,6 +2700,10 @@ label:hover .tooltip {
                 <p>Control which custom pages and navigation elements are enabled:</p>
 
                 <div class="section-header">Feature Pages</div>
+                <label>
+                    <input type="checkbox" id="offlineFavoritesPageEnabled">
+                     Enable Offline Favorites Page <span class="tooltip" data-tooltip="Adds a tab to view all your offline favorites.">?</span>
+                </label>
                 <label>
                     <input type="checkbox" id="nfmPageEnabled">
                     Enable NFM (Nhentai Favorite Manager) Page <span class="tooltip" data-tooltip="Enables the Nhentai Favorite Manager page for favorite management.">?</span>
@@ -6155,22 +6155,23 @@ async function handleOfflineFavoritesPage() {
         }
 
         .favorite-item .remove-btn {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: rgba(237, 37, 83, 0.9);
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 28px;
-            height: 28px;
-            font-size: 16px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            opacity: 0;
-            transition: all 0.2s ease;
+                position: absolute;
+                top: 5px;
+                right: 5px;
+                background: rgba(0,0,0,0.5);
+                color: white;
+                border: none;
+                border-radius: 50%;
+                width: 24px;
+                height: 24px;
+                font-size: 14px;
+                cursor: pointer;
+                opacity: 0;
+                transition: opacity 0.2s ease;
+                text-align: center;
+                display: flex;
+                align-items: center;
+                justify-content: center;
         }
 
         .favorite-item:hover .remove-btn {
@@ -6220,7 +6221,7 @@ async function handleOfflineFavoritesPage() {
 
         // Sort favorites if needed
         let sortedFavorites = [...favorites];
-        if (sortOrder === 'oldest') {
+        if (sortOrder === 'newest') {
             sortedFavorites.reverse();
         }
 
