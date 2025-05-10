@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      7.8.2
+// @version      7.8.3
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -6199,7 +6199,7 @@ async function handleOfflineFavoritesPage() {
                 grid-template-columns: repeat(auto-fill, minmax(115px, .5fr));
                 gap: 15px;
             }
-            
+
             #offline-favorites-container h1 {
                 font-size: 1.5em;
                 text-align: center;
@@ -6258,20 +6258,76 @@ async function handleOfflineFavoritesPage() {
                 e.preventDefault();
                 e.stopPropagation();
 
-                // Remove from favorites
-                const updatedFavorites = sortedFavorites.filter(id => id !== mangaId);
-                await GM.setValue('toFavorite', updatedFavorites);
+                // Show confirmation popup before deleting
+                showPopup('Are you sure you want to remove this from favorites?', {
+                    autoClose: false,
+                    width: '300px',
+                    buttons: [
+                        {
+                            text: "Cancel",
+                            callback: () => {
+                                // Do nothing, just close the popup
+                            }
+                        },
+                        {
+                            text: "Remove",
+                            callback: async () => {
+                                // Store the manga ID for potential undo
+                                const deletedMangaId = mangaId;
+                                let deletedMangaInfo = null;
 
-                // Remove from display
-                favoriteItem.remove();
+                                try {
+                                    // Try to get manga info for the undo popup
+                                    deletedMangaInfo = await GM.getValue(`manga_info_${mangaId}`, null);
+                                } catch (error) {
+                                    console.error("Error getting manga info for undo:", error);
+                                }
 
-                // Update display if no favorites left
-                if (updatedFavorites.length === 0) {
-                    renderFavorites(updatedFavorites, sortOrder);
-                }
+                                // Remove from favorites
+                                const updatedFavorites = sortedFavorites.filter(id => id !== mangaId);
+                                await GM.setValue('toFavorite', updatedFavorites);
 
-                // Show confirmation
-                showPopup('Removed from favorites', { timeout: 2000 });
+                                // Remove from display
+                                favoriteItem.remove();
+
+                                // Update display if no favorites left
+                                if (updatedFavorites.length === 0) {
+                                    renderFavorites(updatedFavorites, sortOrder);
+                                }
+
+                                // Show confirmation with undo button
+                                showPopup(
+                                    `Removed from favorites${deletedMangaInfo?.title ? ': ' + deletedMangaInfo.title : ''}`,
+                                    {
+                                        timeout: 5000,
+                                        width: '300px',
+                                        buttons: [
+                                            {
+                                                text: "Undo",
+                                                callback: async () => {
+                                                    // Get current favorites
+                                                    const currentFavorites = await GM.getValue('toFavorite', []);
+
+                                                    // Add the manga back if it's not already there
+                                                    if (!currentFavorites.includes(deletedMangaId)) {
+                                                        currentFavorites.push(deletedMangaId);
+                                                        await GM.setValue('toFavorite', currentFavorites);
+
+                                                        // Refresh the display to show the restored item
+                                                        renderFavorites(currentFavorites, sortOrder);
+
+                                                        // Show confirmation
+                                                        showPopup('Favorite restored', { timeout: 2000 });
+                                                    }
+                                                }
+                                            }
+                                        ]
+                                    }
+                                );
+                            }
+                        }
+                    ]
+                });
             });
 
             favoriteItem.appendChild(link);
