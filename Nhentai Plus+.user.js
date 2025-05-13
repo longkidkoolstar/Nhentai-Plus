@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      7.8.3
+// @version      7.9.3
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -18,6 +18,23 @@
 // @grant        GM.xmlHttpRequest
 // ==/UserScript==
 
+
+// Global settings with default values
+const SETTINGS = {
+    replaceRelatedWithBookmarks: true, // Default to true for the new feature
+};
+
+// Load settings
+async function loadSettings() {
+    for (const key in SETTINGS) {
+        const value = await GM.getValue(key, SETTINGS[key]);
+        SETTINGS[key] = value;
+    }
+    console.log('Settings loaded:', SETTINGS);
+}
+
+// Initialize settings
+loadSettings();
 
 //----------------------- **Fix Menu OverFlow**----------------------------------
 
@@ -2712,6 +2729,10 @@ label:hover .tooltip {
                     <input type="checkbox" id="bookmarksPageEnabled">
                     Enable Bookmarks Page <span class="tooltip" data-tooltip="Enables the dedicated Bookmarks page for managing saved bookmarks.">?</span>
                 </label>
+                <label>
+                    <input type="checkbox" id="replaceRelatedWithBookmarks">
+                    Replace Related Manga with Bookmarks <span class="tooltip" data-tooltip="Replaces the Related Manga section with content from your bookmarks.">?</span>
+                </label>
             <div id="bookmark-page-options" style="display: none;">
                 <label>
                     <input type="checkbox" id="enableRandomButton">
@@ -2861,6 +2882,7 @@ $('div.container').append(settingsHtml);
             const offlineFavoritesPageEnabled = await GM.getValue('offlineFavoritesPageEnabled', true);
             const nfmPageEnabled = await GM.getValue('nfmPageEnabled', true);
             const bookmarksPageEnabled = await GM.getValue('bookmarksPageEnabled', true);
+            const replaceRelatedWithBookmarks = await GM.getValue('replaceRelatedWithBookmarks', true);
             const twitterButtonEnabled = await GM.getValue('twitterButtonEnabled', true);
             const enableRandomButton = await GM.getValue('enableRandomButton', true);
             const randomOpenType = await GM.getValue('randomOpenType', 'new-tab');
@@ -2902,6 +2924,7 @@ $('div.container').append(settingsHtml);
             $('#offlineFavoritesPageEnabled').prop('checked', offlineFavoritesPageEnabled);
             $('#nfmPageEnabled').prop('checked', nfmPageEnabled);
             $('#bookmarksPageEnabled').prop('checked', bookmarksPageEnabled);
+            $('#replaceRelatedWithBookmarks').prop('checked', replaceRelatedWithBookmarks);
             $('#twitterButtonEnabled').prop('checked', twitterButtonEnabled);
             $('#enableRandomButton').prop('checked', enableRandomButton);
             $('#random-open-in-new-tab').prop('checked', randomOpenType === 'new-tab');
@@ -3097,6 +3120,7 @@ $('#openInNewTabEnabled').change(function() {
             const offlineFavoritesPageEnabled = $('#offlineFavoritesPageEnabled').prop('checked');
             const nfmPageEnabled = $('#nfmPageEnabled').prop('checked');
             const bookmarksPageEnabled = $('#bookmarksPageEnabled').prop('checked');
+            const replaceRelatedWithBookmarks = $('#replaceRelatedWithBookmarks').prop('checked');
             const twitterButtonEnabled = $('#twitterButtonEnabled').prop('checked');
             const enableRandomButton = $('#enableRandomButton').prop('checked');
             const randomOpenType = $('input[name="random-open-type"]:checked').val();
@@ -3144,6 +3168,7 @@ $('#openInNewTabEnabled').change(function() {
             await GM.setValue('offlineFavoritesPageEnabled', offlineFavoritesPageEnabled);
             await GM.setValue('nfmPageEnabled', nfmPageEnabled);
             await GM.setValue('bookmarksPageEnabled', bookmarksPageEnabled);
+            await GM.setValue('replaceRelatedWithBookmarks', replaceRelatedWithBookmarks);
             await GM.setValue('twitterButtonEnabled', twitterButtonEnabled);
             await GM.setValue('enableRandomButton', enableRandomButton);
             await GM.setValue('randomOpenType', randomOpenType);
@@ -5091,6 +5116,347 @@ addMonthFilter();
 
 //--------------------------*Month Filter**----------------------------------------
 
+//--------------------------- **Replace Related Manga with Bookmarks** ---------------------------
+
+// Function to get manga details (cover image and title)
+async function getMangaDetails(mangaId) {
+    try {
+        // First check if we have details cached
+        const cachedDetails = await GM.getValue(`manga_details_${mangaId}`, null);
+        if (cachedDetails) {
+            return cachedDetails;
+        }
+
+        // If not cached, fetch it from the page
+        const response = await fetch(`https://nhentai.net/g/${mangaId}/`);
+        if (!response.ok) {
+            console.error(`Failed to fetch manga page for ${mangaId}: ${response.status}`);
+            return { coverUrl: null, title: null };
+        }
+
+        const html = await response.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+
+        // Get the cover image
+        const coverImg = doc.querySelector("#cover > a > img");
+        const coverUrl = coverImg ? (coverImg.getAttribute('data-src') || coverImg.getAttribute('src')) : null;
+
+        // Get the manga title
+        let title = null;
+
+        // Try to get the title from the span.before element
+        const titleSpan = doc.querySelector("#info > h1 > a > u > span.before");
+        if (titleSpan) {
+            title = titleSpan.textContent.trim();
+        }
+
+        // If not found, try the main h1 title
+        if (!title) {
+            const mainTitle = doc.querySelector("#info > h1");
+            if (mainTitle) {
+                title = mainTitle.textContent.trim();
+            }
+        }
+
+        // Extract all tags from the page
+        const allTags = Array.from(doc.querySelectorAll('#tags span.name')).map(span =>
+            span.textContent.trim().toLowerCase()
+        );
+
+        // Determine language from tags
+        let language = null;
+        if (allTags.includes('english')) {
+            language = 'english';
+        } else if (allTags.includes('japanese')) {
+            language = 'japanese';
+        } else if (allTags.includes('chinese')) {
+            language = 'chinese';
+        }
+
+        // Cache the details
+        const details = { coverUrl, title, language };
+        await GM.setValue(`manga_details_${mangaId}`, details);
+
+        return details;
+    } catch (error) {
+        console.error(`Error getting manga details for ${mangaId}:`, error);
+        return { coverUrl: null, title: null };
+    }
+}
+
+// Function to get cover image URL for a manga (for backward compatibility)
+async function getMangaCoverImage(mangaId) {
+    const details = await getMangaDetails(mangaId);
+    return details.coverUrl;
+}
+
+// Language flag URLs
+const LANGUAGE_FLAGS = {
+    english: "https://i.imgur.com/vSnHmmi.gif",
+    japanese: "https://i.imgur.com/GlArpuS.gif",
+    chinese: "https://i.imgur.com/7B55DYm.gif"
+};
+
+// Function to replace the related manga section with bookmarked content
+async function replaceRelatedWithBookmarks() {
+    // Check if the feature is enabled
+    if (!SETTINGS.replaceRelatedWithBookmarks) return;
+
+    // Check if we're on a manga page and if the related container exists
+    const relatedContainer = document.querySelector("#related-container");
+    if (!relatedContainer || !window.location.pathname.includes('/g/')) return;
+
+    // Add a loading indicator
+    const originalContent = relatedContainer.innerHTML;
+    relatedContainer.innerHTML = `
+        <h2>Finding Related Manga from Your Bookmarks...</h2>
+        <div class="container" style="text-align: center; padding: 20px;">
+            <div class="loading-spinner" style="display: inline-block; width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #555; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+        </div>
+        <style>
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+        </style>
+    `;
+
+    // Get the current manga ID
+    const currentMangaId = window.location.pathname.match(/\/g\/(\d+)/)?.[1];
+    if (!currentMangaId) return;
+
+    // Get the current manga's tags
+    const tagsContainer = document.querySelector("#tags");
+    if (!tagsContainer) return;
+
+    // Extract all tags from the current manga
+    const tagElements = tagsContainer.querySelectorAll('.tag');
+    const currentTags = Array.from(tagElements).map(tag => {
+        return tag.querySelector('.name')?.textContent.trim().toLowerCase() || '';
+    }).filter(tag => tag !== '');
+
+    console.log('Current manga tags:', currentTags);
+
+    // Get all bookmarks
+    const bookmarks = await getBookmarksFromStorage();
+    if (!bookmarks || bookmarks.length === 0) {
+        console.log('No bookmarks found');
+        return;
+    }
+
+    console.log(`Found ${bookmarks.length} bookmarks`);
+
+    // Filter out the current manga from bookmarks
+    const filteredBookmarks = bookmarks.filter(bookmark => bookmark.id !== currentMangaId);
+
+    // Function to score bookmarks based on tag similarity
+    async function scoreBookmark(bookmark) {
+        try {
+            // Get manga info with tags - only use cached data
+            const mangaInfo = await GM.getValue(`manga_${bookmark.id}`, null);
+
+            // If no cached info or no tags, skip this bookmark
+            if (!mangaInfo || !mangaInfo.tags || mangaInfo.tags.length === 0) {
+                return { bookmark, score: 0, tags: [], tagIds: [] };
+            }
+
+            // Clean up tags (remove counts and lowercase)
+            const bookmarkTags = mangaInfo.tags.map(tag =>
+                tag.replace(/\d+K?$/, '').trim().toLowerCase()
+            );
+
+            // Get tag IDs if available
+            const tagIds = mangaInfo.tagIds || [];
+
+            // Calculate score based on matching tags
+            let score = 0;
+            const matchingTags = [];
+
+            for (const tag of currentTags) {
+                if (bookmarkTags.includes(tag)) {
+                    score++;
+                    matchingTags.push(tag);
+                }
+            }
+
+            // Determine language from tags
+            let language = null;
+            if (bookmarkTags.includes('english')) {
+                language = 'english';
+            } else if (bookmarkTags.includes('japanese')) {
+                language = 'japanese';
+            } else if (bookmarkTags.includes('chinese')) {
+                language = 'chinese';
+            }
+
+            return {
+                bookmark,
+                score,
+                tags: bookmarkTags,
+                matchingTags,
+                tagIds,
+                title: mangaInfo.title || `Manga ${bookmark.id}`,
+                thumbnail: mangaInfo.thumbnail || null,
+                language
+            };
+        } catch (error) {
+            console.error(`Error scoring bookmark ${bookmark.id}:`, error);
+            return { bookmark, score: 0, tags: [], tagIds: [] };
+        }
+    }
+
+    // Process all bookmarks since we're only using cached data
+    console.log(`Processing ${filteredBookmarks.length} bookmarks (using cached data only)`);
+
+    // Score bookmarks in batches to avoid freezing the browser
+    const BATCH_SIZE = 50; // Larger batch size since we're only using cached data
+    const scoredBookmarks = [];
+
+    for (let i = 0; i < filteredBookmarks.length; i += BATCH_SIZE) {
+        const batch = filteredBookmarks.slice(i, i + BATCH_SIZE);
+        console.log(`Processing batch ${Math.floor(i/BATCH_SIZE) + 1} of ${Math.ceil(filteredBookmarks.length/BATCH_SIZE)}`);
+
+        const batchPromises = batch.map(scoreBookmark);
+        const batchResults = await Promise.all(batchPromises);
+        scoredBookmarks.push(...batchResults);
+
+        // Small delay to keep the UI responsive
+        if (i + BATCH_SIZE < filteredBookmarks.length) {
+            await new Promise(resolve => setTimeout(resolve, 10));
+        }
+    }
+
+    // Sort by score (highest first)
+    scoredBookmarks.sort((a, b) => b.score - a.score);
+
+    // Filter out bookmarks with no matching tags
+    const bookmarksWithMatches = scoredBookmarks.filter(item => item.score > 0);
+
+    console.log(`Found ${bookmarksWithMatches.length} bookmarks with matching tags`);
+
+    // If no related bookmarks found with matching tags, restore the original content
+    if (bookmarksWithMatches.length === 0) {
+        console.log('No related bookmarks found with matching tags');
+        relatedContainer.innerHTML = originalContent;
+        return;
+    }
+
+    // Take top 5 or fewer if less available
+    const topBookmarks = bookmarksWithMatches.slice(0, 5);
+
+    console.log('Top related bookmarks:', topBookmarks);
+
+    // Pre-fetch titles and thumbnails for top bookmarks
+    await Promise.all(topBookmarks.map(async item => {
+        // Get manga details for title and cover
+        const details = await getMangaDetails(item.bookmark.id);
+
+        // Update title if needed
+        if ((!item.title || item.title === `Manga ${item.bookmark.id}`) && details.title) {
+            item.title = details.title;
+        }
+
+        // Update thumbnail if needed
+        if (!item.thumbnail && details.coverUrl) {
+            item.thumbnail = details.coverUrl;
+        }
+    }));
+
+    // Clear the related container
+    relatedContainer.innerHTML = '';
+
+    // Create a header for the section
+    const header = document.createElement('h2');
+    header.textContent = 'Related Manga from Your Bookmarks';
+    relatedContainer.appendChild(header);
+
+    // Create a container for the galleries
+    const galleryContainer = document.createElement('div');
+    galleryContainer.className = 'container';
+    relatedContainer.appendChild(galleryContainer);
+
+    // Add each bookmark to the container
+    for (const item of topBookmarks) {
+        const { bookmark, score, matchingTags, tagIds, title, thumbnail, language } = item;
+        if (score === 0) continue; // Skip bookmarks with no matching tags
+
+        try {
+            // Create gallery HTML directly using the format from nhentai
+            const tagIdsString = tagIds && tagIds.length > 0 ? tagIds.join(' ') : '';
+
+            // Calculate aspect ratio for padding (default to 141.2% if not available)
+            const aspectRatio = 141.2;
+
+            // Get thumbnail URL - use the cover image if available
+            let thumbUrl = thumbnail || null;
+
+            // If no thumbnail, try to get it from manga_info
+            if (!thumbUrl) {
+                const mangaInfo = await GM.getValue(`manga_info_${bookmark.id}`, null);
+                if (mangaInfo && mangaInfo.thumbnail) {
+                    thumbUrl = mangaInfo.thumbnail;
+                }
+            }
+
+            // If still no thumbnail, try to get the cover image
+            if (!thumbUrl) {
+                thumbUrl = await getMangaCoverImage(bookmark.id);
+            }
+
+            // If still no thumbnail, use placeholder
+            if (!thumbUrl) {
+                thumbUrl = 'https://t.nhentai.net/galleries/0/thumb.jpg';
+            }
+
+            // Format the title with manga name if available
+            let displayTitle = title || `Manga ${bookmark.id}`;
+
+            // Get language flag if available
+            let languageFlag = '';
+            if (language && LANGUAGE_FLAGS[language]) {
+                languageFlag = `<img src="${LANGUAGE_FLAGS[language]}" alt="${language}" style="margin-right: 5px; vertical-align: middle; height: 12px; display: inline-block;">`;
+            }
+
+            // Create gallery HTML with centered title
+            const galleryHTML = `
+                <div class="gallery" data-tags="${tagIdsString}">
+                    <a href="/g/${bookmark.id}/" class="cover" style="padding:0 0 ${aspectRatio}% 0">
+                        <img class="lazyload" width="250" height="353" data-src="${thumbUrl}" src="${thumbUrl}">
+                        <noscript><img src="${thumbUrl}" width="250" height="353" /></noscript>
+                        <div class="caption" style="text-align: center;">${languageFlag}${displayTitle}</div>
+                    </a>
+                </div>
+            `;
+
+            // Add to container
+            galleryContainer.insertAdjacentHTML('beforeend', galleryHTML);
+
+            // Add matching tags info if available
+            if (matchingTags && matchingTags.length > 0) {
+                const lastGallery = galleryContainer.lastElementChild;
+                const caption = lastGallery.querySelector('.caption');
+
+                const tagsInfo = document.createElement('div');
+                tagsInfo.className = 'matching-tags';
+                tagsInfo.textContent = `Matching tags: ${matchingTags.join(', ')}`;
+                tagsInfo.style.fontSize = '12px';
+                tagsInfo.style.color = '#888';
+                tagsInfo.style.marginTop = '5px';
+                tagsInfo.style.textAlign = 'center';
+                caption.appendChild(tagsInfo);
+            }
+        } catch (error) {
+            console.error(`Error creating gallery item for bookmark ${bookmark.id}:`, error);
+        }
+    }
+}
+
+// Call the function when the page is loaded
+$(document).ready(function() {
+    setTimeout(replaceRelatedWithBookmarks, 1000); // Delay to ensure page is fully loaded
+});
+
 //---------------------------**BookMark-Random-Button**-----------------------------
 async function appendButton() {
     const enableRandomButton = await GM.getValue('enableRandomButton', true);
@@ -5175,7 +5541,7 @@ function checkRandomMangaSource() {
 
     if (randomMangaSource) {
         try {
-            const { source, id } = JSON.parse(randomMangaSource);
+            const { source } = JSON.parse(randomMangaSource);
 
             let popupText;
             if (source.startsWith('bookmark_manga_ids_')) {
@@ -5785,8 +6151,8 @@ async function processFavorites(favorites) {
         // Update final result in popup
         progressPopup.updateMessage(`Completed: ${successfulOnes.length} successful, ${failedOnes.length} failed`);
 
-        // Add a "Done" button to close the popup
-        const content = progressPopup.close();
+        // Close the popup
+        progressPopup.close();
 
         // Show a summary popup that auto-closes
         showPopup(`Completed: ${successfulOnes.length} successful, ${failedOnes.length} failed`, {
