@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      7.9.3
+// @version      7.9.1
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -4971,6 +4971,17 @@ addNewTabButtons();
 
 
 function mangaBookmarking() {
+    GM.addStyle(`
+        @keyframes bookmark-pulse {
+          0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(237, 37, 83, 0.7); }
+          70% { transform: scale(1.05); box-shadow: 0 0 5px 10px rgba(237, 37, 83, 0); }
+          100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(237, 37, 83, 0); }
+        }
+
+        .bookmark-animation {
+          animation: bookmark-pulse 0.6s ease-out;
+        }
+    `);
 // Get the download button
 const downloadButton = document.getElementById('download');
 if (!downloadButton) {
@@ -5052,8 +5063,17 @@ getMangaBookMarkingButtonEnabled().then(mangaBookMarkingButtonEnabled => {
                     this.classList.add('btn-disabled');
                 }
 
+                const isNewlyBookmarked = !existingManga; // True if we just added a bookmark
+
                 // Save the updated list (asynchronously)
                 await GM.setValue('bookmarkedMangas', bookmarkedMangas);
+
+                if (isNewlyBookmarked) { // If a new bookmark was added
+                    this.classList.add('bookmark-animation');
+                    setTimeout(() => {
+                        this.classList.remove('bookmark-animation');
+                    }, 600); // Animation duration 0.6s
+                }
 
             } catch (error) {
                 console.error('Error handling bookmarks:', error);
