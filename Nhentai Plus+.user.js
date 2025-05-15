@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      7.9.4.2
+// @version      7.9.4.3
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -19,22 +19,6 @@
 // ==/UserScript==
 
 
-// Global settings with default values
-const SETTINGS = {
-    replaceRelatedWithBookmarks: true, // Default to true for the new feature
-};
-
-// Load settings
-async function loadSettings() {
-    for (const key in SETTINGS) {
-        const value = await GM.getValue(key, SETTINGS[key]);
-        SETTINGS[key] = value;
-    }
-    console.log('Settings loaded:', SETTINGS);
-}
-
-// Initialize settings
-loadSettings();
 
 //----------------------- **Fix Menu OverFlow**----------------------------------
 
@@ -1639,8 +1623,8 @@ for (const page of bookmarkedPages) {
                 top: 5px;
                 right: 5px;
                 background: rgba(0,0,0,0.5);
-                color: white;
-                border: none;
+                color: #ffffff;
+                border: none; 
                 border-radius: 50%;
                 width: 20px;
                 height: 20px;
@@ -1652,6 +1636,12 @@ for (const page of bookmarkedPages) {
                 display: flex;
                 align-items: center;
                 justify-content: center;
+            }
+
+            @media only screen and (max-width: 768px) {
+                .delete-button {
+                    font-size: 10px;
+                }
             }
 
             .bookmark-item:hover .delete-button {
@@ -5220,8 +5210,10 @@ const LANGUAGE_FLAGS = {
 
 // Function to replace the related manga section with bookmarked content
 async function replaceRelatedWithBookmarks() {
+   
     // Check if the feature is enabled
-    if (!SETTINGS.replaceRelatedWithBookmarks) return;
+    const replaceRelatedWithBookmarks = await GM.getValue('replaceRelatedWithBookmarks', true);
+    if (!replaceRelatedWithBookmarks) return;
 
     // Check if we're on a manga page and if the related container exists
     const relatedContainer = document.querySelector("#related-container");
@@ -6578,6 +6570,14 @@ async function handleOfflineFavoritesPage() {
                 display: flex;
                 align-items: center;
                 justify-content: center;
+        }
+
+        @media (max-width: 768px) {
+            .favorite-item .remove-btn {
+                width: 12px;
+                height: 12px;
+                font-size: 12px;
+            }
         }
 
         .favorite-item:hover .remove-btn {
