@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      7.9.4.1
+// @version      7.9.4.2
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -5275,31 +5275,51 @@ async function replaceRelatedWithBookmarks() {
         try {
             // Get manga info with tags - only use cached data
             const mangaInfo = await GM.getValue(`manga_${bookmark.id}`, null);
-
-            // If no cached info or no tags, skip this bookmark
-            if (!mangaInfo || !mangaInfo.tags || mangaInfo.tags.length === 0) {
+            
+            // Try to get additional tags from the URL-based cache
+            const mangaUrl = `https://nhentai.net/g/${bookmark.id}/`;
+            const additionalTags = await GM.getValue(`tags_${mangaUrl}`, []);
+            
+            // If no cached info or tags from either source, skip this bookmark
+            if ((!mangaInfo || !mangaInfo.tags || mangaInfo.tags.length === 0) && additionalTags.length === 0) {
                 return { bookmark, score: 0, tags: [], tagIds: [] };
             }
-
-            // Clean up tags (remove counts and lowercase)
-            const bookmarkTags = mangaInfo.tags.map(tag =>
-                tag.replace(/\d+K?$/, '').trim().toLowerCase()
-            );
-
+            
+            // Initialize bookmarkTags array
+            let bookmarkTags = [];
+            
+            // Add tags from mangaInfo if available
+            if (mangaInfo && mangaInfo.tags && mangaInfo.tags.length > 0) {
+                bookmarkTags = mangaInfo.tags.map(tag =>
+                    tag.replace(/\d+K?$/, '').trim().toLowerCase()
+                );
+            }
+            
+            // Add tags from URL-based cache if available
+            if (additionalTags.length > 0) {
+                // Clean up additional tags and add them to bookmarkTags
+                const cleanedAdditionalTags = additionalTags.map(tag => 
+                    typeof tag === 'string' ? tag.replace(/\d+K?$/, '').trim().toLowerCase() : ''
+                ).filter(tag => tag !== '');
+                
+                // Merge tags, avoiding duplicates
+                bookmarkTags = [...new Set([...bookmarkTags, ...cleanedAdditionalTags])];
+            }
+            
             // Get tag IDs if available
-            const tagIds = mangaInfo.tagIds || [];
-
+            const tagIds = mangaInfo?.tagIds || [];
+            
             // Calculate score based on matching tags
             let score = 0;
             const matchingTags = [];
-
+            
             for (const tag of currentTags) {
                 if (bookmarkTags.includes(tag)) {
                     score++;
                     matchingTags.push(tag);
                 }
             }
-
+            
             // Determine language from tags
             let language = null;
             if (bookmarkTags.includes('english')) {
@@ -5309,15 +5329,15 @@ async function replaceRelatedWithBookmarks() {
             } else if (bookmarkTags.includes('chinese')) {
                 language = 'chinese';
             }
-
+            
             return {
                 bookmark,
                 score,
                 tags: bookmarkTags,
                 matchingTags,
                 tagIds,
-                title: mangaInfo.title || `Manga ${bookmark.id}`,
-                thumbnail: mangaInfo.thumbnail || null,
+                title: mangaInfo?.title || `Manga ${bookmark.id}`,
+                thumbnail: mangaInfo?.thumbnail || null,
                 language
             };
         } catch (error) {

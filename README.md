@@ -28,6 +28,13 @@
 - **Month Filter**: Adds "Month Only" filter links to various pages to easily find content from a specific month.  
 - **Manga Bookmarking**: Introduces a full bookmarking system for individual manga with multiple display options.  
 - **Offline Favoriting** *(New in v7.0!)*: Allows users to favorite manga offline and sync when logged in.  
+- **Bookmarks as Related** *(New in v7.0!)*: Replaces the "Related Manga" section with content from user's bookmarks.
+- **Advanced Storage Management**: Offers options to clear, export, or import bookmarks and settings for backup and sync.
+- **Page & Tab Arrangement**: Lets users customize how bookmarks and manga are displayed, including grid/list view and tab sorting.
+- **Bookmarks Page Arrangement**: Provides sorting and filtering options for bookmarks, such as by date, title, or custom order.
+- **Max Manga per Bookmark Slider**: Allows users to set the maximum number of manga displayed per bookmark group.
+- **Detailed Random Hentai Preferences**: Enables fine-tuning of random hentai results, including tag inclusion/exclusion and language preferences.
+- **Tooltips Toggle**: Option to enable or disable tooltips for buttons and features for a cleaner interface.
 
 ---  
 
@@ -44,11 +51,17 @@
    - Choose between different display options (cover, title, or both).  
    - Access a dedicated bookmarks page with a dynamic grid layout, search functionality, and enhanced styling.  
    - Enable/disable the bookmarking feature in the settings.  
+   - Use advanced storage management to clear, export, or import bookmarks and settings.  
+   - Arrange bookmarks page by sorting/filtering (date, title, custom order).  
+   - Adjust the max manga per bookmark group with the slider.  
+   - Customize page and tab arrangement (grid/list, tab sorting).  
 8. **Month Filter**: Use the "Month" links on various pages to filter content by month.  
 9. **Offline Favoriting** *(New in v7.0!)*:  
    - Favorite manga while offline.  
-   - Sync favorites when logged in.  
-
+   - Sync favorites when logged in.
+10. **Bookmarks as Related** *(New in v7.0!)*:
+    - View your bookmarked content instead of the default related manga section.
+    - Customize display settings in the settings page.
 ---  
 
 ### Future Updates  
@@ -93,3 +106,13 @@
 #### Version 1.0  
 
 - Initial release with **Find Similar Button**, **Tag Locking**, **Auto Login**, and **Settings Page**.  
+
+
+### Advanced Customization & Tips  
+
+- **Tooltips Toggle**: Enable or disable tooltips for a cleaner interface.  
+- **Advanced Storage Management**: Use the settings page to clear, export, or import your bookmarks and preferences for backup or sync.  
+- **Page & Tab Arrangement**: Customize how bookmarks and manga are displayed, including grid/list view and tab sorting.  
+- **Bookmarks Page Arrangement**: Sort and filter bookmarks by date, title, or custom order for easier access.  
+- **Max Manga per Bookmark Slider**: Adjust how many manga appear in each bookmark group.  
+- **Detailed Random Hentai Preferences**: Fine-tune random results with tag and language options.
