@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      7.9.4.3
+// @version      7.9.5
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -1810,232 +1810,7 @@ for (const page of bookmarkedPages) {
     }
 }
 
-// Wait for the HTML document to be fully loaded
-setTimeout(async function() {
-    // Function to fetch and process bookmarked pages
-    async function processBookmarkedPages() {
-      // Select all .bookmark-link elements from the .bookmarks-list
-      const bookmarkLinks = document.querySelectorAll('.bookmarks-list .bookmark-link');
 
-      // Get the max manga per bookmark from the slider
-      const maxMangaPerBookmark = await GM.getValue('maxMangaPerBookmark', 5);
-
-      console.log('Found bookmark links:', bookmarkLinks.length);
-      console.log('Max manga per bookmark setting:', maxMangaPerBookmark);
-
-      if (bookmarkLinks.length === 0) {
-        console.log('No bookmark links found');
-        return;
-      }
-
-      // Log the fetched bookmarked URLs
-      console.log('Processing bookmarked URLs:');
-
-      // Request each bookmark URL and extract manga URLs
-      for (const link of bookmarkLinks) {
-        if (!link.href) {
-          console.log('Bookmark link has no href attribute, skipping');
-          continue;
-        }
-
-        // Check if bookmark has existing cache
-        const existingCache = await GM.getValue(`bookmark_manga_ids_${link.href}`);
-        if (existingCache) {
-          console.log(`Skipping bookmark ${link.href} as it has existing cache`);
-          continue;
-        }
-
-        console.log(`Processing bookmark: ${link.href}`);
-
-        try {
-          // Fetch the bookmark page with retry logic
-          const bookmarkResponse = await fetchWithRetry(link.href);
-          const html = await bookmarkResponse.text();
-          const doc = new DOMParser().parseFromString(html, 'text/html');
-
-          // Extract all manga URLs from the page (main gallery thumbnails)
-          const mangaLinks = doc.querySelectorAll('.gallery a.cover');
-          const allMangaUrls = Array.from(mangaLinks).map(link => {
-            return {
-              url: 'https://nhentai.net' + link.getAttribute('href'),
-              id: link.getAttribute('href').split('/g/')[1].replace('/', '')
-            };
-          });
-
-          // Store the complete list of manga IDs for this bookmark
-          await GM.setValue(`bookmark_manga_ids_${link.href}`, allMangaUrls.map(item => item.id));
-
-          // Apply limit if maxMangaPerBookmark is valid
-          const limitToApply = (!isNaN(maxMangaPerBookmark) && maxMangaPerBookmark > 0)
-            ? maxMangaPerBookmark
-            : allMangaUrls.length;
-
-          // Slice the array to the appropriate length
-          const mangaToProcess = allMangaUrls.slice(0, limitToApply);
-
-          // Log the fetched manga URLs from each bookmark with limit info
-          console.log(`Found ${allMangaUrls.length} manga in bookmark, processing ${mangaToProcess.length} (limit: ${limitToApply})`);
-
-          // Fetch and process tags for each manga URL (limited by maxMangaPerBookmark)
-          for (const manga of mangaToProcess) {
-            const mangaId = manga.id;
-            const mangaUrl = manga.url;
-
-            // Use a simpler cache key that only depends on the manga ID
-            let mangaInfo = await GM.getValue(`manga_${mangaId}`, null);
-
-            // Track when this manga was last seen
-            const now = new Date().getTime();
-
-            if (!mangaInfo) {
-              console.log(`Fetching new manga info for ID: ${mangaId}, URL: ${mangaUrl}`);
-              try {
-                // Fetch the manga page with retry logic
-                const mangaResponse = await fetchWithRetry(mangaUrl);
-                const html = await mangaResponse.text();
-                const doc = new DOMParser().parseFromString(html, 'text/html');
-                const tagsList = doc.querySelectorAll('#tags .tag');
-
-                if (tagsList.length > 0) {
-                  const tags = Array.from(tagsList).map(tag => tag.textContent.trim());
-                  console.log(`Fetched tags for ${mangaUrl}:`, tags);
-                  mangaInfo = {
-                    id: mangaId,
-                    url: mangaUrl,
-                    tags: tags,
-                    lastSeen: now,
-                    bookmarks: [link.href] // Track which bookmarks this manga appears in
-                  };
-                } else {
-                  console.log(`No tags found for ${mangaUrl}`);
-                  mangaInfo = {
-                    id: mangaId,
-                    url: mangaUrl,
-                    tags: [],
-                    lastSeen: now,
-                    bookmarks: [link.href]
-                  };
-                }
-                await GM.setValue(`manga_${mangaId}`, mangaInfo);
-              } catch (error) {
-                console.error(`Error fetching tags for: ${mangaUrl}`, error);
-                mangaInfo = {
-                  id: mangaId,
-                  url: mangaUrl,
-                  tags: [],
-                  lastSeen: now,
-                  bookmarks: [link.href]
-                };
-                await GM.setValue(`manga_${mangaId}`, mangaInfo);
-              }
-            } else {
-              // Update the existing manga info with the current timestamp
-              // and add this bookmark if not already present
-              if (!mangaInfo.bookmarks.includes(link.href)) {
-                mangaInfo.bookmarks.push(link.href);
-              }
-              mangaInfo.lastSeen = now;
-              await GM.setValue(`manga_${mangaId}`, mangaInfo);
-              console.log(`Updated existing manga cache for ${mangaId}`);
-            }
-          }
-        } catch (error) {
-          console.error(`Error processing bookmark: ${link.href}`, error);
-        }
-      }
-
-      // Optional: clean up old cached manga data that hasn't been seen in a while
-      await cleanupOldCacheData(30); // Clean data older than 30 days
-    }
-
-    // Helper function to clean up old cache data
-    async function cleanupOldCacheData(daysOld) {
-      try {
-        const allKeys = await GM.listValues();
-        const mangaKeys = allKeys.filter(key => key.startsWith('manga_'));
-        const now = new Date().getTime();
-        const cutoffTime = now - (daysOld * 24 * 60 * 60 * 1000); // Convert days to milliseconds
-
-        let removedCount = 0;
-
-        for (const key of mangaKeys) {
-          const mangaInfo = await GM.getValue(key);
-
-          // If there's no lastSeen or if it's older than the cutoff, remove it
-          if (!mangaInfo || !mangaInfo.lastSeen || mangaInfo.lastSeen < cutoffTime) {
-            await GM.deleteValue(key);
-            removedCount++;
-          }
-        }
-
-        if (removedCount > 0) {
-          console.log(`Cleaned up ${removedCount} old manga entries from cache`);
-        }
-      } catch (error) {
-        console.error('Error cleaning up old cache data:', error);
-      }
-    }
-
-    // Helper function to fetch with retry logic for 429 errors
-    async function fetchWithRetry(url, maxRetries = 10, delay = 2000) {
-      let retries = 0;
-
-      while (retries < maxRetries) {
-        try {
-          const response = await fetch(url);
-
-          // If we got a 429 Too Many Requests, retry after a delay
-          if (response.status === 429) {
-            retries++;
-            console.log(`Rate limited (429) on ${url}. Retry ${retries}/${maxRetries} after ${delay}ms delay.`);
-            await new Promise(resolve => setTimeout(resolve, delay));
-            // Increase delay for subsequent retries (exponential backoff)
-            delay = Math.min(delay * 1.5, 30000); // Cap at 30 seconds
-          } else {
-            // For any other status, return the response
-            return response;
-          }
-        } catch (error) {
-          retries++;
-          console.error(`Fetch error for ${url}. Retry ${retries}/${maxRetries}.`, error);
-          if (retries >= maxRetries) throw error;
-          await new Promise(resolve => setTimeout(resolve, delay));
-          // Increase delay for subsequent retries
-          delay = Math.min(delay * 1.5, 30000);
-        }
-      }
-
-      throw new Error(`Failed to fetch ${url} after ${maxRetries} retries.`);
-    }
-
-    // Helper function to update manga cache when limit changes
-    async function updateMangaCache() {
-      const maxMangaPerBookmark = await GM.getValue('maxMangaPerBookmark', 5);
-      const allKeys = await GM.listValues();
-      const mangaKeys = allKeys.filter(key => key.startsWith('manga_'));
-
-      for (const key of mangaKeys) {
-        const mangaInfo = await GM.getValue(key);
-
-        if (mangaInfo) {
-          const newLimit = maxMangaPerBookmark;
-          const existingLimit = mangaInfo.limit;
-
-          if (newLimit !== existingLimit) {
-            console.log(`Updating manga cache for ${mangaInfo.id} with new limit ${newLimit}`);
-            mangaInfo.limit = newLimit;
-            await GM.setValue(key, mangaInfo);
-          }
-        }
-      }
-    }
-
-    // Call the function to process bookmarked pages
-    processBookmarkedPages();
-
-    // Update manga cache when limit changes
-    updateMangaCache();
-}, 2000);
 
 
 
@@ -6964,3 +6739,369 @@ async function addPageNumbersToThumbnails() {
 addPageNumbersToThumbnails();
 
 // -----------------------------------------------**Thumbnail-Page-Numbers**--------------------------------------------------------
+
+// Wait for the HTML document to be fully loaded
+setTimeout(async function() {
+    // Function to fetch and process bookmarked pages
+    async function processBookmarkedPages(isBackgroundProcess = false) {
+      // Get all bookmarked pages from storage
+      const bookmarkedPages = await GM.getValue('bookmarkedPages', []);
+      
+      // Get the max manga per bookmark from the slider
+      const maxMangaPerBookmark = await GM.getValue('maxMangaPerBookmark', 5);
+      
+      // Get the last processing timestamp to avoid processing too frequently
+      const lastProcessTime = await GM.getValue('lastBookmarkProcessTime', 0);
+      const now = new Date().getTime();
+      
+      // If this is a background process, only run if it's been at least 1 hour since last run
+      if (isBackgroundProcess && (now - lastProcessTime < 3600000)) {
+        console.log('Background processing skipped - last run was less than 1 hour ago');
+        return;
+      }
+      
+      // Always get bookmarks from storage, but also check DOM if we're on the bookmarks page
+      let bookmarkLinks = [];
+      
+      // First, always use the stored bookmarked pages as the primary source
+      bookmarkLinks = bookmarkedPages.map(url => ({ href: url }));
+      
+      // If we're on the bookmarks page, also check the DOM for any new bookmarks
+      if (!isBackgroundProcess && window.location.href.includes('/bookmarks')) {
+        const domBookmarkLinks = document.querySelectorAll('.bookmarks-list .bookmark-link');
+        console.log('Found bookmark links in DOM:', domBookmarkLinks.length);
+        
+        // Convert DOM collection to array and add any links not already in our list
+        Array.from(domBookmarkLinks).forEach(link => {
+          if (link.href && !bookmarkLinks.some(existing => existing.href === link.href)) {
+            bookmarkLinks.push(link);
+          }
+        });
+      }
+      
+      console.log('Processing bookmarks:', bookmarkLinks.length);
+
+      console.log('Max manga per bookmark setting:', maxMangaPerBookmark);
+
+      if (bookmarkLinks.length === 0) {
+        console.log('No bookmark links found');
+        return;
+      }
+
+      // Log the fetched bookmarked URLs
+      console.log('Processing bookmarked URLs:');
+      
+      // Store the current time as the last processing time
+      // await GM.setValue('lastBookmarkProcessTime', now);
+      
+      // Track rate limit status
+      let isRateLimited = false;
+      let rateLimitResetTime = 0;
+      
+      // Request each bookmark URL and extract manga URLs
+      for (const link of bookmarkLinks) {
+        if (!link.href) {
+          console.log('Bookmark link has no href attribute, skipping');
+          continue;
+        }
+        
+        // If we're rate limited and the reset time hasn't passed, skip processing
+        if (isRateLimited && now < rateLimitResetTime) {
+          console.log(`Skipping processing due to rate limit. Will reset at ${new Date(rateLimitResetTime).toLocaleTimeString()}`);
+          continue;
+        }
+
+        // Check if bookmark has existing cache
+        const existingCache = await GM.getValue(`bookmark_manga_ids_${link.href}`);
+        if (existingCache && !isBackgroundProcess) {
+          console.log(`Skipping bookmark ${link.href} as it has existing cache`);
+          continue;
+        }
+
+        console.log(`Processing bookmark: ${link.href}`);
+
+        try {
+          // Fetch the bookmark page with retry logic
+          const bookmarkResponse = await fetchWithRetry(link.href);
+          
+          // Check for rate limiting headers
+          const rateLimitRemaining = bookmarkResponse.headers.get('X-RateLimit-Remaining');
+          const rateLimitReset = bookmarkResponse.headers.get('X-RateLimit-Reset');
+          
+          if (rateLimitRemaining === '0' && rateLimitReset) {
+            isRateLimited = true;
+            rateLimitResetTime = parseInt(rateLimitReset) * 1000; // Convert to milliseconds
+            console.log(`Rate limit reached. Will reset at ${new Date(rateLimitResetTime).toLocaleTimeString()}`);
+          }
+          
+          const html = await bookmarkResponse.text();
+          const doc = new DOMParser().parseFromString(html, 'text/html');
+
+          // Extract all manga URLs from the page (main gallery thumbnails)
+          const mangaLinks = doc.querySelectorAll('.gallery a.cover');
+          const allMangaUrls = Array.from(mangaLinks).map(link => {
+            return {
+              url: 'https://nhentai.net' + link.getAttribute('href'),
+              id: link.getAttribute('href').split('/g/')[1].replace('/', '')
+            };
+          });
+
+          // Store the complete list of manga IDs for this bookmark
+          await GM.setValue(`bookmark_manga_ids_${link.href}`, allMangaUrls.map(item => item.id));
+
+          // Apply limit if maxMangaPerBookmark is valid
+          const limitToApply = (!isNaN(maxMangaPerBookmark) && maxMangaPerBookmark > 0)
+            ? maxMangaPerBookmark
+            : allMangaUrls.length;
+
+          // Slice the array to the appropriate length
+          const mangaToProcess = allMangaUrls.slice(0, limitToApply);
+
+          // Log the fetched manga URLs from each bookmark with limit info
+          console.log(`Found ${allMangaUrls.length} manga in bookmark, processing ${mangaToProcess.length} (limit: ${limitToApply})`);
+
+          // Fetch and process tags for each manga URL (limited by maxMangaPerBookmark)
+          for (const manga of mangaToProcess) {
+            // Check if we've hit a rate limit during processing
+            if (isRateLimited && now < rateLimitResetTime) {
+              console.log(`Pausing manga processing due to rate limit. Will resume later.`);
+              break;
+            }
+            
+            const mangaId = manga.id;
+            const mangaUrl = manga.url;
+
+            // Use a simpler cache key that only depends on the manga ID
+            let mangaInfo = await GM.getValue(`manga_${mangaId}`, null);
+
+            // Track when this manga was last seen
+            const currentTime = new Date().getTime();
+
+            if (!mangaInfo) {
+              console.log(`Fetching new manga info for ID: ${mangaId}, URL: ${mangaUrl}`);
+              try {
+                // Fetch the manga page with retry logic
+                const mangaResponse = await fetchWithRetry(mangaUrl);
+                
+                // Check for rate limiting headers
+                const mangaRateLimitRemaining = mangaResponse.headers.get('X-RateLimit-Remaining');
+                const mangaRateLimitReset = mangaResponse.headers.get('X-RateLimit-Reset');
+                
+                if (mangaRateLimitRemaining === '0' && mangaRateLimitReset) {
+                  isRateLimited = true;
+                  rateLimitResetTime = parseInt(mangaRateLimitReset) * 1000; // Convert to milliseconds
+                  console.log(`Rate limit reached during manga fetch. Will reset at ${new Date(rateLimitResetTime).toLocaleTimeString()}`);
+                }
+                
+                const html = await mangaResponse.text();
+                const doc = new DOMParser().parseFromString(html, 'text/html');
+                const tagsList = doc.querySelectorAll('#tags .tag');
+                
+                // Get the title
+                const titleElement = doc.querySelector('h1.title');
+                const title = titleElement ? titleElement.textContent.trim() : null;
+
+                if (tagsList.length > 0) {
+                  const tags = Array.from(tagsList).map(tag => tag.textContent.trim());
+                  console.log(`Fetched tags for ${mangaUrl}:`, tags);
+                  mangaInfo = {
+                    id: mangaId,
+                    url: mangaUrl,
+                    title: title,
+                    tags: tags,
+                    lastSeen: currentTime,
+                    bookmarks: [link.href] // Track which bookmarks this manga appears in
+                  };
+                } else {
+                  console.log(`No tags found for ${mangaUrl}`);
+                  mangaInfo = {
+                    id: mangaId,
+                    url: mangaUrl,
+                    title: title,
+                    tags: [],
+                    lastSeen: currentTime,
+                    bookmarks: [link.href]
+                  };
+                }
+                await GM.setValue(`manga_${mangaId}`, mangaInfo);
+              } catch (error) {
+                console.error(`Error fetching tags for: ${mangaUrl}`, error);
+                mangaInfo = {
+                  id: mangaId,
+                  url: mangaUrl,
+                  tags: [],
+                  lastSeen: currentTime,
+                  bookmarks: [link.href]
+                };
+                await GM.setValue(`manga_${mangaId}`, mangaInfo);
+                
+                // Check if the error was due to rate limiting
+                if (error.message && error.message.includes('429')) {
+                  isRateLimited = true;
+                  rateLimitResetTime = currentTime + 300000; // Wait 5 minutes by default
+                  console.log(`Rate limit detected from error. Pausing for 5 minutes.`);
+                }
+              }
+            } else {
+              // Update the existing manga info with the current timestamp
+              // and add this bookmark if not already present
+              if (!mangaInfo.bookmarks.includes(link.href)) {
+                mangaInfo.bookmarks.push(link.href);
+              }
+              mangaInfo.lastSeen = currentTime;
+              await GM.setValue(`manga_${mangaId}`, mangaInfo);
+              console.log(`Updated existing manga cache for ${mangaId}`);
+            }
+            
+            // Add a small delay between manga requests to avoid rate limiting
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
+        } catch (error) {
+          console.error(`Error processing bookmark: ${link.href}`, error);
+          
+          // Check if the error was due to rate limiting
+          if (error.message && error.message.includes('429')) {
+            isRateLimited = true;
+            rateLimitResetTime = now + 300000; // Wait 5 minutes by default
+            console.log(`Rate limit detected from error. Pausing for 5 minutes.`);
+          }
+        }
+        
+        // Add a delay between bookmark processing to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+
+      // Optional: clean up old cached manga data that hasn't been seen in a while
+      await cleanupOldCacheData(30); // Clean data older than 30 days
+      
+      console.log('Bookmark processing completed');
+      
+      // Store the current time as the last processing time AFTER processing is complete
+      await GM.setValue('lastBookmarkProcessTime', now);
+    }
+
+    // Helper function to clean up old cache data
+    async function cleanupOldCacheData(daysOld) {
+      try {
+        const allKeys = await GM.listValues();
+        const mangaKeys = allKeys.filter(key => key.startsWith('manga_'));
+        const now = new Date().getTime();
+        const cutoffTime = now - (daysOld * 24 * 60 * 60 * 1000); // Convert days to milliseconds
+
+        let removedCount = 0;
+
+        for (const key of mangaKeys) {
+          const mangaInfo = await GM.getValue(key);
+
+          // If there's no lastSeen or if it's older than the cutoff, remove it
+          if (!mangaInfo || !mangaInfo.lastSeen || mangaInfo.lastSeen < cutoffTime) {
+            await GM.deleteValue(key);
+            removedCount++;
+          }
+        }
+
+        if (removedCount > 0) {
+          console.log(`Cleaned up ${removedCount} old manga entries from cache`);
+        }
+      } catch (error) {
+        console.error('Error cleaning up old cache data:', error);
+      }
+    }
+
+    // Helper function to fetch with retry logic for 429 errors
+    async function fetchWithRetry(url, maxRetries = 10, initialDelay = 2000) {
+      let retries = 0;
+      let delay = initialDelay;
+
+      while (retries < maxRetries) {
+        try {
+          const response = await fetch(url);
+
+          // If we got a 429 Too Many Requests, retry after a delay
+          if (response.status === 429) {
+            retries++;
+            console.log(`Rate limited (429) on ${url}. Retry ${retries}/${maxRetries} after ${delay}ms delay.`);
+            
+            // Check for Retry-After header
+            const retryAfter = response.headers.get('Retry-After');
+            if (retryAfter) {
+              // Retry-After is in seconds, convert to milliseconds
+              delay = parseInt(retryAfter) * 1000;
+              console.log(`Server specified Retry-After: ${retryAfter} seconds`);
+            }
+            
+            await new Promise(resolve => setTimeout(resolve, delay));
+            // Increase delay for subsequent retries (exponential backoff)
+            delay = Math.min(delay * 1.5, 30000); // Cap at 30 seconds
+          } else {
+            // For any other status, return the response
+            return response;
+          }
+        } catch (error) {
+          retries++;
+          console.error(`Fetch error for ${url}. Retry ${retries}/${maxRetries}.`, error);
+          if (retries >= maxRetries) throw error;
+          await new Promise(resolve => setTimeout(resolve, delay));
+          // Increase delay for subsequent retries
+          delay = Math.min(delay * 1.5, 30000);
+        }
+      }
+
+      throw new Error(`Failed to fetch ${url} after ${maxRetries} retries.`);
+    }
+
+    // Helper function to update manga cache when limit changes
+    async function updateMangaCache() {
+      const maxMangaPerBookmark = await GM.getValue('maxMangaPerBookmark', 5);
+      const allKeys = await GM.listValues();
+      const mangaKeys = allKeys.filter(key => key.startsWith('manga_'));
+
+      for (const key of mangaKeys) {
+        const mangaInfo = await GM.getValue(key);
+
+        if (mangaInfo) {
+          const newLimit = maxMangaPerBookmark;
+          const existingLimit = mangaInfo.limit;
+
+          if (newLimit !== existingLimit) {
+            console.log(`Updating manga cache for ${mangaInfo.id} with new limit ${newLimit}`);
+            mangaInfo.limit = newLimit;
+            await GM.setValue(key, mangaInfo);
+          }
+        }
+      }
+    }
+
+    // Set up periodic background processing
+    function setupBackgroundProcessing() {
+      // Process bookmarks in the background every hour
+      setInterval(async () => {
+        console.log('Starting background bookmark processing...');
+        await processBookmarkedPages(true);
+      }, 3600000); // 1 hour in milliseconds
+      
+      // Also run once at startup after a short delay
+      setTimeout(async () => {
+        console.log('Running initial background bookmark processing...');
+        await processBookmarkedPages(true);
+      }, 30000); // 30 seconds after page load
+    }
+
+    // Process bookmarks on any page, but with different behavior
+     // If we're on the bookmarks page, process immediately with DOM integration
+     // Otherwise, process in background mode after a short delay
+     if (window.location.href.includes('/bookmarks')) {
+       processBookmarkedPages(false); // Process with DOM integration
+     } else {
+       // On other pages, process in background mode after a short delay
+       setTimeout(() => {
+         processBookmarkedPages(true); // Process in background mode
+       }, 5000); // 5 second delay to not interfere with page loading
+     }
+
+     // Set up background processing regardless of current page
+     setupBackgroundProcessing();
+
+    // Update manga cache when limit changes
+    updateMangaCache();
+}, 2000);
