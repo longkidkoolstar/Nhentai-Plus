@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      7.9.5
+// @version      7.9.6
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -1205,7 +1205,24 @@ async function displayBookmarkedPages() {
                 return titleB.localeCompare(titleA);
             });
         }
-        // Note: bookmarkedPages will be sorted after titles are fetched
+        
+        // Get manga IDs for each bookmark page to sort by item count
+        const bookmarkItemCounts = {};
+        if (bookmarkArrangementType === 'most-items' || bookmarkArrangementType === 'least-items') {
+            // We'll need to fetch the manga counts for each bookmark
+            for (const page of bookmarkedPages) {
+                const mangaIds = await GM.getValue(`bookmark_manga_ids_${page}`, []);
+                bookmarkItemCounts[page] = mangaIds.length;
+            }
+            
+            // Sort bookmarked pages based on item count
+            if (bookmarkArrangementType === 'most-items') {
+                bookmarkedPages.sort((a, b) => bookmarkItemCounts[b] - bookmarkItemCounts[a]);
+            } else if (bookmarkArrangementType === 'least-items') {
+                bookmarkedPages.sort((a, b) => bookmarkItemCounts[a] - bookmarkItemCounts[b]);
+            }
+        }
+        // Note: For default arrangement, we keep the original order (most recent first)
 
         const bookmarksContainer = $('<div id="bookmarksContainer" class="container">');
         const bookmarksTitle = $('<h2 class="bookmarks-title">Bookmarked Pages</h2>');
@@ -2499,6 +2516,17 @@ label:hover .tooltip {
                     Replace Related Manga with Bookmarks <span class="tooltip" data-tooltip="Replaces the Related Manga section with content from your bookmarks.">?</span>
                 </label>
             <div id="bookmark-page-options" style="display: none;">
+                <label>
+                    Bookmark Arrangement Type:
+                    <select id="bookmark-arrangement-type">
+                        <option value="default">Default (Most Recent)</option>
+                        <option value="alphabetical">Alphabetical (A-Z)</option>
+                        <option value="reverse-alphabetical">Reverse Alphabetical (Z-A)</option>
+                        <option value="most-items">Most Items</option>
+                        <option value="least-items">Least Items</option>
+                    </select>
+                    <span class="tooltip" data-tooltip="Choose how bookmarks are sorted on the bookmarks page.">?</span>
+                </label>
                 <label>
                     <input type="checkbox" id="enableRandomButton">
                     Enable Random Button <span class="tooltip" data-tooltip="Randomly selects a bookmarked manga for reading.">?</span>
