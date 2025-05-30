@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      7.9.6
+// @version      7.9.6.1
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -7001,11 +7001,12 @@ setTimeout(async function() {
 
       // Optional: clean up old cached manga data that hasn't been seen in a while
       await cleanupOldCacheData(30); // Clean data older than 30 days
-      
+
       console.log('Bookmark processing completed');
-      
+
       // Store the current time as the last processing time AFTER processing is complete
-      await GM.setValue('lastBookmarkProcessTime', now);
+      // Use current time instead of the 'now' variable from the beginning of the function
+      await GM.setValue('lastBookmarkProcessTime', new Date().getTime());
     }
 
     // Helper function to clean up old cache data
