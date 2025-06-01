@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      7.9.6.1
+// @version      7.9.7
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -5535,7 +5535,11 @@ function getMangaLink(mangaID) {
         }
 
         // Get favorite button
-        const favoriteBtn = document.querySelector('.btn.btn-primary[class*="tooltip"]');
+        const favoriteBtn = document.querySelector("#info > div")?.firstElementChild;
+        // Set up interval to log favorite button every 5 seconds
+        /*setInterval(() => {
+            console.log("Favorite button:", favoriteBtn);
+        }, 5000);*/
         if (!favoriteBtn) {
             console.log("Could not find favorite button, exiting manga-specific handling");
             return;
@@ -5585,23 +5589,7 @@ function getMangaLink(mangaID) {
             if (isLoggedIn) {
                 // Send favorite request directly to API
                 try {
-                    await sendFavoriteRequest(mangaId);
-                    console.log("Successfully favorited manga:", mangaId);
-
-                    // Remove from stored favorites if present
-                    const index = currentFavorites.indexOf(mangaId);
-                    if (index > -1) {
-                        currentFavorites.splice(index, 1);
-                        await GM.setValue('toFavorite', currentFavorites);
-                        console.log("Removed manga from stored favorites:", mangaId);
-                        console.log("Updated stored favorites:", currentFavorites);
-                    }
-
-                    // Show success popup
-                    showPopup("Successfully favorited manga!", {
-                        timeout: 2000,
-                        width: '300px'
-                    });
+                   
                 } catch (error) {
                     console.error("Failed to favorite manga:", error);
 
