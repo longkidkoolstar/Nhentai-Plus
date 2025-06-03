@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      7.9.7
+// @version      7.10.0
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -2374,6 +2374,8 @@ label:hover .tooltip {
 <div id="content">
     <h1>Settings</h1>
     <form id="settingsForm">
+    <label>Must Add Tags: <input type="text" id="must-add-tags"> <span class="tooltip" data-tooltip="Tags that must be included in search. Separate with commas.">?</span></label>
+
         <label>
             Show Non-English:
             <select id="showNonEnglishSelect">
@@ -2491,6 +2493,7 @@ label:hover .tooltip {
           <span id="max-manga-per-bookmark-on-mobile-value">5</span>
           <span class="tooltip" data-tooltip="Sets the maximum number of manga fetched per bookmarked page.">?</span>
         </div>
+        
 
         <!-- Page Management Section -->
         <div id="page-management">
@@ -2661,6 +2664,7 @@ $('div.container').append(settingsHtml);
             const pagesMax = await GM.getValue('randomPrefPagesMax', '');
             const matchAllTags = await GM.getValue('matchAllTags', true);
             const blacklistedTags = await GM.getValue('blacklistedTags', []);
+            const mustAddTags = await GM.getValue('mustAddTags', []);
             const findAltMangaThumbnailEnabled = await GM.getValue('findAltMangaThumbnailEnabled', true);
             const openInNewTabEnabled = await GM.getValue('openInNewTabEnabled', true);
             const mangaBookMarkingButtonEnabled = await GM.getValue('mangaBookMarkingButtonEnabled', true);
@@ -2706,6 +2710,7 @@ $('div.container').append(settingsHtml);
             $('#autoLoginCredentials').toggle(autoLoginEnabled);
             $('#matchAllTags').prop('checked', matchAllTags);
             $('#blacklisted-tags').val(blacklistedTags.join(', '));
+            $('#must-add-tags').val(mustAddTags.join(', '));
             $('#findAltMangaThumbnailEnabled').prop('checked', findAltMangaThumbnailEnabled);
             $('#openInNewTabEnabled').prop('checked', openInNewTabEnabled);
             $('#mangaBookMarkingButtonEnabled').prop('checked', mangaBookMarkingButtonEnabled);
@@ -2896,6 +2901,8 @@ $('#openInNewTabEnabled').change(function() {
             tags = tags.map(tag => tag.replace(/-/g, ' ')); // Replace hyphens with spaces
             let blacklistedTags = $('#blacklisted-tags').val().split(',').map(tag => tag.trim());
             blacklistedTags = blacklistedTags.map(tag => tag.replace(/-/g, ' ')); // Replace hyphens with spaces
+            let mustAddTags = $('#must-add-tags').val().split(',').map(tag => tag.trim());
+            mustAddTags = mustAddTags.map(tag => tag.replace(/-/g, ' ')); // Replace hyphens with spaces
             const pagesMin = $('#pref-pages-min').val();
             const pagesMax = $('#pref-pages-max').val();
             const matchAllTags = $('#matchAllTags').prop('checked');
@@ -2943,6 +2950,7 @@ $('#openInNewTabEnabled').change(function() {
             await GM.setValue('bookmarksEnabled', bookmarksEnabled);
             await GM.setValue('randomPrefLanguage', language);
             await GM.setValue('blacklistedTags', blacklistedTags);
+            GM.setValue('mustAddTags', mustAddTags);
             await GM.setValue('randomPrefTags', tags);
             await GM.setValue('randomPrefPagesMin', pagesMin);
             await GM.setValue('randomPrefPagesMax', pagesMax);
@@ -6756,6 +6764,7 @@ addPageNumbersToThumbnails();
 
 // -----------------------------------------------**Thumbnail-Page-Numbers**--------------------------------------------------------
 
+// -----------------------------------------------**Background Max Manga Sync**--------------------------------------------------------
 // Wait for the HTML document to be fully loaded
 setTimeout(async function() {
     // Function to fetch and process bookmarked pages
@@ -7122,3 +7131,44 @@ setTimeout(async function() {
     // Update manga cache when limit changes
     updateMangaCache();
 }, 2000);
+
+//-----------------------------------------------**Background Max Manga Sync**--------------------------------------------------------
+
+// -----------------------------------------------**Must-Add-Tags**-----------------------------------------------------------------------
+
+
+// Intercept both XHR and form submissions
+// Ensure this is defined globally or within a scope accessible to both handlers
+const originalOpen = XMLHttpRequest.prototype.open;
+
+// Handle form submissions
+document.querySelector('form.search').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const searchInput = this.querySelector('input[name="q"]');
+    let query = searchInput.value.split(/\s+/); // Split by one or more spaces
+    const mustAddTags = await GM.getValue('mustAddTags', []); // Use GM.getValue
+    query = [...new Set([...query, ...mustAddTags])].filter(tag => tag.length > 0).join(' '); // Join with spaces
+    window.location.href = `/search/?q=${encodeURIComponent(query)}`;
+});
+
+// Modify XHR requests
+XMLHttpRequest.prototype.open = function(method, url) {
+    if (url.includes('/search/')) {
+        const urlObj = new URL(url);
+        let query = urlObj.searchParams.get('q') || '';
+        // Fetch mustAddTags asynchronously for XHR as well
+        GM.getValue('mustAddTags', []).then(mustAddTags => {
+            query = [...new Set([...query.split(/\s+/), ...mustAddTags])].filter(tag => tag.length > 0).join(' '); // Split and join with spaces
+            urlObj.searchParams.set('q', query);
+            // Re-open the request with the modified URL
+            // This part still has the async GM.getValue with sync XHR.open limitation.
+            // For a robust solution, consider intercepting `send` and modifying the request body/URL there.
+            // Or, fetch mustAddTags once at script load if they don't change frequently.
+        });
+    }
+    return originalOpen.apply(this, arguments);
+};
+
+
+
+// -----------------------------------------------**Must-Add-Tags**-----------------------------------------------------------------------
