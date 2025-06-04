@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      7.10.0
+// @version      7.10.1
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -2393,6 +2393,10 @@ label:hover .tooltip {
             <input type="checkbox" id="offlineFavoritingEnabled">
             Enable Offline Favoriting <span class="tooltip" data-tooltip="Allows favoriting manga even without being logged in.">?</span>
         </label>
+         <label>
+            <input type="checkbox" id="tooltipsEnabled">
+            Enable Tooltips <span class="tooltip" data-tooltip="Enables or disables tooltips.">?</span>
+        </label>
         <label>
             <input type="checkbox" id="findSimilarEnabled">
             Enable Find Similar Button <span class="tooltip" data-tooltip="Finds similar manga based on the current one.">?</span>
@@ -2511,12 +2515,12 @@ label:hover .tooltip {
                     Enable NFM (Nhentai Favorite Manager) Page <span class="tooltip" data-tooltip="Enables the Nhentai Favorite Manager page for favorite management.">?</span>
                 </label>
                 <label>
-                    <input type="checkbox" id="bookmarksPageEnabled">
-                    Enable Bookmarks Page <span class="tooltip" data-tooltip="Enables the dedicated Bookmarks page for managing saved bookmarks.">?</span>
-                </label>
-                <label>
                     <input type="checkbox" id="replaceRelatedWithBookmarks">
                     Replace Related Manga with Bookmarks <span class="tooltip" data-tooltip="Replaces the Related Manga section with content from your bookmarks.">?</span>
+                </label>
+                <label>
+                    <input type="checkbox" id="bookmarksPageEnabled">
+                    Enable Bookmarks Page <span class="tooltip" data-tooltip="Enables the dedicated Bookmarks page for managing saved bookmarks.">?</span>
                 </label>
             <div id="bookmark-page-options" style="display: none;">
                 <label>
@@ -2598,21 +2602,20 @@ label:hover .tooltip {
      </div>
 
         <div id="random-settings">
-            <h3>Random Hentai Preferences</h3>
-            <label>Language: <input type="text" id="pref-language"> <span class="tooltip" data-tooltip="Preferred language for random hentai.">?</span></label>
-            <label>Tags: <input type="text" id="pref-tags"> <span class="tooltip" data-tooltip="Preferred tags for filtering hentai.">?</span></label>
-            <label>Blacklisted Tags: <input type="text" id="blacklisted-tags"> <span class="tooltip" data-tooltip="Tags to exclude from search results.">?</span></label>
-            <label>Minimum Pages: <input type="number" id="pref-pages-min"> <span class="tooltip" data-tooltip="Minimum number of pages for random hentai.">?</span></label>
-            <label>Maximum Pages: <input type="number" id="pref-pages-max"> <span class="tooltip" data-tooltip="Maximum number of pages for random hentai.">?</span></label>
-            <label>
-                <input type="checkbox" id="matchAllTags">
-                Match All Tags (unchecked = match any) <span class="tooltip" data-tooltip="If enabled, all tags must match instead of any.">?</span>
-            </label>
+            <h3 class="expand-icon">Random Hentai Preferences <span class="tooltip" data-tooltip="Configure preferences for random hentai.">?</span></h3>
+            <div id="random-settings-content">
+                <label>Language: <input type="text" id="pref-language"> <span class="tooltip" data-tooltip="Preferred language for random hentai.">?</span></label>
+                <label>Tags: <input type="text" id="pref-tags"> <span class="tooltip" data-tooltip="Preferred tags for filtering hentai.">?</span></label>
+                <label>Blacklisted Tags: <input type="text" id="blacklisted-tags"> <span class="tooltip" data-tooltip="Tags to exclude from search results.">?</span></label>
+                <label>Minimum Pages: <input type="number" id="pref-pages-min"> <span class="tooltip" data-tooltip="Minimum number of pages for random hentai.">?</span></label>
+                <label>Maximum Pages: <input type="number" id="pref-pages-max"> <span class="tooltip" data-tooltip="Maximum number of pages for random hentai.">?</span></label>
+                <label>
+                    <input type="checkbox" id="matchAllTags">
+                    Match All Tags (unchecked = match any) <span class="tooltip" data-tooltip="If enabled, all tags must match instead of any.">?</span>
+                </label>
+            </div>
         </div>
-        <label>
-            <input type="checkbox" id="tooltipsEnabled">
-            Enable Tooltips <span class="tooltip" data-tooltip="Enables or disables tooltips.">?</span>
-        </label>
+
 
         <!-- Advanced Storage Section -->
         <div id="advanced-settings">
@@ -2753,12 +2756,29 @@ $('#findSimilarEnabled').on('change', function() {
             $('#autoLoginCredentials').toggle(this.checked);
         });
 
-        $('#page-management-content').hide();
+
 
             // Add expand/collapse functionality for new page management section
-            $('#page-management h3').click(function() {
-                $(this).toggleClass('expanded');
+            // Add expand/collapse functionality for new page management section
+            const pageManagementExpanded = await GM.getValue('pageManagementExpanded', false);
+            $('#page-management-content').toggle(pageManagementExpanded);
+            $('#page-management h3').toggleClass('expanded', pageManagementExpanded);
+            $('#page-management h3').click(async function() {
+                const isExpanded = $(this).hasClass('expanded');
+                $(this).toggleClass('expanded', !isExpanded);
                 $('#page-management-content').slideToggle();
+                await GM.setValue('pageManagementExpanded', !isExpanded);
+            });
+
+            // Add expand/collapse functionality for Random Hentai Preferences section
+            const randomSettingsExpanded = await GM.getValue('randomSettingsExpanded', false);
+            $('#random-settings-content').toggle(randomSettingsExpanded);
+            $('#random-settings h3').toggleClass('expanded', randomSettingsExpanded);
+            $('#random-settings h3').click(async function() {
+                const isExpanded = $(this).hasClass('expanded');
+                $(this).toggleClass('expanded', !isExpanded);
+                $('#random-settings-content').slideToggle();
+                await GM.setValue('randomSettingsExpanded', !isExpanded);
             });
 
 
