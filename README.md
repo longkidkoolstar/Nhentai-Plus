@@ -72,6 +72,8 @@
 
 ### Changelog  
 
+**Note**: If the script isn't executing (e.g., for older devices), try using stable: [Ver. 7.5](https://greasyfork.org/en/scripts/498553-nhentai-plus?version=1562827)
+
 #### Version 7.0  
 
 - Introduced **Offline Favoriting** to allow users to favorite manga offline and sync when logged in.  
