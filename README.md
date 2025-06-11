@@ -27,6 +27,7 @@
 - **Bookmarking Pages**: Allows users to bookmark entire pages for later viewing.  
 - **Month Filter**: Adds "Month Only" filter links to various pages to easily find content from a specific month.  
 - **Manga Bookmarking**: Introduces a full bookmarking system for individual manga with multiple display options.  
+- **Must Add Tags** *(New in v7.0!)*: Allows users to define tags that will always be added to their search queries.
 - **Offline Favoriting** *(New in v7.0!)*: Allows users to favorite manga offline and sync when logged in.  
 - **Bookmarks as Related** *(New in v7.0!)*: Replaces the "Related Manga" section with content from user's bookmarks.
 - **Advanced Storage Management**: Offers options to clear, export, or import bookmarks and settings for backup and sync.
@@ -62,6 +63,9 @@
 10. **Bookmarks as Related** *(New in v7.0!)*:
     - View your bookmarked content instead of the default related manga section.
     - Customize display settings in the settings page.
+11. **Must Add Tags** *(New in v7.0!)*:
+    - Configure tags in the settings page that will always be appended to your search queries.
+
 ---  
 
 ### Future Updates  

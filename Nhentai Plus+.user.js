@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      7.10.1
+// @version      7.10.2
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -628,13 +628,21 @@ addFindAltButton();
                     if (!title || title.trim() === '') continue;
 
                     try {
-                        const data = await $.get(BuildUrl(title));
-                        const found = $(data).find(".container > .gallery");
+                        // Use fetch API instead of jQuery's $.get to avoid XHR interception issues
+                        const response = await fetch(BuildUrl(title));
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        
+                        const text = await response.text();
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(text, 'text/html');
+                        const found = doc.querySelectorAll(".container > .gallery");
 
                         if (found && found.length > 0) {
                             // Add unique results to allResults
                             for (let i = 0; i < found.length; i++) {
-                                const resultHref = $(found[i]).find(".cover").attr('href');
+                                const resultHref = found[i].querySelector(".cover")?.getAttribute('href');
 
                                 if (resultHref && !processedHrefs.has(resultHref)) {
                                     processedHrefs.add(resultHref);
@@ -656,50 +664,54 @@ addFindAltButton();
                 place.parent().find(".cover").remove();
                 try {
                     for (let i = 0; i < allResults.length; i++) {
+                        // Convert DOM element to jQuery object for consistent handling
+                        const $result = $(allResults[i]);
+                        
                         if (partially_fade_all_non_english) {
-                            $(allResults[i]).find(".cover > img, .cover > .caption").css("opacity", non_english_fade_opacity);
+                            $result.find(".cover > img, .cover > .caption").css("opacity", non_english_fade_opacity);
                         }
 
-                        if ($(allResults[i]).attr("data-tags").includes("12227")) {
-                            $(allResults[i]).find(".caption").append(`<img class="overlayFlag" src="` + flagEn + `">`);
-                            $(allResults[i]).find(".cover > img, .cover > .caption").css("opacity", "1");
+                        const dataTags = $result.attr("data-tags") || "";
+                        
+                        if (dataTags.includes("12227")) {
+                            $result.find(".caption").append(`<img class="overlayFlag" src="` + flagEn + `">`);
+                            $result.find(".cover > img, .cover > .caption").css("opacity", "1");
                         } else {
-                            if ($(allResults[i]).attr("data-tags").includes("6346")) {
-                                $(allResults[i]).find(".caption").append(`<img class="overlayFlag" src="` + flagJp + `">`);
-                            } else if ($(allResults[i]).attr("data-tags").includes("29963")) {
-                                $(allResults[i]).find(".caption").append(`<img class="overlayFlag" src="` + flagCh + `">`);
+                            if (dataTags.includes("6346")) {
+                                $result.find(".caption").append(`<img class="overlayFlag" src="` + flagJp + `">`);
+                            } else if (dataTags.includes("29963")) {
+                                $result.find(".caption").append(`<img class="overlayFlag" src="` + flagCh + `">`);
                             }
                             if (!partially_fade_all_non_english) {
-                                $(allResults[i]).find(".cover > img, .cover > .caption").css("opacity", "1");
+                                $result.find(".cover > img, .cover > .caption").css("opacity", "1");
                             }
                         }
 
                         if (mark_as_read_system_enabled) {
                             let MARArraySelector = MARArray.join("'], .cover[href='");
-                            $(allResults[i]).find(".cover[href='" + MARArraySelector + "']").append("<div class='readTag'>READ</div>");
-                            let readTag = $(allResults[i]).find(".readTag");
+                            $result.find(".cover[href='" + MARArraySelector + "']").append("<div class='readTag'>READ</div>");
+                            let readTag = $result.find(".readTag");
                             if (!!readTag && readTag.length > 0) {
                                 readTag.parent().parent().find(".cover > img, .cover > .caption").css("opacity", marked_as_read_fade_opacity);
                             }
                         }
 
+                        let thumbnailReplacement;
+                        const $img = $result.find(".cover > img");
+                        const dataSrc = $img.attr("data-src");
+                        
+                        if (dataSrc) {
+                            thumbnailReplacement = dataSrc
+                                .replace(/\/\/.+?\.nhentai/g, "//i1.nhentai")  // Fixed CDN path
+                                .replace("thumb.", "1.");  // Generic replacement for all extensions
+                        } else {
+                            thumbnailReplacement = $img.attr("src")
+                                .replace(/\/\/.+?\.nhentai/g, "//i1.nhentai")  // Fixed CDN path
+                                .replace("thumb.", "1.");  // Generic replacement for all extensions
+                        }
 
-
-            let thumbnailReplacement;
-            if (!!$(allResults[i]).find(".cover > img").attr("data-src")) {
-                thumbnailReplacement = $(allResults[i]).find(".cover > img").attr("data-src")
-                    .replace(/\/\/.+?\.nhentai/g, "//i1.nhentai")  // Fixed CDN path
-                    .replace("thumb.", "1.");  // Generic replacement for all extensions
-            } else {
-                thumbnailReplacement = $(allResults[i]).find(".cover > img").attr("src")
-                    .replace(/\/\/.+?\.nhentai/g, "//i1.nhentai")  // Fixed CDN path
-                    .replace("thumb.", "1.");  // Generic replacement for all extensions
-            }
-
-
-
-                        $(allResults[i]).find(".cover > img").attr("src", thumbnailReplacement);
-                        place.parent().append($(allResults[i]).find(".cover"));
+                        $img.attr("src", thumbnailReplacement);
+                        place.parent().append($result.find(".cover"));
                     }
                 } catch (er) {
                     alert("Error modifying data: " + er);
@@ -713,64 +725,89 @@ addFindAltButton();
             }
 
             // Original search function as fallback
-            function processSearch(title) {
-                $.get(BuildUrl(title), function(data) {
-                    let found = $(data).find(".container > .gallery");
-                    if (!found || found.length <= 0) {
-                        alert("error reading data");
+            async function processSearch(title) {
+                try {
+                    // Use fetch API instead of jQuery's $.get to avoid XHR interception issues
+                    const response = await fetch(BuildUrl(title));
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    const text = await response.text();
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(text, 'text/html');
+                    const foundElements = doc.querySelectorAll(".container > .gallery");
+                    
+                    if (!foundElements || foundElements.length <= 0) {
+                        alert("Error reading data");
                         return;
                     }
+                    
+                    // Convert NodeList to jQuery collection for easier manipulation
+                    const found = $(foundElements);
+                    
                     place.parent().find(".cover").remove();
                     try {
                         for (let i = 0; i < found.length; i++) {
+                            const $item = $(found[i]);
+                            
                             if (partially_fade_all_non_english) {
-                                $(found[i]).find(".cover > img, .cover > .caption").css("opacity", non_english_fade_opacity);
+                                $item.find(".cover > img, .cover > .caption").css("opacity", non_english_fade_opacity);
                             }
 
-                            if ($(found[i]).attr("data-tags").includes("12227")) {
-                                $(found[i]).find(".caption").append(`<img class="overlayFlag" src="` + flagEn + `">`);
-                                $(found[i]).find(".cover > img, .cover > .caption").css("opacity", "1");
+                            const dataTags = $item.attr("data-tags") || "";
+                            
+                            if (dataTags.includes("12227")) {
+                                $item.find(".caption").append(`<img class="overlayFlag" src="` + flagEn + `">`);
+                                $item.find(".cover > img, .cover > .caption").css("opacity", "1");
                             } else {
-                                if ($(found[i]).attr("data-tags").includes("6346")) {
-                                    $(found[i]).find(".caption").append(`<img class="overlayFlag" src="` + flagJp + `">`);
-                                } else if ($(found[i]).attr("data-tags").includes("29963")) {
-                                    $(found[i]).find(".caption").append(`<img class="overlayFlag" src="` + flagCh + `">`);
+                                if (dataTags.includes("6346")) {
+                                    $item.find(".caption").append(`<img class="overlayFlag" src="` + flagJp + `">`);
+                                } else if (dataTags.includes("29963")) {
+                                    $item.find(".caption").append(`<img class="overlayFlag" src="` + flagCh + `">`);
                                 }
                                 if (!partially_fade_all_non_english) {
-                                    $(found[i]).find(".cover > img, .cover > .caption").css("opacity", "1");
+                                    $item.find(".cover > img, .cover > .caption").css("opacity", "1");
                                 }
                             }
 
                             if (mark_as_read_system_enabled) {
                                 let MARArraySelector = MARArray.join("'], .cover[href='");
-                                $(found[i]).find(".cover[href='" + MARArraySelector + "']").append("<div class='readTag'>READ</div>");
-                                let readTag = $(found[i]).find(".readTag");
+                                $item.find(".cover[href='" + MARArraySelector + "']").append("<div class='readTag'>READ</div>");
+                                let readTag = $item.find(".readTag");
                                 if (!!readTag && readTag.length > 0) {
                                     readTag.parent().parent().find(".cover > img, .cover > .caption").css("opacity", marked_as_read_fade_opacity);
                                 }
                             }
 
                             let thumbnailReplacement;
-                            if (!!$(found[i]).find(".cover > img").attr("data-src")) {
-                                thumbnailReplacement = $(found[i]).find(".cover > img").attr("data-src").replace(/\/\/.+?\.nhentai/g, "//i1.nhentai").replace("thumb.jpg", "1.jpg").replace("thumb.png", "1.png");
+                            const $img = $item.find(".cover > img");
+                            const dataSrc = $img.attr("data-src");
+                            
+                            if (dataSrc) {
+                                thumbnailReplacement = dataSrc
+                                    .replace(/\/\/.+?\.nhentai/g, "//i1.nhentai")  // Fixed CDN path
+                                    .replace("thumb.", "1.");  // Generic replacement for all extensions
                             } else {
-                                thumbnailReplacement = $(found[i]).find(".cover > img").attr("src").replace(/\/\/.+?\.nhentai/g, "//i1.nhentai").replace("thumb.jpg", "1.jpg").replace("thumb.png", "1.png");
+                                thumbnailReplacement = $img.attr("src")
+                                    .replace(/\/\/.+?\.nhentai/g, "//i1.nhentai")  // Fixed CDN path
+                                    .replace("thumb.", "1.");  // Generic replacement for all extensions
                             }
 
-                            $(found[i]).find(".cover > img").attr("src", thumbnailReplacement);
-                            place.parent().append($(found[i]).find(".cover"));
+                            $img.attr("src", thumbnailReplacement);
+                            place.parent().append($item.find(".cover"));
                         }
                     } catch (er) {
-                        alert("error modifying data: " + er);
+                        alert("Error modifying data: " + er);
                         return;
                     }
                     place.parent().find(".cover:not(:first)").css("display", "none");
                     place.parent().find(".versionPrevButton, .versionNextButton, .numOfVersions").show(200);
                     place.parent().find(".numOfVersions").text("1/" + (found.length));
                     place.hide(200);
-                }).fail(function(e) {
-                    alert("error getting data: " + e);
-                });
+                } catch (e) {
+                    alert("Error getting data: " + e);
+                }
             }
         }
 
@@ -2374,6 +2411,10 @@ label:hover .tooltip {
 <div id="content">
     <h1>Settings</h1>
     <form id="settingsForm">
+    <label>
+        <input type="checkbox" id="mustAddTagsEnabled">
+        Enable Must Add Tags <span class="tooltip" data-tooltip="Enable or disable the 'Must Add Tags' feature.">?</span>
+    </label>
     <label>Must Add Tags: <input type="text" id="must-add-tags"> <span class="tooltip" data-tooltip="Tags that must be included in search. Separate with commas.">?</span></label>
 
         <label>
@@ -2667,6 +2708,7 @@ $('div.container').append(settingsHtml);
             const pagesMax = await GM.getValue('randomPrefPagesMax', '');
             const matchAllTags = await GM.getValue('matchAllTags', true);
             const blacklistedTags = await GM.getValue('blacklistedTags', []);
+            const mustAddTagsEnabled = await GM.getValue('mustAddTagsEnabled', false);
             const mustAddTags = await GM.getValue('mustAddTags', []);
             const findAltMangaThumbnailEnabled = await GM.getValue('findAltMangaThumbnailEnabled', true);
             const openInNewTabEnabled = await GM.getValue('openInNewTabEnabled', true);
@@ -2713,7 +2755,13 @@ $('div.container').append(settingsHtml);
             $('#autoLoginCredentials').toggle(autoLoginEnabled);
             $('#matchAllTags').prop('checked', matchAllTags);
             $('#blacklisted-tags').val(blacklistedTags.join(', '));
+            $('#mustAddTagsEnabled').prop('checked', mustAddTagsEnabled);
             $('#must-add-tags').val(mustAddTags.join(', '));
+            $('#must-add-tags').prop('disabled', !mustAddTagsEnabled);
+
+            $('#mustAddTagsEnabled').on('change', function() {
+                $('#must-add-tags').prop('disabled', !$(this).is(':checked'));
+            });
             $('#findAltMangaThumbnailEnabled').prop('checked', findAltMangaThumbnailEnabled);
             $('#openInNewTabEnabled').prop('checked', openInNewTabEnabled);
             $('#mangaBookMarkingButtonEnabled').prop('checked', mangaBookMarkingButtonEnabled);
@@ -2921,8 +2969,12 @@ $('#openInNewTabEnabled').change(function() {
             tags = tags.map(tag => tag.replace(/-/g, ' ')); // Replace hyphens with spaces
             let blacklistedTags = $('#blacklisted-tags').val().split(',').map(tag => tag.trim());
             blacklistedTags = blacklistedTags.map(tag => tag.replace(/-/g, ' ')); // Replace hyphens with spaces
-            let mustAddTags = $('#must-add-tags').val().split(',').map(tag => tag.trim());
-            mustAddTags = mustAddTags.map(tag => tag.replace(/-/g, ' ')); // Replace hyphens with spaces
+            const mustAddTagsEnabled = $('#mustAddTagsEnabled').is(':checked');
+            let mustAddTags = [];
+            if (mustAddTagsEnabled) {
+                mustAddTags = $('#must-add-tags').val().split(',').map(tag => tag.trim());
+                mustAddTags = mustAddTags.map(tag => tag.replace(/-/g, ' ')); // Replace hyphens with spaces
+            }
             const pagesMin = $('#pref-pages-min').val();
             const pagesMax = $('#pref-pages-max').val();
             const matchAllTags = $('#matchAllTags').prop('checked');
@@ -2970,7 +3022,8 @@ $('#openInNewTabEnabled').change(function() {
             await GM.setValue('bookmarksEnabled', bookmarksEnabled);
             await GM.setValue('randomPrefLanguage', language);
             await GM.setValue('blacklistedTags', blacklistedTags);
-            GM.setValue('mustAddTags', mustAddTags);
+            await GM.setValue('mustAddTagsEnabled', mustAddTagsEnabled);
+            await GM.setValue('mustAddTags', mustAddTags);
             await GM.setValue('randomPrefTags', tags);
             await GM.setValue('randomPrefPagesMin', pagesMin);
             await GM.setValue('randomPrefPagesMax', pagesMax);
@@ -4941,10 +4994,10 @@ async function addMonthFilter() {
 
             const monthFilterHtml = `
                 <span class="sort-name">Popular:</span>
-                <a href="${baseUrl}${baseUrl.endsWith('/') ? '' : '/'}popular-today">today</a>
-                <a href="${baseUrl}${baseUrl.endsWith('/') ? '' : '/'}popular-week">week</a>
-                <a href="${baseUrl}${baseUrl.endsWith('/') ? '' : '/'}popular-month">month</a>
-                <a href="${baseUrl}${baseUrl.endsWith('/') ? '' : '/'}popular">all time</a>
+                <a href="${baseUrl}${baseUrl.includes('?') ? '&' : '?'}sort=popular-today">today</a>
+                <a href="${baseUrl}${baseUrl.includes('?') ? '&' : '?'}sort=popular-week">week</a>
+                <a href="${baseUrl}${baseUrl.includes('?') ? '&' : '?'}sort=popular-month">month</a>
+                <a href="${baseUrl}${baseUrl.includes('?') ? '&' : '?'}sort=popular">all time</a>
             `;
             sortTypes[1].innerHTML = monthFilterHtml;
         }
@@ -7157,6 +7210,7 @@ setTimeout(async function() {
 // -----------------------------------------------**Must-Add-Tags**-----------------------------------------------------------------------
 
 
+// Function to update the must-add tags list
 // Intercept both XHR and form submissions
 // Ensure this is defined globally or within a scope accessible to both handlers
 const originalOpen = XMLHttpRequest.prototype.open;
@@ -7166,27 +7220,62 @@ document.querySelector('form.search').addEventListener('submit', async function(
     e.preventDefault();
     const searchInput = this.querySelector('input[name="q"]');
     let query = searchInput.value.split(/\s+/); // Split by one or more spaces
-    const mustAddTags = await GM.getValue('mustAddTags', []); // Use GM.getValue
-    query = [...new Set([...query, ...mustAddTags])].filter(tag => tag.length > 0).join(' '); // Join with spaces
+    const mustAddTagsEnabled = await GM.getValue('mustAddTagsEnabled', false);
+const mustAddTags = await GM.getValue('mustAddTags', []);
+if (mustAddTagsEnabled) {
+    query = [...new Set([...query, ...mustAddTags])].filter(tag => tag.length > 0).join(' ');
+}
     window.location.href = `/search/?q=${encodeURIComponent(query)}`;
 });
 
+
+
 // Modify XHR requests
 XMLHttpRequest.prototype.open = function(method, url) {
-    if (url.includes('/search/')) {
-        const urlObj = new URL(url);
-        let query = urlObj.searchParams.get('q') || '';
-        // Fetch mustAddTags asynchronously for XHR as well
-        GM.getValue('mustAddTags', []).then(mustAddTags => {
-            query = [...new Set([...query.split(/\s+/), ...mustAddTags])].filter(tag => tag.length > 0).join(' '); // Split and join with spaces
-            urlObj.searchParams.set('q', query);
-            // Re-open the request with the modified URL
-            // This part still has the async GM.getValue with sync XHR.open limitation.
-            // For a robust solution, consider intercepting `send` and modifying the request body/URL there.
-            // Or, fetch mustAddTags once at script load if they don't change frequently.
-        });
+    // Store the original arguments and context for later use
+    const xhr = this;
+    const args = arguments;
+    
+    if (typeof url === 'string' && url.includes('/search/')) {
+        try {
+            const urlObj = new URL(url, window.location.origin);
+            let query = urlObj.searchParams.get('q') || '';
+            
+            // Fetch mustAddTags asynchronously for XHR as well
+            GM.getValue('mustAddTagsEnabled', false).then(mustAddTagsEnabled => {
+                if (mustAddTagsEnabled) {
+                    GM.getValue('mustAddTags', []).then(mustAddTags => {
+                        try {
+                            query = [...new Set([...query.split(/\s+/), ...mustAddTags])]
+                                .filter(tag => tag.length > 0)
+                                .join(' '); // Split and join with spaces
+                            
+                            urlObj.searchParams.set('q', query);
+                            // Re-open the request with the modified URL
+                            return originalOpen.apply(xhr, [method, urlObj.toString(), ...Array.prototype.slice.call(args, 2)]);
+                        } catch (error) {
+                            console.error('Error in XHR open override (mustAddTags):', error);
+                            // Fall back to original URL if there's an error
+                            return originalOpen.apply(xhr, args);
+                        }
+                    }).catch(error => {
+                        console.error('Error getting mustAddTags:', error);
+                        return originalOpen.apply(xhr, args);
+                    });
+                } else {
+                    return originalOpen.apply(xhr, args);
+                }
+            }).catch(error => {
+                console.error('Error getting mustAddTagsEnabled:', error);
+                return originalOpen.apply(xhr, args);
+            });
+        } catch (error) {
+            console.error('Error in XHR open override:', error);
+            return originalOpen.apply(xhr, args);
+        }
+    } else {
+        return originalOpen.apply(xhr, args);
     }
-    return originalOpen.apply(this, arguments);
 };
 
 
