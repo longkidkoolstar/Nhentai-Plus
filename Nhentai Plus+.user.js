@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      7.10.2
+// @version      7.10.3
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -23,7 +23,16 @@
 //----------------------- **Fix Menu OverFlow**----------------------------------
 
 // Nhentai Plus+.user.js
-$(document).ready(function() {
+$(document).ready(async function() {
+    // Remove the 'required' attribute from the search input when must-add tags are enabled
+    const searchInput = document.querySelector('form.search input[name="q"]');
+    if (searchInput) {
+        const mustAddTagsEnabled = await GM.getValue('mustAddTagsEnabled', false);
+        const mustAddTags = await GM.getValue('mustAddTags', []);
+        if (mustAddTagsEnabled && mustAddTags.length > 0) {
+            searchInput.removeAttribute('required');
+        }
+    }
     var styles = `
         @media (max-width: 644px) {
             nav .collapse.open {
