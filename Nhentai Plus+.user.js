@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      7.10.3
+// @version      7.10.4
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -28,7 +28,7 @@ $(document).ready(async function() {
     const searchInput = document.querySelector('form.search input[name="q"]');
     if (searchInput) {
         const mustAddTagsEnabled = await GM.getValue('mustAddTagsEnabled', false);
-        const mustAddTags = await GM.getValue('mustAddTags', []);
+        const mustAddTags = (await GM.getValue('mustAddTags', [])).map(tag => tag.toLowerCase());
         if (mustAddTagsEnabled && mustAddTags.length > 0) {
             searchInput.removeAttribute('required');
         }
@@ -2718,7 +2718,7 @@ $('div.container').append(settingsHtml);
             const matchAllTags = await GM.getValue('matchAllTags', true);
             const blacklistedTags = await GM.getValue('blacklistedTags', []);
             const mustAddTagsEnabled = await GM.getValue('mustAddTagsEnabled', false);
-            const mustAddTags = await GM.getValue('mustAddTags', []);
+            const mustAddTags = (await GM.getValue('mustAddTags', [])).map(tag => tag.toLowerCase());
             const findAltMangaThumbnailEnabled = await GM.getValue('findAltMangaThumbnailEnabled', true);
             const openInNewTabEnabled = await GM.getValue('openInNewTabEnabled', true);
             const mangaBookMarkingButtonEnabled = await GM.getValue('mangaBookMarkingButtonEnabled', true);
@@ -7228,12 +7228,15 @@ const originalOpen = XMLHttpRequest.prototype.open;
 document.querySelector('form.search').addEventListener('submit', async function(e) {
     e.preventDefault();
     const searchInput = this.querySelector('input[name="q"]');
-    let query = searchInput.value.split(/\s+/); // Split by one or more spaces
+    let query = searchInput.value; // Get the raw query string
+    // Always split the query into an array of tags
+    let queryArray = query.split(/\s+/).filter(tag => tag.length > 0).map(tag => tag.toLowerCase());
     const mustAddTagsEnabled = await GM.getValue('mustAddTagsEnabled', false);
-const mustAddTags = await GM.getValue('mustAddTags', []);
+const mustAddTags = (await GM.getValue('mustAddTags', [])).map(tag => tag.toLowerCase());
 if (mustAddTagsEnabled) {
-    query = [...new Set([...query, ...mustAddTags])].filter(tag => tag.length > 0).join(' ');
-}
+        queryArray = [...new Set([...queryArray, ...mustAddTags])];
+    }
+    query = queryArray.join(' ');
     window.location.href = `/search/?q=${encodeURIComponent(query)}`;
 });
 
@@ -7249,15 +7252,16 @@ XMLHttpRequest.prototype.open = function(method, url) {
         try {
             const urlObj = new URL(url, window.location.origin);
             let query = urlObj.searchParams.get('q') || '';
+            let queryArray = query.split(/\s+/).filter(tag => tag.length > 0).map(tag => tag.toLowerCase());
             
             // Fetch mustAddTags asynchronously for XHR as well
             GM.getValue('mustAddTagsEnabled', false).then(mustAddTagsEnabled => {
                 if (mustAddTagsEnabled) {
-                    GM.getValue('mustAddTags', []).then(mustAddTags => {
+                    GM.getValue('mustAddTags', []).then(mustAddTagsRaw => {
+                        const mustAddTags = mustAddTagsRaw.map(tag => tag.toLowerCase());
                         try {
-                            query = [...new Set([...query.split(/\s+/), ...mustAddTags])]
-                                .filter(tag => tag.length > 0)
-                                .join(' '); // Split and join with spaces
+                            queryArray = [...new Set([...queryArray, ...mustAddTags])];
+                            query = queryArray.join(' ');
                             
                             urlObj.searchParams.set('q', query);
                             // Re-open the request with the modified URL
