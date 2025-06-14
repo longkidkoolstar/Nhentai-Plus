@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      7.10.4
+// @version      7.11.0
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -2569,6 +2569,10 @@ label:hover .tooltip {
                     Replace Related Manga with Bookmarks <span class="tooltip" data-tooltip="Replaces the Related Manga section with content from your bookmarks.">?</span>
                 </label>
                 <label>
+                    <input type="checkbox" id="enableRelatedFlipButton">
+                    Enable Related Flip Button <span class="tooltip" data-tooltip="Shows a Flip button to toggle between bookmarked and original related manga. Only works when 'Replace Related Manga with Bookmarks' is enabled.">?</span>
+                </label>
+                <label>
                     <input type="checkbox" id="bookmarksPageEnabled">
                     Enable Bookmarks Page <span class="tooltip" data-tooltip="Enables the dedicated Bookmarks page for managing saved bookmarks.">?</span>
                 </label>
@@ -2734,6 +2738,7 @@ $('div.container').append(settingsHtml);
             const nfmPageEnabled = await GM.getValue('nfmPageEnabled', true);
             const bookmarksPageEnabled = await GM.getValue('bookmarksPageEnabled', true);
             const replaceRelatedWithBookmarks = await GM.getValue('replaceRelatedWithBookmarks', true);
+            const enableRelatedFlipButton = await GM.getValue('enableRelatedFlipButton', true);
             const twitterButtonEnabled = await GM.getValue('twitterButtonEnabled', true);
             const enableRandomButton = await GM.getValue('enableRandomButton', true);
             const randomOpenType = await GM.getValue('randomOpenType', 'new-tab');
@@ -2783,6 +2788,7 @@ $('div.container').append(settingsHtml);
             $('#nfmPageEnabled').prop('checked', nfmPageEnabled);
             $('#bookmarksPageEnabled').prop('checked', bookmarksPageEnabled);
             $('#replaceRelatedWithBookmarks').prop('checked', replaceRelatedWithBookmarks);
+            $('#enableRelatedFlipButton').prop('checked', enableRelatedFlipButton);
             $('#twitterButtonEnabled').prop('checked', twitterButtonEnabled);
             $('#enableRandomButton').prop('checked', enableRandomButton);
             $('#random-open-in-new-tab').prop('checked', randomOpenType === 'new-tab');
@@ -2897,6 +2903,22 @@ $('#findSimilarEnabled').on('change', function() {
                 }
             });
 
+            // Show/hide flip button setting based on related bookmarks setting
+            if ($('#replaceRelatedWithBookmarks').prop('checked')) {
+                $('#enableRelatedFlipButton').closest('label').show();
+            } else {
+                $('#enableRelatedFlipButton').closest('label').hide();
+            }
+
+            // Add event listener to toggle flip button setting visibility 
+            $('#replaceRelatedWithBookmarks').on('change', function() {
+                if ($(this).prop('checked')) {
+                    $('#enableRelatedFlipButton').closest('label').show();
+                } else {
+                    $('#enableRelatedFlipButton').closest('label').hide();
+                }
+            });
+
             if (mangaBookMarkingButtonEnabled) {
                 $('#manga-bookmarking-options').show();
             }
@@ -3002,6 +3024,7 @@ $('#openInNewTabEnabled').change(function() {
             const nfmPageEnabled = $('#nfmPageEnabled').prop('checked');
             const bookmarksPageEnabled = $('#bookmarksPageEnabled').prop('checked');
             const replaceRelatedWithBookmarks = $('#replaceRelatedWithBookmarks').prop('checked');
+            const enableRelatedFlipButton = $('#enableRelatedFlipButton').prop('checked');
             const twitterButtonEnabled = $('#twitterButtonEnabled').prop('checked');
             const enableRandomButton = $('#enableRandomButton').prop('checked');
             const randomOpenType = $('input[name="random-open-type"]:checked').val();
@@ -3052,6 +3075,7 @@ $('#openInNewTabEnabled').change(function() {
             await GM.setValue('nfmPageEnabled', nfmPageEnabled);
             await GM.setValue('bookmarksPageEnabled', bookmarksPageEnabled);
             await GM.setValue('replaceRelatedWithBookmarks', replaceRelatedWithBookmarks);
+            await GM.setValue('enableRelatedFlipButton', enableRelatedFlipButton);
             await GM.setValue('twitterButtonEnabled', twitterButtonEnabled);
             await GM.setValue('enableRandomButton', enableRandomButton);
             await GM.setValue('randomOpenType', randomOpenType);
@@ -5103,17 +5127,26 @@ const LANGUAGE_FLAGS = {
 
 // Function to replace the related manga section with bookmarked content
 async function replaceRelatedWithBookmarks() {
-   
+
     // Check if the feature is enabled
     const replaceRelatedWithBookmarks = await GM.getValue('replaceRelatedWithBookmarks', true);
     if (!replaceRelatedWithBookmarks) return;
+
+    // Check if flip button is enabled
+    const enableRelatedFlipButton = await GM.getValue('enableRelatedFlipButton', true);
 
     // Check if we're on a manga page and if the related container exists
     const relatedContainer = document.querySelector("#related-container");
     if (!relatedContainer || !window.location.pathname.includes('/g/')) return;
 
-    // Add a loading indicator
+    // Store original content for flipping back
     const originalContent = relatedContainer.innerHTML;
+
+    // State management for flip functionality (only if flip button is enabled)
+    let isShowingBookmarks = true; // Default to showing bookmarks when enabled
+    let bookmarkedContent = null;
+
+    // Add a loading indicator
     relatedContainer.innerHTML = `
         <h2>Finding Related Manga from Your Bookmarks...</h2>
         <div class="container" style="text-align: center; padding: 20px;">
@@ -5291,15 +5324,243 @@ async function replaceRelatedWithBookmarks() {
     // Clear the related container
     relatedContainer.innerHTML = '';
 
-    // Create a header for the section
+    // Create a header container for the section with flip button
+    const headerContainer = document.createElement('div');
+    headerContainer.style.display = 'flex';
+    headerContainer.style.alignItems = 'center';
+    headerContainer.style.justifyContent = 'center';
+    headerContainer.style.gap = '10px';
+    headerContainer.style.position = 'relative';
+
     const header = document.createElement('h2');
     header.textContent = 'Related Manga from Your Bookmarks';
-    relatedContainer.appendChild(header);
+    header.style.margin = '0';
+    header.style.textAlign = 'center';
+    header.style.flex = '1';
+    headerContainer.appendChild(header);
+
+    // Only create flip button if the setting is enabled
+    let flipButton = null;
+    if (enableRelatedFlipButton) {
+        // Create flip button
+        flipButton = document.createElement('button');
+        flipButton.textContent = 'Flip';
+        flipButton.style.cssText = `
+            background: #ed2553;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+        `;
+
+        // Add hover effect
+        flipButton.addEventListener('mouseenter', () => {
+            flipButton.style.background = '#d91e47';
+        });
+        flipButton.addEventListener('mouseleave', () => {
+            flipButton.style.background = '#ed2553';
+        });
+
+        headerContainer.appendChild(flipButton);
+    }
+
+    relatedContainer.appendChild(headerContainer);
 
     // Create a container for the galleries
     const galleryContainer = document.createElement('div');
     galleryContainer.className = 'container';
     relatedContainer.appendChild(galleryContainer);
+
+    // Store the bookmarked content for later use
+    const storeBookmarkedContent = () => {
+        bookmarkedContent = relatedContainer.innerHTML;
+    };
+
+    // Function to toggle between bookmarked and original content
+    const toggleContent = () => {
+        if (isShowingBookmarks) {
+            // Switch to original content
+            relatedContainer.innerHTML = originalContent;
+            isShowingBookmarks = false;
+
+            // Force load thumbnails in original content with comprehensive loading
+            setTimeout(() => {
+                const images = relatedContainer.querySelectorAll('img');
+                images.forEach((img, index) => {
+                    // Store original attributes
+                    const dataSrc = img.dataset.src || img.getAttribute('data-src');
+                    const originalSrc = img.src;
+
+                    // Function to attempt loading the image
+                    const loadImage = (src) => {
+                        return new Promise((resolve, reject) => {
+                            const testImg = new Image();
+                            testImg.onload = () => {
+                                img.src = src;
+                                img.style.opacity = '1';
+                                resolve(src);
+                            };
+                            testImg.onerror = () => reject(src);
+                            testImg.src = src;
+                        });
+                    };
+
+                    // Try multiple loading strategies
+                    const tryLoadImage = async () => {
+                        const sources = [];
+
+                        // Add data-src if available
+                        if (dataSrc && dataSrc !== originalSrc) {
+                            sources.push(dataSrc);
+                        }
+
+                        // Add original src if available and different
+                        if (originalSrc && !originalSrc.includes('placeholder') && !originalSrc.includes('loading')) {
+                            sources.push(originalSrc);
+                        }
+
+                        // Try each source
+                        for (const src of sources) {
+                            try {
+                                await loadImage(src);
+                                console.log(`Successfully loaded image ${index + 1}:`, src);
+                                return;
+                            } catch (error) {
+                                console.log(`Failed to load image ${index + 1} from:`, src);
+                            }
+                        }
+
+                        // If all sources fail, try to reconstruct the URL
+                        const galleryLink = img.closest('a');
+                        if (galleryLink && galleryLink.href) {
+                            const mangaId = galleryLink.href.match(/\/g\/(\d+)/)?.[1];
+                            if (mangaId) {
+                                const reconstructedUrl = `https://t.nhentai.net/galleries/${mangaId}/thumb.jpg`;
+                                try {
+                                    await loadImage(reconstructedUrl);
+                                    console.log(`Successfully loaded reconstructed image ${index + 1}:`, reconstructedUrl);
+                                } catch (error) {
+                                    console.log(`Failed to load reconstructed image ${index + 1}:`, reconstructedUrl);
+                                }
+                            }
+                        }
+                    };
+
+                    // Start loading process
+                    tryLoadImage();
+
+                    // Remove lazy loading classes that might prevent loading
+                    img.classList.remove('lazyload', 'lazyloading');
+                    img.classList.add('lazyloaded');
+                });
+
+                // Trigger any lazy loading libraries that might be present
+                if (window.lazyLoadInstance) {
+                    window.lazyLoadInstance.update();
+                }
+
+                // Trigger intersection observer if present
+                if (window.IntersectionObserver) {
+                    const observer = new IntersectionObserver((entries) => {
+                        entries.forEach(entry => {
+                            if (entry.isIntersecting) {
+                                const img = entry.target;
+                                if (img.dataset.src && !img.src) {
+                                    img.src = img.dataset.src;
+                                }
+                            }
+                        });
+                    });
+
+                    images.forEach(img => observer.observe(img));
+
+                    // Disconnect after a short time
+                    setTimeout(() => observer.disconnect(), 2000);
+                }
+            }, 100);
+
+            // Add a flip button to the original content to switch back (only if flip button is enabled)
+            const originalHeader = relatedContainer.querySelector('h2');
+            if (originalHeader && enableRelatedFlipButton) {
+                // Create container for original header with flip button
+                const originalHeaderContainer = document.createElement('div');
+                originalHeaderContainer.style.display = 'flex';
+                originalHeaderContainer.style.alignItems = 'center';
+                originalHeaderContainer.style.justifyContent = 'center';
+                originalHeaderContainer.style.gap = '10px';
+                originalHeaderContainer.style.position = 'relative';
+
+                // Style the original header
+                originalHeader.style.margin = '0';
+                originalHeader.style.textAlign = 'center';
+                originalHeader.style.flex = '1';
+
+                // Create flip button for original content
+                const originalFlipButton = document.createElement('button');
+                originalFlipButton.textContent = 'Flip';
+                originalFlipButton.style.cssText = `
+                    background: #ed2553;
+                    color: white;
+                    border: none;
+                    padding: 5px 10px;
+                    border-radius: 3px;
+                    cursor: pointer;
+                    font-size: 12px;
+                    font-weight: bold;
+                    position: absolute;
+                    right: 0;
+                    top: 50%;
+                    transform: translateY(-50%);
+                `;
+
+                // Add hover effects
+                originalFlipButton.addEventListener('mouseenter', () => {
+                    originalFlipButton.style.background = '#d91e47';
+                });
+                originalFlipButton.addEventListener('mouseleave', () => {
+                    originalFlipButton.style.background = '#ed2553';
+                });
+
+                // Add click event to flip back
+                originalFlipButton.addEventListener('click', toggleContent);
+
+                // Replace the original header with the container
+                originalHeader.parentNode.insertBefore(originalHeaderContainer, originalHeader);
+                originalHeaderContainer.appendChild(originalHeader);
+                originalHeaderContainer.appendChild(originalFlipButton);
+            }
+        } else {
+            // Switch back to bookmarked content
+            if (bookmarkedContent) {
+                relatedContainer.innerHTML = bookmarkedContent;
+                // Re-attach event listener to the new flip button
+                const newFlipButton = relatedContainer.querySelector('button');
+                if (newFlipButton) {
+                    newFlipButton.addEventListener('click', toggleContent);
+                    // Re-add hover effects
+                    newFlipButton.addEventListener('mouseenter', () => {
+                        newFlipButton.style.background = '#d91e47';
+                    });
+                    newFlipButton.addEventListener('mouseleave', () => {
+                        newFlipButton.style.background = '#ed2553';
+                    });
+                }
+                isShowingBookmarks = true;
+            }
+        }
+    };
+
+    // Add click event to flip button (only if it exists)
+    if (flipButton) {
+        flipButton.addEventListener('click', toggleContent);
+    }
 
     // Add each bookmark to the container
     for (const item of topBookmarks) {
@@ -5375,6 +5636,9 @@ async function replaceRelatedWithBookmarks() {
             console.error(`Error creating gallery item for bookmark ${bookmark.id}:`, error);
         }
     }
+
+    // Store the bookmarked content after all galleries are added
+    storeBookmarkedContent();
 }
 
 // Call the function when the page is loaded
