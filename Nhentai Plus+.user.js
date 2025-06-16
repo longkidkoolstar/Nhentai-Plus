@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      7.11.0
+// @version      7.12.0
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -19,6 +19,84 @@
 // ==/UserScript==
 
 
+//----------------------- **Change Log** ------------------------------------------
+
+const CURRENT_VERSION = "7.12.0";
+const CHANGELOG_URL = "https://api.jsonstorage.net/v1/json/d206ce58-9543-48db-a5e4-997cfc745ef3/a5efadba-2c0f-4962-8c17-70f2e3f5e5fc";
+
+(async () => {
+  const lastSeenVersion = await GM.getValue("lastSeenVersion", "0.0.0");
+
+  if (CURRENT_VERSION !== lastSeenVersion) {
+    try {
+      const res = await fetch(CHANGELOG_URL);
+      const changelogData = await res.json();
+      const log = changelogData[CURRENT_VERSION];
+
+      if (log) {
+        const msg = `🆕 Version ${CURRENT_VERSION} (${log.date})\n\n` +
+                    log.changes.map(line => `• ${line}`).join("\n");
+
+        showChangelogPopup(msg);
+      }
+
+      await GM.setValue("lastSeenVersion", CURRENT_VERSION);
+    } catch (err) {
+      console.error("Error fetching or displaying changelog:", err);
+    }
+  }
+})();
+
+function showChangelogPopup(message) {
+  const popup = document.createElement("div");
+  popup.style.position = "fixed";
+  popup.style.bottom = "20px";
+  popup.style.right = "20px";
+  popup.style.maxWidth = "350px";
+  popup.style.backgroundColor = "#1e1e1e";
+  popup.style.color = "#fff";
+  popup.style.padding = "16px";
+  popup.style.borderRadius = "8px";
+  popup.style.boxShadow = "0 4px 12px rgba(0,0,0,0.5)";
+  popup.style.zIndex = 99999;
+  popup.style.fontFamily = "'Segoe UI', Arial, sans-serif";
+  popup.style.opacity = "0";
+  popup.style.transform = "translateY(20px)";
+  popup.style.transition = "opacity 0.3s ease, transform 0.3s ease";
+  popup.innerHTML = `
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+      <strong style="font-size: 16px;">Changelog</strong>
+      <button style="background: transparent; color: #aaa; border: none; cursor: pointer; font-size: 18px; line-height: 1; padding: 0;">&times;</button>
+    </div>
+    <pre style="white-space: pre-wrap; font-size: 13px; line-height: 1.4; margin: 0; color: #ddd;">${message}</pre>
+  `;
+
+  popup.querySelector("button").addEventListener("click", () => {
+    popup.style.opacity = "0";
+    popup.style.transform = "translateY(20px)";
+    setTimeout(() => popup.remove(), 300);
+  });
+
+  document.body.appendChild(popup);
+  
+  // Trigger animation
+  setTimeout(() => {
+    popup.style.opacity = "1";
+    popup.style.transform = "translateY(0)";
+  }, 10);
+  
+  // Auto-dismiss after 15 seconds
+  setTimeout(() => {
+    if (document.body.contains(popup)) {
+      popup.style.opacity = "0";
+      popup.style.transform = "translateY(20px)";
+      setTimeout(() => popup.remove(), 300);
+    }
+  }, 15000);
+}
+
+
+//----------------------- **Change Log** ------------------------------------------
 
 //----------------------- **Fix Menu OverFlow**----------------------------------
 
