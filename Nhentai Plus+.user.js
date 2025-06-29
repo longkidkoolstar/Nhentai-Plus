@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      7.12.0
+// @version      8.0.0
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -21,7 +21,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "7.12.0";
+const CURRENT_VERSION = "8.0.0";
 const CHANGELOG_URL = "https://api.jsonstorage.net/v1/json/d206ce58-9543-48db-a5e4-997cfc745ef3/a5efadba-2c0f-4962-8c17-70f2e3f5e5fc";
 
 (async () => {
@@ -2493,6 +2493,105 @@ label:hover .tooltip {
     visibility: visible;
 }
 
+/* Online Data Sync Styles */
+.sync-section {
+    margin: 15px 0;
+    padding: 10px;
+    border: 1px solid #444;
+    border-radius: 5px;
+    background: #2a2a2a;
+}
+
+.sync-section h4 {
+    margin: 0 0 10px 0;
+    color: #fff;
+    font-size: 14px;
+}
+
+.sync-controls {
+    margin: 10px 0;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.sync-controls button {
+    padding: 5px 10px;
+    background: #444;
+    border: 1px solid #666;
+    border-radius: 3px;
+    color: #fff;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.sync-controls button:hover {
+    background: #555;
+}
+
+.sync-controls button:disabled {
+    background: #333;
+    color: #666;
+    cursor: not-allowed;
+}
+
+.sync-status {
+    font-size: 12px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    margin-left: 10px;
+}
+
+.sync-status.success {
+    background: #2d5a2d;
+    color: #90ee90;
+}
+
+.sync-status.error {
+    background: #5a2d2d;
+    color: #ff6b6b;
+}
+
+.sync-status.loading {
+    background: #5a5a2d;
+    color: #ffeb3b;
+}
+
+.sync-info {
+    margin-top: 5px;
+    font-size: 11px;
+    color: #aaa;
+}
+
+#userUUID {
+    font-family: monospace;
+    letter-spacing: 2px;
+    text-align: center;
+    width: 80px !important;
+}
+
+#edit-uuid, #regenerate-uuid, #browse-users {
+    margin-left: 10px;
+    padding: 2px 8px;
+    font-size: 11px;
+}
+
+#edit-uuid {
+    background: #444;
+    border: 1px solid #666;
+}
+
+#edit-uuid:hover {
+    background: #555;
+}
+
+#uuid-edit-warning {
+    background: rgba(255, 107, 107, 0.1);
+    border: 1px solid #ff6b6b;
+    border-radius: 3px;
+    padding: 8px;
+}
+
 </style>
 
 <div id="content">
@@ -2748,6 +2847,96 @@ label:hover .tooltip {
             </div>
         </div>
 
+        <!-- Separator Line -->
+        <hr style="margin: 20px 0; border: none; border-top: 1px solid #444;">
+
+        <!-- Online Data Sync Section -->
+        <div id="online-sync-settings">
+            <h3 class="expand-icon">Online Data Sync <span class="tooltip" data-tooltip="Sync your userscript data with cloud storage providers">?</span></h3>
+            <div id="online-sync-settings-content">
+                <p>Sync your bookmarks, favorites, and settings across devices using cloud storage.</p>
+
+                <!-- User UUID -->
+                <div class="sync-section">
+                    <h4>User Identification</h4>
+                    <label>
+                        Your UUID: <input type="text" id="userUUID" readonly style="background: #222; color: #ccc;">
+                        <button type="button" id="edit-uuid">Edit</button>
+                        <button type="button" id="regenerate-uuid">Regenerate</button>
+                        <button type="button" id="browse-users">Browse Users</button>
+                        <span class="tooltip" data-tooltip="Unique identifier for your data. Keep this safe!">?</span>
+                    </label>
+                    <div id="uuid-edit-warning" style="display: none; color: #ff6b6b; font-size: 12px; margin-top: 5px;">
+                        ⚠️ Warning: Changing your UUID will affect which data you can access. Make sure you have the correct UUID for your data.
+                    </div>
+                    <div id="available-users" style="display: none; margin-top: 10px; padding: 10px; background: #333; border-radius: 3px;">
+                        <h5 style="margin: 0 0 10px 0; color: #fff;">Available Users in Cloud Storage:</h5>
+                        <div id="users-list" style="font-family: monospace; font-size: 12px;"></div>
+                        <button type="button" id="close-users-list" style="margin-top: 10px; padding: 2px 8px; font-size: 11px;">Close</button>
+                    </div>
+                </div>
+
+                <!-- Public Section -->
+                <div class="sync-section">
+                    <h4>Public Sync (Standard Security)</h4>
+                    <label>
+                        <input type="checkbox" id="publicSyncEnabled">
+                        Enable Public Sync <span class="tooltip" data-tooltip="Use predefined JSONStorage.net endpoint with standard security">?</span>
+                    </label>
+                    <div id="public-sync-options" style="margin-left: 20px; display: none;">
+                        <p style="font-size: 12px; color: #aaa;">Uses predefined JSONStorage.net API with standard security level.</p>
+                        <div class="sync-controls">
+                            <button type="button" id="public-sync-upload">Upload Data</button>
+                            <button type="button" id="public-sync-download">Download Data</button>
+                            <span id="public-sync-status" class="sync-status"></span>
+                        </div>
+                        <div class="sync-info">
+                            <small>Last sync: <span id="public-last-sync">Never</span></small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Private Section -->
+                <div class="sync-section">
+                    <h4>Private Sync (Enhanced Security)</h4>
+                    <label>
+                        <input type="checkbox" id="privateSyncEnabled">
+                        Enable Private Sync <span class="tooltip" data-tooltip="Use your own JSONStorage.net credentials for enhanced security">?</span>
+                    </label>
+                    <div id="private-sync-options" style="margin-left: 20px; margin-top: 10px; display: none;">
+                        <label>
+                            Storage URL: <input type="text" id="privateStorageUrl" placeholder="https://api.jsonstorage.net/v1/json/your-endpoint">
+                            <span class="tooltip" data-tooltip="Your custom JSONStorage.net endpoint URL">?</span>
+                        </label>
+                        <label>
+                            API Key: <input type="password" id="privateApiKey" placeholder="Your API key">
+                            <span class="tooltip" data-tooltip="Your private JSONStorage.net API key">?</span>
+                        </label>
+                        <div class="sync-controls">
+                            <button type="button" id="private-sync-upload">Upload Data</button>
+                            <button type="button" id="private-sync-download">Download Data</button>
+                            <span id="private-sync-status" class="sync-status"></span>
+                        </div>
+                        <div class="sync-info">
+                            <small>Last sync: <span id="private-last-sync">Never</span></small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sync Settings -->
+                <div class="sync-section">
+                    <h4>Sync Options</h4>
+                    <label>
+                        <input type="checkbox" id="autoSyncEnabled">
+                        Enable Auto Sync <span class="tooltip" data-tooltip="Automatically sync data when changes are made">?</span>
+                    </label>
+                    <label>
+                        Sync Interval (minutes): <input type="number" id="syncInterval" min="5" max="1440" value="30">
+                        <span class="tooltip" data-tooltip="How often to automatically sync (5-1440 minutes)">?</span>
+                    </label>
+                </div>
+            </div>
+        </div>
 
         <!-- Advanced Storage Section -->
         <div id="advanced-settings">
@@ -2778,6 +2967,251 @@ label:hover .tooltip {
 
 // Append settings form to the container
 $('div.container').append(settingsHtml);
+
+// Online Data Sync Implementation
+class OnlineDataSync {
+    constructor() {
+        this.providers = {
+            jsonstorage: new JSONStorageProvider()
+        };
+        this.publicConfig = {
+            url: 'https://api.jsonstorage.net/v1/json/d206ce58-9543-48db-a5e4-997cfc745ef3/6629f339-5696-4b2e-b63d-b5d092dc46f6',
+            apiKey: '2f9e71c8-be66-4623-a2cc-a6f05e958563'
+        };
+    }
+
+    // Generate 5-character alphanumeric UUID
+    generateUUID() {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        let result = '';
+        for (let i = 0; i < 5; i++) {
+            result += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return result;
+    }
+
+    // Get or create user UUID
+    async getUserUUID() {
+        // Check if we have a cached UUID first
+        if (this.cachedUUID) {
+            return this.cachedUUID;
+        }
+
+        let uuid = await GM.getValue('userUUID');
+        if (!uuid) {
+            uuid = this.generateUUID();
+            await GM.setValue('userUUID', uuid);
+        }
+
+        // Cache the UUID for future use
+        this.cachedUUID = uuid;
+        return uuid;
+    }
+
+    // Collect all syncable data
+    async collectSyncData() {
+        const allKeys = await GM.listValues();
+        const syncData = {
+            version: CURRENT_VERSION,
+            timestamp: new Date().toISOString(),
+            userUUID: await this.getUserUUID(),
+            data: {}
+        };
+
+        // Define which keys to sync
+        const syncableKeys = [
+            'bookmarkedPages', 'offlineFavorites', 'mustAddTags', 'mustAddTagsEnabled',
+            'randomPrefLanguage', 'randomPrefTags', 'randomPrefPagesMin', 'randomPrefPagesMax',
+            'blacklistedTags', 'findSimilarEnabled', 'bookmarksEnabled', 'maxTagsToSelect',
+            'showNonEnglish', 'showPageNumbersEnabled', 'maxMangaPerBookmark'
+        ];
+
+        for (const key of syncableKeys) {
+            if (allKeys.includes(key)) {
+                syncData.data[key] = await GM.getValue(key);
+            }
+        }
+
+        return syncData;
+    }
+
+    // Apply synced data
+    async applySyncData(syncData) {
+        if (!syncData || !syncData.data) {
+            throw new Error('Invalid sync data format');
+        }
+
+        const currentUUID = await this.getUserUUID();
+        if (syncData.userUUID && syncData.userUUID !== currentUUID) {
+            const confirmMerge = confirm(
+                `This data belongs to a different user (${syncData.userUUID}). ` +
+                `Your UUID is ${currentUUID}. Do you want to merge this data anyway?`
+            );
+            if (!confirmMerge) {
+                throw new Error('User cancelled data merge');
+            }
+        }
+
+        let appliedCount = 0;
+        for (const [key, value] of Object.entries(syncData.data)) {
+            await GM.setValue(key, value);
+            appliedCount++;
+        }
+
+        await GM.setValue('lastSyncDownload', new Date().toISOString());
+        return appliedCount;
+    }
+
+    // Upload data using specified provider (supports multiple users)
+    async uploadData(providerType, config) {
+        const provider = this.providers[providerType];
+        if (!provider) {
+            throw new Error(`Unknown provider: ${providerType}`);
+        }
+
+        const userSyncData = await this.collectSyncData();
+        const userUUID = userSyncData.userUUID;
+
+        // Download existing data to merge with current user's data
+        let existingData = {};
+        try {
+            existingData = await provider.download(config);
+        } catch (error) {
+            // If download fails (e.g., no data exists yet), start with empty object
+            console.log('No existing data found, creating new storage');
+        }
+
+        // Ensure existingData has the correct structure for multiple users
+        if (!existingData.users) {
+            existingData = {
+                version: CURRENT_VERSION,
+                lastUpdated: new Date().toISOString(),
+                users: {}
+            };
+        }
+
+        // Add/update current user's data
+        existingData.users[userUUID] = userSyncData;
+        existingData.lastUpdated = new Date().toISOString();
+        existingData.version = CURRENT_VERSION;
+
+        await provider.upload(config, existingData);
+        await GM.setValue('lastSyncUpload', new Date().toISOString());
+        return userSyncData;
+    }
+
+    // Download data using specified provider (supports multiple users)
+    async downloadData(providerType, config) {
+        const provider = this.providers[providerType];
+        if (!provider) {
+            throw new Error(`Unknown provider: ${providerType}`);
+        }
+
+        const allData = await provider.download(config);
+        const userUUID = await this.getUserUUID();
+
+        // Handle both old single-user format and new multi-user format
+        let userSyncData;
+        if (allData.users && allData.users[userUUID]) {
+            // New multi-user format
+            userSyncData = allData.users[userUUID];
+        } else if (allData.userUUID === userUUID) {
+            // Old single-user format
+            userSyncData = allData;
+        } else if (allData.users) {
+            // Multi-user format but user not found
+            const availableUsers = Object.keys(allData.users);
+            throw new Error(`No data found for UUID ${userUUID}. Available UUIDs: ${availableUsers.join(', ')}`);
+        } else {
+            // Single-user format but different user
+            throw new Error(`Data belongs to UUID ${allData.userUUID}, but your UUID is ${userUUID}`);
+        }
+
+        const appliedCount = await this.applySyncData(userSyncData);
+        return { syncData: userSyncData, appliedCount, allUsers: allData.users ? Object.keys(allData.users) : [allData.userUUID] };
+    }
+
+    // Get available users from cloud storage without downloading data
+    async getAvailableUsers(providerType, config) {
+        const provider = this.providers[providerType];
+        if (!provider) {
+            throw new Error(`Unknown provider: ${providerType}`);
+        }
+
+        const allData = await provider.download(config);
+
+        if (allData.users) {
+            // Multi-user format
+            return Object.keys(allData.users).map(uuid => ({
+                uuid,
+                version: allData.users[uuid].version || 'Unknown',
+                timestamp: allData.users[uuid].timestamp,
+                dataCount: Object.keys(allData.users[uuid].data || {}).length
+            }));
+        } else if (allData.userUUID) {
+            // Old single-user format
+            return [{
+                uuid: allData.userUUID,
+                version: allData.version || 'Unknown',
+                timestamp: allData.timestamp,
+                dataCount: Object.keys(allData.data || {}).length
+            }];
+        }
+
+        return [];
+    }
+}
+
+// JSONStorage.net provider implementation
+class JSONStorageProvider {
+    async upload(config, data) {
+        return new Promise((resolve, reject) => {
+            GM.xmlHttpRequest({
+                method: 'PUT',
+                url: `${config.url}?apiKey=${config.apiKey}`,
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                data: JSON.stringify(data),
+                onload: function(response) {
+                    if (response.status === 200) {
+                        resolve(JSON.parse(response.responseText));
+                    } else {
+                        reject(new Error(`Upload failed: ${response.status} ${response.statusText}`));
+                    }
+                },
+                onerror: function(error) {
+                    reject(new Error(`Network error: ${error}`));
+                }
+            });
+        });
+    }
+
+    async download(config) {
+        return new Promise((resolve, reject) => {
+            GM.xmlHttpRequest({
+                method: 'GET',
+                url: `${config.url}?apiKey=${config.apiKey}`,
+                headers: {
+                    'Accept': 'application/json'
+                },
+                onload: function(response) {
+                    if (response.status === 200) {
+                        resolve(JSON.parse(response.responseText));
+                    } else {
+                        reject(new Error(`Download failed: ${response.status} ${response.statusText}`));
+                    }
+                },
+                onerror: function(error) {
+                    reject(new Error(`Network error: ${error}`));
+                }
+            });
+        });
+    }
+}
+
+// Initialize sync system
+const syncSystem = new OnlineDataSync();
 
 
 
@@ -2814,6 +3248,17 @@ $('div.container').append(settingsHtml);
             const offlineFavoritingEnabled = await GM.getValue('offlineFavoritingEnabled', true);
             const offlineFavoritesPageEnabled = await GM.getValue('offlineFavoritesPageEnabled', true);
             const nfmPageEnabled = await GM.getValue('nfmPageEnabled', true);
+
+            // Online Data Sync settings
+            const publicSyncEnabled = await GM.getValue('publicSyncEnabled', false);
+            const privateSyncEnabled = await GM.getValue('privateSyncEnabled', false);
+            const privateStorageUrl = await GM.getValue('privateStorageUrl', '');
+            const privateApiKey = await GM.getValue('privateApiKey', '');
+            const autoSyncEnabled = await GM.getValue('autoSyncEnabled', false);
+            const syncInterval = await GM.getValue('syncInterval', 30);
+            const userUUID = await syncSystem.getUserUUID();
+            const lastSyncUpload = await GM.getValue('lastSyncUpload', null);
+            const lastSyncDownload = await GM.getValue('lastSyncDownload', null);
             const bookmarksPageEnabled = await GM.getValue('bookmarksPageEnabled', true);
             const replaceRelatedWithBookmarks = await GM.getValue('replaceRelatedWithBookmarks', true);
             const enableRelatedFlipButton = await GM.getValue('enableRelatedFlipButton', true);
@@ -2878,6 +3323,284 @@ $('div.container').append(settingsHtml);
             $('#open-immediately').prop('checked', findSimilarType === 'immediately');
             $('#input-tags').prop('checked', findSimilarType === 'input-tags');
 
+            // Populate sync settings
+            $('#publicSyncEnabled').prop('checked', publicSyncEnabled);
+            $('#privateSyncEnabled').prop('checked', privateSyncEnabled);
+            $('#privateStorageUrl').val(privateStorageUrl);
+            $('#privateApiKey').val(privateApiKey);
+            $('#autoSyncEnabled').prop('checked', autoSyncEnabled);
+            $('#syncInterval').val(syncInterval);
+            $('#userUUID').val(userUUID);
+
+            // Update sync status displays
+            $('#public-last-sync').text(lastSyncUpload ? new Date(lastSyncUpload).toLocaleString() : 'Never');
+            $('#private-last-sync').text(lastSyncDownload ? new Date(lastSyncDownload).toLocaleString() : 'Never');
+
+            // Show/hide sync options based on enabled state
+            $('#public-sync-options').toggle(publicSyncEnabled);
+            $('#private-sync-options').toggle(privateSyncEnabled);
+
+            // Add event handlers for sync functionality
+            $('#publicSyncEnabled').on('change', function() {
+                $('#public-sync-options').toggle($(this).prop('checked'));
+            });
+
+            $('#privateSyncEnabled').on('change', function() {
+                $('#private-sync-options').toggle($(this).prop('checked'));
+            });
+
+            // Save private storage credentials when they change (even when hidden)
+            $('#privateStorageUrl').on('input blur', async function() {
+                const url = $(this).val();
+                await GM.setValue('privateStorageUrl', url);
+            });
+
+            $('#privateApiKey').on('input blur', async function() {
+                const apiKey = $(this).val();
+                await GM.setValue('privateApiKey', apiKey);
+            });
+
+            $('#edit-uuid').on('click', async function() {
+                const currentUUID = $('#userUUID').val();
+                const isReadonly = $('#userUUID').prop('readonly');
+
+                if (isReadonly) {
+                    // Enable editing
+                    $('#userUUID').prop('readonly', false).css({
+                        'background': '#333',
+                        'color': '#fff',
+                        'border': '1px solid #666'
+                    });
+                    $('#edit-uuid').text('Save');
+                    $('#uuid-edit-warning').show();
+                    $('#regenerate-uuid').prop('disabled', true);
+                } else {
+                    // Save the edited UUID
+                    const newUUID = $('#userUUID').val().trim().toUpperCase();
+
+                    // Validate UUID format (5 alphanumeric characters)
+                    if (!/^[A-Z0-9]{5}$/.test(newUUID)) {
+                        alert('UUID must be exactly 5 alphanumeric characters (A-Z, 0-9)');
+                        $('#userUUID').val(currentUUID);
+                        return;
+                    }
+
+                    if (newUUID !== currentUUID) {
+                        const confirmChange = confirm(
+                            `Are you sure you want to change your UUID from "${currentUUID}" to "${newUUID}"?\n\n` +
+                            'This will affect which data you can access from cloud storage. ' +
+                            'Make sure this is the correct UUID for your data.'
+                        );
+
+                        if (!confirmChange) {
+                            $('#userUUID').val(currentUUID);
+                            return;
+                        }
+
+                        await GM.setValue('userUUID', newUUID);
+                        // Force update the syncSystem's cached UUID
+                        syncSystem.cachedUUID = newUUID;
+                        showPopup('UUID updated successfully!');
+                    }
+
+                    // Disable editing
+                    $('#userUUID').prop('readonly', true).css({
+                        'background': '#222',
+                        'color': '#ccc',
+                        'border': '1px solid #333'
+                    });
+                    $('#edit-uuid').text('Edit');
+                    $('#uuid-edit-warning').hide();
+                    $('#regenerate-uuid').prop('disabled', false);
+                }
+            });
+
+            $('#regenerate-uuid').on('click', async function() {
+                if (confirm('Are you sure you want to regenerate your UUID? This will create a new unique identifier and you may lose access to your existing cloud data.')) {
+                    const newUUID = syncSystem.generateUUID();
+                    await GM.setValue('userUUID', newUUID);
+                    // Force update the syncSystem's cached UUID
+                    syncSystem.cachedUUID = newUUID;
+                    $('#userUUID').val(newUUID);
+                    showPopup('UUID regenerated successfully!');
+                }
+            });
+
+            $('#browse-users').on('click', async function() {
+                try {
+                    $('#browse-users').prop('disabled', true).text('Loading...');
+
+                    // Only work with private sync
+                    if (!$('#privateSyncEnabled').prop('checked')) {
+                        showPopup('Browse Users is only available for Private Sync. Please enable Private Sync first.');
+                        return;
+                    }
+
+                    const url = $('#privateStorageUrl').val();
+                    const apiKey = $('#privateApiKey').val();
+
+                    if (!url || !apiKey) {
+                        showPopup('Please enter both Storage URL and API Key for Private Sync to browse users.');
+                        return;
+                    }
+
+                    let allData = null;
+                    try {
+                        allData = await syncSystem.providers.jsonstorage.download({ url, apiKey });
+                    } catch (error) {
+                        showPopup(`Error accessing private storage: ${error.message}`);
+                        return;
+                    }
+
+                    if (!allData) {
+                        showPopup('No data found in private storage.');
+                        return;
+                    }
+
+                    // Display available users
+                    let usersList = '';
+                    const currentUUID = $('#userUUID').val();
+
+                    if (allData.users) {
+                        // Multi-user format
+                        Object.keys(allData.users).forEach(uuid => {
+                            const userData = allData.users[uuid];
+                            const isCurrent = uuid === currentUUID;
+                            const lastSync = new Date(userData.timestamp).toLocaleString();
+                            const version = userData.version || 'Unknown';
+
+                            usersList += `
+                                <div style="margin: 5px 0; padding: 8px; background: ${isCurrent ? '#2d5a2d' : '#444'}; border-radius: 3px; cursor: pointer;"
+                                     onclick="selectUUID('${uuid}')">
+                                    <strong>${uuid}</strong> ${isCurrent ? '(Current)' : ''}
+                                    <br><small>Version: ${version} | Last sync: ${lastSync}</small>
+                                </div>
+                            `;
+                        });
+                    } else if (allData.userUUID) {
+                        // Old single-user format
+                        const isCurrent = allData.userUUID === currentUUID;
+                        const lastSync = new Date(allData.timestamp).toLocaleString();
+                        const version = allData.version || 'Unknown';
+
+                        usersList = `
+                            <div style="margin: 5px 0; padding: 8px; background: ${isCurrent ? '#2d5a2d' : '#444'}; border-radius: 3px; cursor: pointer;"
+                                 onclick="selectUUID('${allData.userUUID}')">
+                                <strong>${allData.userUUID}</strong> ${isCurrent ? '(Current)' : ''}
+                                <br><small>Version: ${version} | Last sync: ${lastSync}</small>
+                            </div>
+                        `;
+                    }
+
+                    $('#users-list').html(`<p><strong>Source:</strong> Private Sync</p>` + usersList);
+                    $('#available-users').show();
+
+                } catch (error) {
+                    console.error('Error browsing users:', error);
+                    showPopup(`Error browsing users: ${error.message}`);
+                } finally {
+                    $('#browse-users').prop('disabled', false).text('Browse Users');
+                }
+            });
+
+            $('#close-users-list').on('click', function() {
+                $('#available-users').hide();
+            });
+
+            // Global function to select UUID from the users list
+            window.selectUUID = async function(uuid) {
+                if (confirm(`Switch to UUID "${uuid}"? This will change your current UUID and affect which data you can access.`)) {
+                    $('#userUUID').val(uuid);
+                    await GM.setValue('userUUID', uuid);
+                    // Force update the syncSystem's cached UUID
+                    syncSystem.cachedUUID = uuid;
+                    $('#available-users').hide();
+                    showPopup(`UUID changed to ${uuid}`);
+                }
+            };
+
+            // Public sync handlers
+            $('#public-sync-upload').on('click', async function() {
+                await handleSyncOperation('upload', 'public');
+            });
+
+            $('#public-sync-download').on('click', async function() {
+                await handleSyncOperation('download', 'public');
+            });
+
+            // Private sync handlers
+            $('#private-sync-upload').on('click', async function() {
+                await handleSyncOperation('upload', 'private');
+            });
+
+            $('#private-sync-download').on('click', async function() {
+                await handleSyncOperation('download', 'private');
+            });
+
+            // Sync operation handler
+            async function handleSyncOperation(operation, syncType) {
+                const statusElement = $(`#${syncType}-sync-status`);
+                const lastSyncElement = $(`#${syncType}-last-sync`);
+
+                try {
+                    // Disable buttons and show loading
+                    $(`#${syncType}-sync-upload, #${syncType}-sync-download`).prop('disabled', true);
+                    statusElement.removeClass('success error').addClass('loading').text('Processing...');
+
+                    let config;
+                    if (syncType === 'public') {
+                        config = syncSystem.publicConfig;
+                    } else {
+                        const url = $('#privateStorageUrl').val();
+                        const apiKey = $('#privateApiKey').val();
+
+                        if (!url || !apiKey) {
+                            throw new Error('Please enter both Storage URL and API Key for private sync');
+                        }
+
+                        config = { url, apiKey };
+                    }
+
+                    if (operation === 'upload') {
+                        await syncSystem.uploadData('jsonstorage', config);
+                        statusElement.removeClass('loading error').addClass('success').text('Upload successful!');
+                        lastSyncElement.text(new Date().toLocaleString());
+                        showPopup('Data uploaded successfully! Your data has been saved to the cloud.');
+                    } else {
+                        const result = await syncSystem.downloadData('jsonstorage', config);
+                        statusElement.removeClass('loading error').addClass('success').text('Download successful!');
+                        lastSyncElement.text(new Date().toLocaleString());
+
+                        let message = `Data downloaded successfully! Applied ${result.appliedCount} settings.`;
+                        if (result.allUsers && result.allUsers.length > 1) {
+                            message += `\n\nAvailable user UUIDs in cloud storage: ${result.allUsers.join(', ')}`;
+                        }
+
+                        showPopup(message);
+
+                        // Refresh the page to apply downloaded settings
+                        setTimeout(() => {
+                            if (confirm('Settings have been updated. Refresh the page to see changes?')) {
+                                location.reload();
+                            }
+                        }, 2000);
+                    }
+
+                } catch (error) {
+                    console.error('Sync operation failed:', error);
+                    statusElement.removeClass('loading success').addClass('error').text(`Error: ${error.message}`);
+                    showPopup(`Sync failed: ${error.message}`);
+                } finally {
+                    // Re-enable buttons
+                    $(`#${syncType}-sync-upload, #${syncType}-sync-download`).prop('disabled', false);
+
+                    // Clear status after 5 seconds
+                    setTimeout(() => {
+                        statusElement.removeClass('success error loading').text('');
+                    }, 5000);
+                }
+            }
+
 
 
 
@@ -2920,6 +3643,17 @@ $('#findSimilarEnabled').on('change', function() {
                 $(this).toggleClass('expanded', !isExpanded);
                 $('#random-settings-content').slideToggle();
                 await GM.setValue('randomSettingsExpanded', !isExpanded);
+            });
+
+            // Add expand/collapse functionality for Online Data Sync section
+            const onlineSyncExpanded = await GM.getValue('onlineSyncExpanded', false);
+            $('#online-sync-settings-content').toggle(onlineSyncExpanded);
+            $('#online-sync-settings h3').toggleClass('expanded', onlineSyncExpanded);
+            $('#online-sync-settings h3').click(async function() {
+                const isExpanded = $(this).hasClass('expanded');
+                $(this).toggleClass('expanded', !isExpanded);
+                $('#online-sync-settings-content').slideToggle();
+                await GM.setValue('onlineSyncExpanded', !isExpanded);
             });
 
 
@@ -3114,6 +3848,14 @@ $('#openInNewTabEnabled').change(function() {
             const showNonEnglish = await GM.getValue('showNonEnglish', 'show');
             const showPageNumbersEnabled = $('#showPageNumbersEnabled').prop('checked');
 
+            // Collect sync settings
+            const publicSyncEnabledForm = $('#publicSyncEnabled').prop('checked');
+            const privateSyncEnabledForm = $('#privateSyncEnabled').prop('checked');
+            const privateStorageUrlForm = $('#privateStorageUrl').val();
+            const privateApiKeyForm = $('#privateApiKey').val();
+            const autoSyncEnabledForm = $('#autoSyncEnabled').prop('checked');
+            const syncIntervalForm = parseInt($('#syncInterval').val());
+
 
 
 
@@ -3162,6 +3904,14 @@ $('#openInNewTabEnabled').change(function() {
             await GM.setValue('logoutButtonEnabled', logoutButtonEnabled);
             await GM.setValue('bookmarkLinkEnabled', bookmarkLinkEnabled);
             await GM.setValue('findSimilarType', findSimilarType);
+
+            // Save sync settings
+            await GM.setValue('publicSyncEnabled', publicSyncEnabledForm);
+            await GM.setValue('privateSyncEnabled', privateSyncEnabledForm);
+            await GM.setValue('privateStorageUrl', privateStorageUrlForm);
+            await GM.setValue('privateApiKey', privateApiKeyForm);
+            await GM.setValue('autoSyncEnabled', autoSyncEnabledForm);
+            await GM.setValue('syncInterval', syncIntervalForm);
 
 
 

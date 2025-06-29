@@ -1,0 +1,41 @@
+{
+"8.0.0": {
+  "date": "2025-06-29",
+  "changes": [
+    "🆕 NEW: Online Data Sync - Sync your bookmarks, favorites, and settings across devices",
+    "🔒 NEW: Public Sync - Use predefined JSONStorage.net API with standard security",
+    "🔐 NEW: Private Sync - Use your own JSONStorage.net credentials for enhanced security",
+    "🆔 NEW: UUID System - Unique 5-character identifier for each user's data",
+    "✏️ NEW: UUID Edit - Manually edit UUID to recover accidentally regenerated ones",
+    "🔄 NEW: UUID Regeneration - Generate new UUID when needed",
+    "👥 NEW: Multi-User Support - Multiple users can store data in same cloud storage",
+    "🔍 NEW: Browse Users - View all available UUIDs in private storage",
+    "💾 NEW: Auto-Save Credentials - Private storage credentials saved automatically",
+    "🔧 FIX: UUID editing now properly updates Tampermonkey storage",
+    "🎨 FIX: Private sync credentials hidden when disabled",
+    "📊 NEW: Version Tracking - Each sync includes userscript version information",
+    "🛡️ NEW: Data Protection - No data overwriting between different users",
+    "⚡ NEW: Instant UUID Updates - UUID changes take effect immediately",
+    "🎯 NEW: Smart Data Merging - Preserves all users' data when uploading",
+    "📱 NEW: Cross-Device Sync - Access your data from any device",
+    "🔐 NEW: Enhanced Security - Private sync for sensitive data storage"
+  ]
+},
+  "7.12.0": {
+    "date": "2025-06-15",
+    "changes": [
+      "feat(changelog): implement automatic changelog popup on version update",
+      "Store last seen script version in GM storage and compare on load.",
+      "Fetch changelog data from JSON and display updates when a new version is detected.",
+      "Enhance user experience with quick, non-intrusive update popups."
+    ]
+  },
+  "7.11.0": {
+    "date": "2025-05-25",
+    "changes": [
+      "feat(bookmarks): add flip button to toggle between related and bookmarked manga",
+      "Add a new setting to enable a flip button that allows users to toggle between the original related manga and their bookmarked content.",
+      "The button is only visible when 'Replace Related Manga with Bookmarks' is enabled."
+    ]
+  }
+}

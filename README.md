@@ -4,7 +4,7 @@
 
 [**Namespace**: github.com/longkidkoolstar](https://github.com/longkidkoolstar)  
 
-**Version**: 7.0  
+**Version**: 8.0.0
 
 **Description**: Enhances the functionality of the Nhentai website.  
 
@@ -27,9 +27,15 @@
 - **Bookmarking Pages**: Allows users to bookmark entire pages for later viewing.  
 - **Month Filter**: Adds "Month Only" filter links to various pages to easily find content from a specific month.  
 - **Manga Bookmarking**: Introduces a full bookmarking system for individual manga with multiple display options.  
-- **Must Add Tags** *(New in v7.0!)*: Allows users to define tags that will always be added to their search queries.
-- **Offline Favoriting** *(New in v7.0!)*: Allows users to favorite manga offline and sync when logged in.  
-- **Bookmarks as Related** *(New in v7.0!)*: Replaces the "Related Manga" section with content from user's bookmarks.
+- **Must Add Tags**: Allows users to define tags that will always be added to their search queries.
+- **Offline Favoriting**: Allows users to favorite manga offline and sync when logged in.
+- **Bookmarks as Related**: Replaces the "Related Manga" section with content from user's bookmarks.
+- **Online Data Sync** *(New in v8.0!)*: Comprehensive cloud synchronization system for bookmarks, favorites, and settings across devices.
+- **Public Sync** *(New in v8.0!)*: Use predefined JSONStorage.net API with standard security for easy data syncing.
+- **Private Sync** *(New in v8.0!)*: Use your own JSONStorage.net credentials for enhanced security and private data storage.
+- **UUID System** *(New in v8.0!)*: Unique 5-character identifier for each user with edit and regeneration capabilities.
+- **Multi-User Support** *(New in v8.0!)*: Multiple users can safely store data in the same cloud storage without conflicts.
+- **Browse Users** *(New in v8.0!)*: View and switch between available user data in private storage.
 - **Advanced Storage Management**: Offers options to clear, export, or import bookmarks and settings for backup and sync.
 - **Page & Tab Arrangement**: Lets users customize how bookmarks and manga are displayed, including grid/list view and tab sorting.
 - **Bookmarks Page Arrangement**: Provides sorting and filtering options for bookmarks, such as by date, title, or custom order.
@@ -57,14 +63,23 @@
    - Adjust the max manga per bookmark group with the slider.  
    - Customize page and tab arrangement (grid/list, tab sorting).  
 8. **Month Filter**: Use the "Month" links on various pages to filter content by month.  
-9. **Offline Favoriting** *(New in v7.0!)*:  
+9. **Offline Favoriting**:  
    - Favorite manga while offline.  
    - Sync favorites when logged in.
-10. **Bookmarks as Related** *(New in v7.0!)*:
+10. **Bookmarks as Related**:
     - View your bookmarked content instead of the default related manga section.
     - Customize display settings in the settings page.
-11. **Must Add Tags** *(New in v7.0!)*:
+11. **Must Add Tags**:
     - Configure tags in the settings page that will always be appended to your search queries.
+12. **Online Data Sync** *(New in v8.0!)*:
+    - **Public Sync**: Enable public sync for standard security cloud storage using predefined JSONStorage.net API.
+    - **Private Sync**: Configure your own JSONStorage.net URL and API key for enhanced security.
+    - **UUID Management**: View, edit, or regenerate your unique 5-character user identifier.
+    - **Multi-User Support**: Multiple users can safely store data without overwriting each other.
+    - **Browse Users**: View all available user data in private storage and switch between different user profiles.
+    - **Auto-Save**: Private storage credentials are automatically saved and persist across sessions.
+    - **Cross-Device Sync**: Access your bookmarks, favorites, and settings from any device.
+    - **Version Tracking**: Each sync includes userscript version information for compatibility.
 
 ---  
 
@@ -78,10 +93,25 @@
 
 **Note**: If the script isn't executing (e.g., for older devices), try using stable: [Ver. 7.5](https://greasyfork.org/en/scripts/498553-nhentai-plus?version=1562827)
 
-#### Version 7.0  
+#### Version 8.0.0 *(Latest)*
 
-- Introduced **Offline Favoriting** to allow users to favorite manga offline and sync when logged in.  
-- Improved performance and fixed minor bugs.  
+- **🆕 MAJOR**: Introduced **Online Data Sync** - Complete cloud synchronization system for bookmarks, favorites, and settings.
+- **🔒 NEW**: **Public Sync** - Use predefined JSONStorage.net API with standard security level.
+- **🔐 NEW**: **Private Sync** - Use your own JSONStorage.net credentials for enhanced security.
+- **🆔 NEW**: **UUID System** - Unique 5-character identifier for each user with edit/regenerate capabilities.
+- **👥 NEW**: **Multi-User Support** - Multiple users can safely store data in same cloud storage.
+- **🔍 NEW**: **Browse Users** - View and switch between available user data in private storage.
+- **💾 NEW**: **Auto-Save Credentials** - Private storage credentials saved automatically and persist.
+- **📱 NEW**: **Cross-Device Sync** - Access your data from any device with internet connection.
+- **📊 NEW**: **Version Tracking** - Each sync includes userscript version for compatibility.
+- **🔧 FIX**: UUID editing now properly updates Tampermonkey storage for immediate effect.
+- **🎨 FIX**: Private sync credentials properly hidden when sync is disabled.
+- **⚡ IMPROVEMENT**: Instant UUID updates - changes take effect immediately without page refresh.
+
+#### Version 7.0
+
+- Introduced **Offline Favoriting** to allow users to favorite manga offline and sync when logged in.
+- Improved performance and fixed minor bugs.
 
 #### Version 6.0  
 
@@ -114,11 +144,18 @@
 - Initial release with **Find Similar Button**, **Tag Locking**, **Auto Login**, and **Settings Page**.  
 
 
-### Advanced Customization & Tips  
+### Advanced Customization & Tips
 
-- **Tooltips Toggle**: Enable or disable tooltips for a cleaner interface.  
-- **Advanced Storage Management**: Use the settings page to clear, export, or import your bookmarks and preferences for backup or sync.  
-- **Page & Tab Arrangement**: Customize how bookmarks and manga are displayed, including grid/list view and tab sorting.  
-- **Bookmarks Page Arrangement**: Sort and filter bookmarks by date, title, or custom order for easier access.  
-- **Max Manga per Bookmark Slider**: Adjust how many manga appear in each bookmark group.  
+- **Tooltips Toggle**: Enable or disable tooltips for a cleaner interface.
+- **Advanced Storage Management**: Use the settings page to clear, export, or import your bookmarks and preferences for backup or sync.
+- **Page & Tab Arrangement**: Customize how bookmarks and manga are displayed, including grid/list view and tab sorting.
+- **Bookmarks Page Arrangement**: Sort and filter bookmarks by date, title, or custom order for easier access.
+- **Max Manga per Bookmark Slider**: Adjust how many manga appear in each bookmark group.
 - **Detailed Random Hentai Preferences**: Fine-tune random results with tag and language options.
+- **Online Data Sync Setup**:
+  - **Public Sync**: Simply enable the checkbox for instant cloud sync with standard security.
+  - **Private Sync**: Enter your own JSONStorage.net URL and API key for maximum security and control.
+  - **UUID Management**: Keep your UUID safe - it's your key to accessing your cloud data.
+  - **Multi-Device Usage**: Use the same UUID across devices to access the same data everywhere.
+  - **Data Recovery**: If you accidentally regenerate your UUID, use "Browse Users" to find and switch back to your original data.
+  - **Backup Strategy**: Consider using both public and private sync for redundancy, or export your data regularly.
