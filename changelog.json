@@ -1,4 +1,14 @@
 {
+"8.1.0": {
+  "date": "2025-07-01",
+  "changes": [
+    "feat(sync): add auto-sync manager with manual trigger and status display",
+    "Implement AutoSyncManager class for scheduled data synchronization",
+    "Add manual sync trigger button and status display in UI",
+    "Include data change detection for immediate sync",
+    "Support exponential backoff retry on errors"
+  ]
+},
 "8.0.0": {
   "date": "2025-06-29",
   "changes": [
