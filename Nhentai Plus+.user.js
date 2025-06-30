@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      8.0.0
+// @version      8.1.0
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -21,7 +21,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "8.0.0";
+const CURRENT_VERSION = "8.1.0";
 const CHANGELOG_URL = "https://api.jsonstorage.net/v1/json/d206ce58-9543-48db-a5e4-997cfc745ef3/a5efadba-2c0f-4962-8c17-70f2e3f5e5fc";
 
 (async () => {
@@ -2934,6 +2934,12 @@ label:hover .tooltip {
                         Sync Interval (minutes): <input type="number" id="syncInterval" min="5" max="1440" value="30">
                         <span class="tooltip" data-tooltip="How often to automatically sync (5-1440 minutes)">?</span>
                     </label>
+                    <div id="auto-sync-status" style="font-size: 12px; color: #666; margin-top: 5px;">
+                        No automatic syncs yet
+                    </div>
+                    <button id="trigger-auto-sync" style="margin-top: 10px; padding: 5px 10px; font-size: 12px;">
+                        Trigger Sync Now
+                    </button>
                 </div>
             </div>
         </div>
@@ -2968,250 +2974,6 @@ label:hover .tooltip {
 // Append settings form to the container
 $('div.container').append(settingsHtml);
 
-// Online Data Sync Implementation
-class OnlineDataSync {
-    constructor() {
-        this.providers = {
-            jsonstorage: new JSONStorageProvider()
-        };
-        this.publicConfig = {
-            url: 'https://api.jsonstorage.net/v1/json/d206ce58-9543-48db-a5e4-997cfc745ef3/6629f339-5696-4b2e-b63d-b5d092dc46f6',
-            apiKey: '2f9e71c8-be66-4623-a2cc-a6f05e958563'
-        };
-    }
-
-    // Generate 5-character alphanumeric UUID
-    generateUUID() {
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-        let result = '';
-        for (let i = 0; i < 5; i++) {
-            result += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
-        return result;
-    }
-
-    // Get or create user UUID
-    async getUserUUID() {
-        // Check if we have a cached UUID first
-        if (this.cachedUUID) {
-            return this.cachedUUID;
-        }
-
-        let uuid = await GM.getValue('userUUID');
-        if (!uuid) {
-            uuid = this.generateUUID();
-            await GM.setValue('userUUID', uuid);
-        }
-
-        // Cache the UUID for future use
-        this.cachedUUID = uuid;
-        return uuid;
-    }
-
-    // Collect all syncable data
-    async collectSyncData() {
-        const allKeys = await GM.listValues();
-        const syncData = {
-            version: CURRENT_VERSION,
-            timestamp: new Date().toISOString(),
-            userUUID: await this.getUserUUID(),
-            data: {}
-        };
-
-        // Define which keys to sync
-        const syncableKeys = [
-            'bookmarkedPages', 'offlineFavorites', 'mustAddTags', 'mustAddTagsEnabled',
-            'randomPrefLanguage', 'randomPrefTags', 'randomPrefPagesMin', 'randomPrefPagesMax',
-            'blacklistedTags', 'findSimilarEnabled', 'bookmarksEnabled', 'maxTagsToSelect',
-            'showNonEnglish', 'showPageNumbersEnabled', 'maxMangaPerBookmark'
-        ];
-
-        for (const key of syncableKeys) {
-            if (allKeys.includes(key)) {
-                syncData.data[key] = await GM.getValue(key);
-            }
-        }
-
-        return syncData;
-    }
-
-    // Apply synced data
-    async applySyncData(syncData) {
-        if (!syncData || !syncData.data) {
-            throw new Error('Invalid sync data format');
-        }
-
-        const currentUUID = await this.getUserUUID();
-        if (syncData.userUUID && syncData.userUUID !== currentUUID) {
-            const confirmMerge = confirm(
-                `This data belongs to a different user (${syncData.userUUID}). ` +
-                `Your UUID is ${currentUUID}. Do you want to merge this data anyway?`
-            );
-            if (!confirmMerge) {
-                throw new Error('User cancelled data merge');
-            }
-        }
-
-        let appliedCount = 0;
-        for (const [key, value] of Object.entries(syncData.data)) {
-            await GM.setValue(key, value);
-            appliedCount++;
-        }
-
-        await GM.setValue('lastSyncDownload', new Date().toISOString());
-        return appliedCount;
-    }
-
-    // Upload data using specified provider (supports multiple users)
-    async uploadData(providerType, config) {
-        const provider = this.providers[providerType];
-        if (!provider) {
-            throw new Error(`Unknown provider: ${providerType}`);
-        }
-
-        const userSyncData = await this.collectSyncData();
-        const userUUID = userSyncData.userUUID;
-
-        // Download existing data to merge with current user's data
-        let existingData = {};
-        try {
-            existingData = await provider.download(config);
-        } catch (error) {
-            // If download fails (e.g., no data exists yet), start with empty object
-            console.log('No existing data found, creating new storage');
-        }
-
-        // Ensure existingData has the correct structure for multiple users
-        if (!existingData.users) {
-            existingData = {
-                version: CURRENT_VERSION,
-                lastUpdated: new Date().toISOString(),
-                users: {}
-            };
-        }
-
-        // Add/update current user's data
-        existingData.users[userUUID] = userSyncData;
-        existingData.lastUpdated = new Date().toISOString();
-        existingData.version = CURRENT_VERSION;
-
-        await provider.upload(config, existingData);
-        await GM.setValue('lastSyncUpload', new Date().toISOString());
-        return userSyncData;
-    }
-
-    // Download data using specified provider (supports multiple users)
-    async downloadData(providerType, config) {
-        const provider = this.providers[providerType];
-        if (!provider) {
-            throw new Error(`Unknown provider: ${providerType}`);
-        }
-
-        const allData = await provider.download(config);
-        const userUUID = await this.getUserUUID();
-
-        // Handle both old single-user format and new multi-user format
-        let userSyncData;
-        if (allData.users && allData.users[userUUID]) {
-            // New multi-user format
-            userSyncData = allData.users[userUUID];
-        } else if (allData.userUUID === userUUID) {
-            // Old single-user format
-            userSyncData = allData;
-        } else if (allData.users) {
-            // Multi-user format but user not found
-            const availableUsers = Object.keys(allData.users);
-            throw new Error(`No data found for UUID ${userUUID}. Available UUIDs: ${availableUsers.join(', ')}`);
-        } else {
-            // Single-user format but different user
-            throw new Error(`Data belongs to UUID ${allData.userUUID}, but your UUID is ${userUUID}`);
-        }
-
-        const appliedCount = await this.applySyncData(userSyncData);
-        return { syncData: userSyncData, appliedCount, allUsers: allData.users ? Object.keys(allData.users) : [allData.userUUID] };
-    }
-
-    // Get available users from cloud storage without downloading data
-    async getAvailableUsers(providerType, config) {
-        const provider = this.providers[providerType];
-        if (!provider) {
-            throw new Error(`Unknown provider: ${providerType}`);
-        }
-
-        const allData = await provider.download(config);
-
-        if (allData.users) {
-            // Multi-user format
-            return Object.keys(allData.users).map(uuid => ({
-                uuid,
-                version: allData.users[uuid].version || 'Unknown',
-                timestamp: allData.users[uuid].timestamp,
-                dataCount: Object.keys(allData.users[uuid].data || {}).length
-            }));
-        } else if (allData.userUUID) {
-            // Old single-user format
-            return [{
-                uuid: allData.userUUID,
-                version: allData.version || 'Unknown',
-                timestamp: allData.timestamp,
-                dataCount: Object.keys(allData.data || {}).length
-            }];
-        }
-
-        return [];
-    }
-}
-
-// JSONStorage.net provider implementation
-class JSONStorageProvider {
-    async upload(config, data) {
-        return new Promise((resolve, reject) => {
-            GM.xmlHttpRequest({
-                method: 'PUT',
-                url: `${config.url}?apiKey=${config.apiKey}`,
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                data: JSON.stringify(data),
-                onload: function(response) {
-                    if (response.status === 200) {
-                        resolve(JSON.parse(response.responseText));
-                    } else {
-                        reject(new Error(`Upload failed: ${response.status} ${response.statusText}`));
-                    }
-                },
-                onerror: function(error) {
-                    reject(new Error(`Network error: ${error}`));
-                }
-            });
-        });
-    }
-
-    async download(config) {
-        return new Promise((resolve, reject) => {
-            GM.xmlHttpRequest({
-                method: 'GET',
-                url: `${config.url}?apiKey=${config.apiKey}`,
-                headers: {
-                    'Accept': 'application/json'
-                },
-                onload: function(response) {
-                    if (response.status === 200) {
-                        resolve(JSON.parse(response.responseText));
-                    } else {
-                        reject(new Error(`Download failed: ${response.status} ${response.statusText}`));
-                    }
-                },
-                onerror: function(error) {
-                    reject(new Error(`Network error: ${error}`));
-                }
-            });
-        });
-    }
-}
-
-// Initialize sync system
-const syncSystem = new OnlineDataSync();
 
 
 
@@ -3336,9 +3098,16 @@ const syncSystem = new OnlineDataSync();
             $('#public-last-sync').text(lastSyncUpload ? new Date(lastSyncUpload).toLocaleString() : 'Never');
             $('#private-last-sync').text(lastSyncDownload ? new Date(lastSyncDownload).toLocaleString() : 'Never');
 
+            // Update autosync status display
+            const lastAutoSync = await GM.getValue('lastAutoSync', null);
+            $('#auto-sync-status').text(lastAutoSync ? `Last auto sync: ${new Date(lastAutoSync).toLocaleString()}` : 'No automatic syncs yet');
+
             // Show/hide sync options based on enabled state
             $('#public-sync-options').toggle(publicSyncEnabled);
             $('#private-sync-options').toggle(privateSyncEnabled);
+
+            // Initialize AutoSync Manager
+            await autoSyncManager.initialize();
 
             // Add event handlers for sync functionality
             $('#publicSyncEnabled').on('change', function() {
@@ -3360,11 +3129,14 @@ const syncSystem = new OnlineDataSync();
                 await GM.setValue('privateApiKey', apiKey);
             });
 
+            let originalUUID = null; // Store the original UUID when editing starts
+            
             $('#edit-uuid').on('click', async function() {
-                const currentUUID = $('#userUUID').val();
                 const isReadonly = $('#userUUID').prop('readonly');
 
                 if (isReadonly) {
+                    // Store the original UUID when editing begins
+                    originalUUID = $('#userUUID').val();
                     // Enable editing
                     $('#userUUID').prop('readonly', false).css({
                         'background': '#333',
@@ -3381,19 +3153,19 @@ const syncSystem = new OnlineDataSync();
                     // Validate UUID format (5 alphanumeric characters)
                     if (!/^[A-Z0-9]{5}$/.test(newUUID)) {
                         alert('UUID must be exactly 5 alphanumeric characters (A-Z, 0-9)');
-                        $('#userUUID').val(currentUUID);
+                        $('#userUUID').val(originalUUID);
                         return;
                     }
 
-                    if (newUUID !== currentUUID) {
+                    if (newUUID !== originalUUID) {
                         const confirmChange = confirm(
-                            `Are you sure you want to change your UUID from "${currentUUID}" to "${newUUID}"?\n\n` +
+                            `Are you sure you want to change your UUID from "${originalUUID}" to "${newUUID}"?\n\n` +
                             'This will affect which data you can access from cloud storage. ' +
                             'Make sure this is the correct UUID for your data.'
                         );
 
                         if (!confirmChange) {
-                            $('#userUUID').val(currentUUID);
+                            $('#userUUID').val(originalUUID);
                             return;
                         }
 
@@ -3401,6 +3173,12 @@ const syncSystem = new OnlineDataSync();
                         // Force update the syncSystem's cached UUID
                         syncSystem.cachedUUID = newUUID;
                         showPopup('UUID updated successfully!');
+                    } else {
+                        // Even if UUID is the same, ensure it's saved to storage
+                        await GM.setValue('userUUID', newUUID);
+                        // Force update the syncSystem's cached UUID
+                        syncSystem.cachedUUID = newUUID;
+                        showPopup('UUID saved successfully!');
                     }
 
                     // Disable editing
@@ -3518,6 +3296,28 @@ const syncSystem = new OnlineDataSync();
                     showPopup(`UUID changed to ${uuid}`);
                 }
             };
+
+            // Manual autosync trigger
+            $('#trigger-auto-sync').on('click', async function() {
+                const button = $(this);
+                const originalText = button.text();
+
+                try {
+                    button.prop('disabled', true).text('Syncing...');
+                    await autoSyncManager.performAutoSync();
+
+                    // Update status display
+                    const lastAutoSync = await GM.getValue('lastAutoSync', null);
+                    $('#auto-sync-status').text(lastAutoSync ? `Last auto sync: ${new Date(lastAutoSync).toLocaleString()}` : 'No automatic syncs yet');
+
+                    showPopup('Manual autosync completed successfully!');
+                } catch (error) {
+                    console.error('Manual autosync failed:', error);
+                    showPopup(`Manual autosync failed: ${error.message}`);
+                } finally {
+                    button.prop('disabled', false).text(originalText);
+                }
+            });
 
             // Public sync handlers
             $('#public-sync-upload').on('click', async function() {
@@ -3912,6 +3712,9 @@ $('#openInNewTabEnabled').change(function() {
             await GM.setValue('privateApiKey', privateApiKeyForm);
             await GM.setValue('autoSyncEnabled', autoSyncEnabledForm);
             await GM.setValue('syncInterval', syncIntervalForm);
+
+            // Update AutoSync Manager with new settings
+            await autoSyncManager.updateSettings(autoSyncEnabledForm, syncIntervalForm);
 
 
 
@@ -8385,4 +8188,486 @@ XMLHttpRequest.prototype.open = function(method, url) {
 
 
 
+// -----------------------------------------------**AutoSync Initialization**-----------------------------------------------------------------------
+
+// AutoSync initialization moved to be within scope of autoSyncManager definition
+
 // -----------------------------------------------**Must-Add-Tags**-----------------------------------------------------------------------
+
+
+// -----------------------------------------------**Manga-Sync**-----------------------------------------------------------------------
+
+
+// Online Data Sync Implementation
+class OnlineDataSync {
+    constructor() {
+        this.providers = {
+            jsonstorage: new JSONStorageProvider()
+        };
+        this.publicConfig = {
+            url: 'https://api.jsonstorage.net/v1/json/d206ce58-9543-48db-a5e4-997cfc745ef3/6629f339-5696-4b2e-b63d-b5d092dc46f6',
+            apiKey: '2f9e71c8-be66-4623-a2cc-a6f05e958563'
+        };
+    }
+
+    // Generate 5-character alphanumeric UUID
+    generateUUID() {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        let result = '';
+        for (let i = 0; i < 5; i++) {
+            result += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return result;
+    }
+
+    // Get or create user UUID
+    async getUserUUID() {
+        // Check if we have a cached UUID first
+        if (this.cachedUUID) {
+            return this.cachedUUID;
+        }
+
+        let uuid = await GM.getValue('userUUID');
+        if (!uuid) {
+            uuid = this.generateUUID();
+            await GM.setValue('userUUID', uuid);
+        }
+
+        // Cache the UUID for future use
+        this.cachedUUID = uuid;
+        return uuid;
+    }
+
+    // Collect all syncable data
+    async collectSyncData() {
+        const allKeys = await GM.listValues();
+        const syncData = {
+            version: CURRENT_VERSION,
+            timestamp: new Date().toISOString(),
+            userUUID: await this.getUserUUID(),
+            data: {}
+        };
+
+        // Define which keys to sync
+        const syncableKeys = [
+            'bookmarkedPages', 'offlineFavorites', 'mustAddTags', 'mustAddTagsEnabled',
+            'randomPrefLanguage', 'randomPrefTags', 'randomPrefPagesMin', 'randomPrefPagesMax',
+            'blacklistedTags', 'findSimilarEnabled', 'bookmarksEnabled', 'maxTagsToSelect',
+            'showNonEnglish', 'showPageNumbersEnabled', 'maxMangaPerBookmark'
+        ];
+
+        for (const key of syncableKeys) {
+            if (allKeys.includes(key)) {
+                syncData.data[key] = await GM.getValue(key);
+            }
+        }
+
+        return syncData;
+    }
+
+    // Apply synced data
+    async applySyncData(syncData) {
+        if (!syncData || !syncData.data) {
+            throw new Error('Invalid sync data format');
+        }
+
+        const currentUUID = await this.getUserUUID();
+        if (syncData.userUUID && syncData.userUUID !== currentUUID) {
+            const confirmMerge = confirm(
+                `This data belongs to a different user (${syncData.userUUID}). ` +
+                `Your UUID is ${currentUUID}. Do you want to merge this data anyway?`
+            );
+            if (!confirmMerge) {
+                throw new Error('User cancelled data merge');
+            }
+        }
+
+        let appliedCount = 0;
+        for (const [key, value] of Object.entries(syncData.data)) {
+            await GM.setValue(key, value);
+            appliedCount++;
+        }
+
+        await GM.setValue('lastSyncDownload', new Date().toISOString());
+        return appliedCount;
+    }
+
+    // Upload data using specified provider (supports multiple users)
+    async uploadData(providerType, config) {
+        const provider = this.providers[providerType];
+        if (!provider) {
+            throw new Error(`Unknown provider: ${providerType}`);
+        }
+
+        const userSyncData = await this.collectSyncData();
+        const userUUID = userSyncData.userUUID;
+
+        // Download existing data to merge with current user's data
+        let existingData = {};
+        try {
+            existingData = await provider.download(config);
+        } catch (error) {
+            // If download fails (e.g., no data exists yet), start with empty object
+            console.log('No existing data found, creating new storage');
+        }
+
+        // Ensure existingData has the correct structure for multiple users
+        if (!existingData.users) {
+            existingData = {
+              //  version: CURRENT_VERSION,
+                //lastUpdated: new Date().toISOString(),
+                users: {}
+            };
+        }
+
+        // Add/update current user's data
+        existingData.users[userUUID] = userSyncData;
+       // existingData.lastUpdated = new Date().toISOString();
+        // existingData.version = CURRENT_VERSION;
+
+        await provider.upload(config, existingData);
+        await GM.setValue('lastSyncUpload', new Date().toISOString());
+        return userSyncData;
+    }
+
+    // Download data using specified provider (supports multiple users)
+    async downloadData(providerType, config) {
+        const provider = this.providers[providerType];
+        if (!provider) {
+            throw new Error(`Unknown provider: ${providerType}`);
+        }
+
+        const allData = await provider.download(config);
+        const userUUID = await this.getUserUUID();
+
+        // Handle both old single-user format and new multi-user format
+        let userSyncData;
+        if (allData.users && allData.users[userUUID]) {
+            // New multi-user format
+            userSyncData = allData.users[userUUID];
+        } else if (allData.userUUID === userUUID) {
+            // Old single-user format
+            userSyncData = allData;
+        } else if (allData.users) {
+            // Multi-user format but user not found
+            const availableUsers = Object.keys(allData.users);
+            throw new Error(`No data found for UUID ${userUUID}. Available UUIDs: ${availableUsers.join(', ')}`);
+        } else {
+            // Single-user format but different user
+            throw new Error(`Data belongs to UUID ${allData.userUUID}, but your UUID is ${userUUID}`);
+        }
+
+        const appliedCount = await this.applySyncData(userSyncData);
+        return { syncData: userSyncData, appliedCount, allUsers: allData.users ? Object.keys(allData.users) : [allData.userUUID] };
+    }
+
+    // Get available users from cloud storage without downloading data
+    async getAvailableUsers(providerType, config) {
+        const provider = this.providers[providerType];
+        if (!provider) {
+            throw new Error(`Unknown provider: ${providerType}`);
+        }
+
+        const allData = await provider.download(config);
+
+        if (allData.users) {
+            // Multi-user format
+            return Object.keys(allData.users).map(uuid => ({
+                uuid,
+                version: allData.users[uuid].version || 'Unknown',
+                timestamp: allData.users[uuid].timestamp,
+                dataCount: Object.keys(allData.users[uuid].data || {}).length
+            }));
+        } else if (allData.userUUID) {
+            // Old single-user format
+            return [{
+                uuid: allData.userUUID,
+                version: allData.version || 'Unknown',
+                timestamp: allData.timestamp,
+                dataCount: Object.keys(allData.data || {}).length
+            }];
+        }
+
+        return [];
+    }
+}
+
+// JSONStorage.net provider implementation
+class JSONStorageProvider {
+    async upload(config, data) {
+        return new Promise((resolve, reject) => {
+            GM.xmlHttpRequest({
+                method: 'PUT',
+                url: `${config.url}?apiKey=${config.apiKey}`,
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                data: JSON.stringify(data),
+                onload: function(response) {
+                    if (response.status === 200) {
+                        resolve(JSON.parse(response.responseText));
+                    } else {
+                        reject(new Error(`Upload failed: ${response.status} ${response.statusText}`));
+                    }
+                },
+                onerror: function(error) {
+                    reject(new Error(`Network error: ${error}`));
+                }
+            });
+        });
+    }
+
+    async download(config) {
+        return new Promise((resolve, reject) => {
+            GM.xmlHttpRequest({
+                method: 'GET',
+                url: `${config.url}?apiKey=${config.apiKey}`,
+                headers: {
+                    'Accept': 'application/json'
+                },
+                onload: function(response) {
+                    if (response.status === 200) {
+                        resolve(JSON.parse(response.responseText));
+                    } else {
+                        reject(new Error(`Download failed: ${response.status} ${response.statusText}`));
+                    }
+                },
+                onerror: function(error) {
+                    reject(new Error(`Network error: ${error}`));
+                }
+            });
+        });
+    }
+}
+
+// AutoSync Manager Class
+// Handles automatic syncing of user data at specified intervals
+// Features:
+// - Configurable sync intervals (5-1440 minutes)
+// - Automatic retry with exponential backoff on errors
+// - Support for both public and private sync endpoints
+// - Manual trigger capability
+// - Data change detection for immediate sync
+class AutoSyncManager {
+    constructor(syncSystem) {
+        this.syncSystem = syncSystem;
+        this.intervalId = null;
+        this.isEnabled = false;
+        this.intervalMinutes = 30;
+        this.lastSyncAttempt = null;
+        this.consecutiveErrors = 0;
+        this.maxRetries = 3;
+    }
+
+    // Initialize autosync based on current settings
+    async initialize() {
+        const autoSyncEnabled = await GM.getValue('autoSyncEnabled', false);
+        const syncInterval = await GM.getValue('syncInterval', 30);
+
+        this.isEnabled = autoSyncEnabled;
+        this.intervalMinutes = syncInterval;
+
+        if (this.isEnabled) {
+            this.start();
+            console.log(`AutoSync initialized: enabled=${this.isEnabled}, interval=${this.intervalMinutes} minutes`);
+        } else {
+            console.log('AutoSync disabled');
+        }
+    }
+
+    // Start the autosync timer
+    start() {
+        this.stop(); // Clear any existing timer
+
+        if (!this.isEnabled) {
+            console.log('AutoSync not enabled, skipping start');
+            return;
+        }
+
+        console.log(`AutoSync started with ${this.intervalMinutes} minute interval`);
+
+        // Check if sync is needed on script load
+        this.checkAndPerformSync();
+    }
+
+    // Stop the autosync timer
+    stop() {
+        if (this.intervalId) {
+            clearInterval(this.intervalId);
+            this.intervalId = null;
+            console.log('AutoSync stopped');
+        }
+    }
+
+    // Check if sync is needed based on time elapsed since last sync
+    async checkAndPerformSync() {
+        if (!this.isEnabled) {
+            return;
+        }
+
+        const lastAutoSync = await GM.getValue('lastAutoSync', null);
+        const now = new Date().getTime();
+        const intervalMs = this.intervalMinutes * 60 * 1000; // Convert minutes to milliseconds
+
+        // If no previous sync or enough time has passed, perform sync
+        if (!lastAutoSync || (now - new Date(lastAutoSync).getTime()) >= intervalMs) {
+            console.log('AutoSync: Time interval reached, performing sync...');
+            await this.performAutoSync();
+        } else {
+            const timeUntilNextSync = intervalMs - (now - new Date(lastAutoSync).getTime());
+            const minutesUntilNext = Math.round(timeUntilNextSync / 60000);
+            console.log(`AutoSync: Next sync in approximately ${minutesUntilNext} minutes`);
+        }
+    }
+
+    // Update settings and restart if needed
+    async updateSettings(enabled, intervalMinutes) {
+        const wasEnabled = this.isEnabled;
+        const oldInterval = this.intervalMinutes;
+
+        this.isEnabled = enabled;
+        this.intervalMinutes = intervalMinutes;
+
+        // Restart if settings changed
+        if (enabled && (!wasEnabled || oldInterval !== intervalMinutes)) {
+            this.start();
+        } else if (!enabled && wasEnabled) {
+            this.stop();
+        }
+
+        console.log(`AutoSync settings updated: enabled=${enabled}, interval=${intervalMinutes} minutes`);
+    }
+
+    // Perform the actual sync operation
+    async performAutoSync() {
+        if (!this.isEnabled) {
+            return;
+        }
+
+        this.lastSyncAttempt = new Date().toISOString();
+        console.log('AutoSync: Starting automatic sync...');
+
+        try {
+            // Determine which sync method to use based on user preferences
+            const publicSyncEnabled = await GM.getValue('publicSyncEnabled', false);
+            const privateSyncEnabled = await GM.getValue('privateSyncEnabled', false);
+
+            let syncPerformed = false;
+
+            // Try private sync first if enabled
+            if (privateSyncEnabled) {
+                const privateStorageUrl = await GM.getValue('privateStorageUrl', '');
+                const privateApiKey = await GM.getValue('privateApiKey', '');
+
+                if (privateStorageUrl && privateApiKey) {
+                    await this.syncSystem.uploadData('jsonstorage', {
+                        url: privateStorageUrl,
+                        apiKey: privateApiKey
+                    });
+                    console.log('AutoSync: Private sync completed successfully');
+                    syncPerformed = true;
+                }
+            }
+
+            // Fall back to public sync if private sync wasn't performed and public is enabled
+            if (!syncPerformed && publicSyncEnabled) {
+                await this.syncSystem.uploadData('jsonstorage', this.syncSystem.publicConfig);
+                console.log('AutoSync: Public sync completed successfully');
+                syncPerformed = true;
+            }
+
+            if (syncPerformed) {
+                this.consecutiveErrors = 0; // Reset error counter on success
+                await GM.setValue('lastAutoSync', new Date().toISOString());
+            } else {
+                console.log('AutoSync: No sync method enabled, skipping');
+            }
+
+        } catch (error) {
+            this.consecutiveErrors++;
+            console.error(`AutoSync error (attempt ${this.consecutiveErrors}):`, error);
+
+            // If we've had too many consecutive errors, temporarily disable autosync
+            if (this.consecutiveErrors >= this.maxRetries) {
+                console.warn(`AutoSync: Too many consecutive errors (${this.consecutiveErrors}), temporarily disabling for this session`);
+                this.stop();
+
+                // Show a notification to the user if they're on the page
+                if (typeof showPopup === 'function') {
+                    showPopup(`AutoSync temporarily disabled due to repeated errors: ${error.message}`, {
+                        timeout: 10000
+                    });
+                }
+            }
+        }
+    }
+
+    // Get status information
+    async getStatus() {
+        const lastAutoSync = await GM.getValue('lastAutoSync', null);
+        return {
+            enabled: this.isEnabled,
+            intervalMinutes: this.intervalMinutes,
+            lastSyncAttempt: this.lastSyncAttempt,
+            lastSuccessfulSync: lastAutoSync,
+            consecutiveErrors: this.consecutiveErrors,
+            isRunning: this.intervalId !== null
+        };
+    }
+
+    // Trigger immediate sync if autosync is enabled and data has changed
+    async triggerDataChangeSync(changedKey) {
+        if (!this.isEnabled) {
+            return;
+        }
+
+        // Define which keys should trigger immediate sync
+        const syncableKeys = [
+            'bookmarkedPages', 'offlineFavorites', 'mustAddTags', 'mustAddTagsEnabled',
+            'randomPrefLanguage', 'randomPrefTags', 'randomPrefPagesMin', 'randomPrefPagesMax',
+            'blacklistedTags', 'findSimilarEnabled', 'bookmarksEnabled', 'maxTagsToSelect',
+            'showNonEnglish', 'showPageNumbersEnabled', 'maxMangaPerBookmark'
+        ];
+
+        if (syncableKeys.includes(changedKey)) {
+            console.log(`AutoSync: Data change detected for ${changedKey}, triggering immediate sync`);
+
+            // Debounce rapid changes - only sync if last sync was more than 30 seconds ago
+            const lastSync = await GM.getValue('lastAutoSync', null);
+            const now = new Date().getTime();
+            const thirtySecondsAgo = now - 30000;
+
+            if (!lastSync || new Date(lastSync).getTime() < thirtySecondsAgo) {
+                console.log('AutoSync: Performing immediate sync due to data change');
+                await this.performAutoSync();
+            } else {
+                console.log('AutoSync: Skipping immediate sync due to recent sync activity');
+            }
+        }
+    }
+}
+
+// Initialize sync system
+const syncSystem = new OnlineDataSync();
+const autoSyncManager = new AutoSyncManager(syncSystem);
+
+// Helper function to save data and trigger autosync
+async function setValueWithAutoSync(key, value) {
+    await GM.setValue(key, value);
+    await autoSyncManager.triggerDataChangeSync(key);
+}
+
+// Initialize AutoSync on page load
+$(document).ready(async function() {
+    // Wait a bit for the page to fully load before initializing autosync
+    setTimeout(async () => {
+        try {
+            await autoSyncManager.initialize();
+            console.log('AutoSync initialized on page load');
+        } catch (error) {
+            console.error('Failed to initialize AutoSync on page load:', error);
+        }
+    }, 3000); // 3 second delay to ensure everything is loaded
+});
+
+//----------------------------------------------------------**Manga-Sync**--------------------------------------------------------------------
