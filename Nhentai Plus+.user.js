@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      8.1.0
+// @version      8.1.1
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -21,7 +21,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "8.1.0";
+const CURRENT_VERSION = "8.1.1";
 const CHANGELOG_URL = "https://api.jsonstorage.net/v1/json/d206ce58-9543-48db-a5e4-997cfc745ef3/a5efadba-2c0f-4962-8c17-70f2e3f5e5fc";
 
 (async () => {
@@ -2860,12 +2860,30 @@ label:hover .tooltip {
                 <div class="sync-section">
                     <h4>User Identification</h4>
                     <label>
-                        Your UUID: <input type="text" id="userUUID" readonly style="background: #222; color: #ccc;">
-                        <button type="button" id="edit-uuid">Edit</button>
-                        <button type="button" id="regenerate-uuid">Regenerate</button>
-                        <button type="button" id="browse-users">Browse Users</button>
+                        Your UUID: <div class="uuid-controls">
+                            <input type="text" id="userUUID" readonly style="background: #222; color: #ccc;">
+                            <button type="button" id="edit-uuid">Edit</button>
+                            <button type="button" id="regenerate-uuid">Regenerate</button>
+                            <button type="button" id="browse-users">Browse Users</button>
+                        </div>
                         <span class="tooltip" data-tooltip="Unique identifier for your data. Keep this safe!">?</span>
                     </label>
+                    <style>
+                        @media (max-width: 768px) {
+                            .uuid-controls {
+                                display: flex;
+                                flex-wrap: wrap;
+                                gap: 5px;
+                            }
+                            .uuid-controls input[type="text"] {
+                                flex-grow: 1;
+                                min-width: 150px;
+                            }
+                            .uuid-controls button {
+                                flex-grow: 1;
+                            }
+                        }
+                    </style>
                     <div id="uuid-edit-warning" style="display: none; color: #ff6b6b; font-size: 12px; margin-top: 5px;">
                         ⚠️ Warning: Changing your UUID will affect which data you can access. Make sure you have the correct UUID for your data.
                     </div>

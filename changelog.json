@@ -1,6 +1,12 @@
 {
+"8.1.1": {
+  "date": "2025-06-30",
+  "changes": [
+    "✨ NEW: Mobile UI - UUID input and buttons are now responsive on mobile devices"
+  ]
+},
 "8.1.0": {
-  "date": "2025-07-01",
+  "date": "2025-06-30",
   "changes": [
     "feat(sync): add auto-sync manager with manual trigger and status display",
     "Implement AutoSyncManager class for scheduled data synchronization",
