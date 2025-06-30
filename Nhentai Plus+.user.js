@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      8.1.2
+// @version      8.1.3
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -21,8 +21,8 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "8.1.2";
-const CHANGELOG_URL = "https://api.jsonstorage.net/v1/json/d206ce58-9543-48db-a5e4-997cfc745ef3/a5efadba-2c0f-4962-8c17-70f2e3f5e5fc";
+const CURRENT_VERSION = "8.1.3";
+const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
   const lastSeenVersion = await GM.getValue("lastSeenVersion", "0.0.0");
