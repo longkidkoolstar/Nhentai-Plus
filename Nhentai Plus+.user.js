@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      8.1.1
+// @version      8.1.2
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -21,7 +21,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "8.1.1";
+const CURRENT_VERSION = "8.1.2";
 const CHANGELOG_URL = "https://api.jsonstorage.net/v1/json/d206ce58-9543-48db-a5e4-997cfc745ef3/a5efadba-2c0f-4962-8c17-70f2e3f5e5fc";
 
 (async () => {
@@ -3390,9 +3390,9 @@ $('div.container').append(settingsHtml);
                         lastSyncElement.text(new Date().toLocaleString());
 
                         let message = `Data downloaded successfully! Applied ${result.appliedCount} settings.`;
-                        if (result.allUsers && result.allUsers.length > 1) {
-                            message += `\n\nAvailable user UUIDs in cloud storage: ${result.allUsers.join(', ')}`;
-                        }
+                        // if (result.allUsers && result.allUsers.length > 1) {
+                        //     message += `\n\nAvailable user UUIDs in cloud storage: ${result.allUsers.join(', ')}`;
+                        // }
 
                         showPopup(message);
 
@@ -8271,7 +8271,19 @@ class OnlineDataSync {
             'bookmarkedPages', 'offlineFavorites', 'mustAddTags', 'mustAddTagsEnabled',
             'randomPrefLanguage', 'randomPrefTags', 'randomPrefPagesMin', 'randomPrefPagesMax',
             'blacklistedTags', 'findSimilarEnabled', 'bookmarksEnabled', 'maxTagsToSelect',
-            'showNonEnglish', 'showPageNumbersEnabled', 'maxMangaPerBookmark'
+            'showNonEnglish', 'showPageNumbersEnabled', 'maxMangaPerBookmark',
+            'englishFilterEnabled', 'autoLoginEnabled','findAltmangaEnabled',
+            'bookmarksEnabled', 'language', 'tags', 'pagesMin', 'pagesMax', 'matchAllTags',
+            'mustAddTagsEnabled', 'findAltMangaThumbnailEnabled', 'openInNewTabEnabled',
+            'mangaBookMarkingButtonEnabled', 'mangaBookMarkingType', 'bookmarkArrangementType',
+            'monthFilterEnabled', 'tooltipsEnabled', 'mangagroupingenabled', 'maxMangaPerBookmark',
+            'openInNewTabType', 'offlineFavoritingEnabled', 'offlineFavoritesPageEnabled',
+            'nfmPageEnabled', 'publicSyncEnabled', 'privateSyncEnabled',
+            'autoSyncEnabled', 'syncInterval', 'lastSyncUpload',
+            'lastSyncDownload', 'bookmarksPageEnabled', 'replaceRelatedWithBookmarks',
+            'enableRelatedFlipButton', 'twitterButtonEnabled', 'enableRandomButton',
+            'randomOpenType', 'profileButtonEnabled', 'infoButtonEnabled', 'logoutButtonEnabled',
+            'bookmarkLinkEnabled', 'findSimilarType', 'bookmarkedMangas'
         ];
 
         for (const key of syncableKeys) {

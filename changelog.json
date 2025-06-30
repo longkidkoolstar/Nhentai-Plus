@@ -1,4 +1,10 @@
 {
+"8.1.2": {
+  "date": "2025-06-30",
+  "changes": [
+    "feat(sync): Added new keys to syncableKeys for comprehensive data synchronization"
+  ]
+},
 "8.1.1": {
   "date": "2025-06-30",
   "changes": [
