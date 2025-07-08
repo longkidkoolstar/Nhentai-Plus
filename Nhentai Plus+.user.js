@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      8.1.4
+// @version      8.1.4.1
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -21,7 +21,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "8.1.4";
+const CURRENT_VERSION = "8.1.4.1";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -1996,16 +1996,16 @@ var pathname = window.location.pathname;
 var searchQuery = window.location.search.split('=')[1] || '';
 var namespaceQuery = pathname.split('/')[2];
 var namespaceSearchLink = '<div class="sort-type"><a href="https://nhentai.net/search/?q=' + namespaceQuery + '+language%3A%22english%22">English Only</a></div>';
-var siteSearchLink = '<div class="sort-type"><a href="https://nhentai.net/search/?q=' + searchQuery + '+English">English Only</a></div>';
-var favSearchBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites/?q=English+' + searchQuery + '"><i class="fa fa-flag"></i> ENG</a>';
-var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites/?q=English+"><i class="fa fa-flag"></i> ENG</a>';
+var siteSearchLink = '<div class="sort-type"><a href="https://nhentai.net/search/?q=' + searchQuery + '+language%3A%22english%22">English Only</a></div>';
+var favSearchBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites/?q=language%3A%22english%22+' + searchQuery + '"><i class="fa fa-flag"></i> ENG</a>';
+var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites/?q=language%3A%22english%22+"><i class="fa fa-flag"></i> ENG</a>';
 
 (async function() {
     const englishFilterEnabled = await GM.getValue('englishFilterEnabled', true);
 
     if (englishFilterEnabled) {
         // Check if the search query contains 'English' or 'english'
-        if (!/English/i.test(searchQuery)) {
+        if (!/(English|language%3A%22english%22)/i.test(searchQuery)) {
             if (pathname.startsWith('/parody/')) { // parody pages
                 document.getElementsByClassName('sort')[0].innerHTML += namespaceSearchLink;
             } else if (pathname.startsWith('/favorites/')) { // favorites pages

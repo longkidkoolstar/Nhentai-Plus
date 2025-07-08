@@ -1,5 +1,11 @@
 {
-"8.1.4": {
+"8.1.4.1": {
+    "date": "2025-07-08",
+    "changes": [
+      "fix: English filter now accepts both 'English' and 'language:\"english\"' for backward compatibility"
+    ]
+  },
+  "8.1.4": {
     "date": "2025-07-08",
     "changes": [
       "feat: Updated English Only button to use language:\"english\" for accuracy",
