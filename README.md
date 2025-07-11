@@ -4,7 +4,7 @@
 
 [**Namespace**: github.com/longkidkoolstar](https://github.com/longkidkoolstar)  
 
-**Version**: 8.0.0
+**Version**: 9.0.0
 
 **Description**: Enhances the functionality of the Nhentai website.  
 
@@ -30,6 +30,11 @@
 - **Must Add Tags**: Allows users to define tags that will always be added to their search queries.
 - **Offline Favoriting**: Allows users to favorite manga offline and sync when logged in.
 - **Bookmarks as Related**: Replaces the "Related Manga" section with content from user's bookmarks.
+- **Mark as Read System** *(New in v9.0!)*: Complete reading tracking system with one-click mark/unmark buttons on gallery thumbnails.
+- **Read Manga Page** *(New in v9.0!)*: Dedicated page to view and manage all read manga with responsive grid layout.
+- **Auto-Mark on Last Page** *(New in v9.0!)*: Automatically marks galleries as read when reaching the final page.
+- **Enhanced Opacity System** *(New in v9.0!)*: Configurable fade levels for read galleries and non-English content.
+- **Gallery Data Caching** *(New in v9.0!)*: Automatic caching of cover images, titles, and metadata for read manga.
 - **Online Data Sync** *(New in v8.0!)*: Comprehensive cloud synchronization system for bookmarks, favorites, and settings across devices.
 - **Public Sync** *(New in v8.0!)*: Use predefined JSONStorage.net API with standard security for easy data syncing.
 - **Private Sync** *(New in v8.0!)*: Use your own JSONStorage.net credentials for enhanced security and private data storage.
@@ -71,7 +76,18 @@
     - Customize display settings in the settings page.
 11. **Must Add Tags**:
     - Configure tags in the settings page that will always be appended to your search queries.
-12. **Online Data Sync** *(New in v8.0!)*:
+12. **Mark as Read System** *(New in v9.0!)*:
+    - **Mark/Unmark Galleries**: Click the circular button on gallery thumbnails to mark as read or unread.
+    - **Auto-Mark on Last Page**: Automatically marks galleries as read when you reach the final page.
+    - **Visual Feedback**: Read galleries are visually distinguished with opacity changes and READ badges.
+    - **Configurable Opacity**: Adjust fade levels for read galleries and non-English content in settings.
+13. **Read Manga Page** *(New in v9.0!)*:
+    - **Dedicated Page**: Access all your read manga from the navigation menu.
+    - **Responsive Grid**: Mobile-optimized layout that adapts to all screen sizes.
+    - **Management Tools**: Clear all read manga, remove individual items, and sort options.
+    - **Gallery Information**: View cached cover images, titles, and metadata.
+    - **Remove from List**: Easy removal of individual galleries from your read list.
+14. **Online Data Sync** *(New in v8.0!)*:
     - **Public Sync**: Enable public sync for standard security cloud storage using predefined JSONStorage.net API.
     - **Private Sync**: Configure your own JSONStorage.net URL and API key for enhanced security.
     - **UUID Management**: View, edit, or regenerate your unique 5-character user identifier.
@@ -93,7 +109,26 @@
 
 **Note**: If the script isn't executing (e.g., for older devices), try using stable: [Ver. 7.5](https://greasyfork.org/en/scripts/498553-nhentai-plus?version=1562827)
 
-#### Version 8.0.0 *(Latest)*
+#### Version 9.0.0 *(Latest)*
+
+- **🆕 MAJOR**: **Mark as Read System** - Complete reading tracking system with visual feedback and one-click mark/unmark buttons.
+- **📖 NEW**: **Read Manga Page** - Dedicated page to view and manage all read manga with responsive grid layout.
+- **🔘 NEW**: **Mark as Read Buttons** - One-click buttons on gallery thumbnails to mark/unmark as read.
+- **⚡ NEW**: **Auto-Mark on Last Page** - Automatically marks galleries as read when reaching the final page.
+- **🎨 NEW**: **Enhanced Opacity System** - Configurable fade levels for read and non-English galleries.
+- **📱 NEW**: **Mobile-Responsive Design** - Optimized grid layout for all device sizes on read manga page.
+- **🗂️ NEW**: **Read Manga Management** - Clear all, remove individual items, and sorting options.
+- **💾 NEW**: **Gallery Data Caching** - Automatic caching of cover images, titles, and metadata.
+- **🔄 NEW**: **Smart Cover Fetching** - Auto-fetches cover images from first page for auto-marked galleries.
+- **🎯 NEW**: **Visual Read Indicators** - Clear visual feedback with READ badges and opacity changes.
+- **⚙️ NEW**: **Configurable Settings** - Separate controls for mark-as-read system and read manga page.
+- **🔧 NEW**: **Enhanced Integration** - Seamless integration with existing bookmark and sync systems.
+- **📊 NEW**: **Read Statistics** - Track and display total count of read manga.
+- **🎨 IMPROVEMENT**: Enhanced UI/UX with modern styling, smooth animations and transitions.
+- **📱 IMPROVEMENT**: Cross-device compatibility works seamlessly across desktop and mobile.
+- **⚡ PERFORMANCE**: Optimized rendering with efficient gallery processing and display.
+
+#### Version 8.0.0
 
 - **🆕 MAJOR**: Introduced **Online Data Sync** - Complete cloud synchronization system for bookmarks, favorites, and settings.
 - **🔒 NEW**: **Public Sync** - Use predefined JSONStorage.net API with standard security level.
@@ -152,6 +187,13 @@
 - **Bookmarks Page Arrangement**: Sort and filter bookmarks by date, title, or custom order for easier access.
 - **Max Manga per Bookmark Slider**: Adjust how many manga appear in each bookmark group.
 - **Detailed Random Hentai Preferences**: Fine-tune random results with tag and language options.
+- **Mark as Read System Setup** *(New in v9.0!)*:
+  - **Enable/Disable**: Toggle the mark as read system and read manga page independently in settings.
+  - **Auto-Mark Settings**: Configure automatic marking when reaching the last page of a gallery.
+  - **Opacity Controls**: Adjust fade levels for read galleries (0.1 = very faded, 1.0 = normal).
+  - **Visual Feedback**: Customize how read galleries appear with configurable opacity settings.
+  - **Mobile Optimization**: Read manga page automatically adapts to mobile devices with responsive grid.
+  - **Data Management**: Use "Clear All" to reset your read list or remove individual items as needed.
 - **Online Data Sync Setup**:
   - **Public Sync**: Simply enable the checkbox for instant cloud sync with standard security.
   - **Private Sync**: Enter your own JSONStorage.net URL and API key for maximum security and control.

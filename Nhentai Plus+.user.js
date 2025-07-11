@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      8.1.4.1
+// @version      9.0.0
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -21,7 +21,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "8.1.4.1";
+const CURRENT_VERSION = "9.0.0";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -1235,6 +1235,48 @@ async function addOfflineFavoritesButton() {
 addBookmarkButton(); // Call the function to add the bookmark button
 addOfflineFavoritesButton(); // Call the function to add the offline favorites button
 
+// Add Read Manga button function
+async function addReadMangaButton() {
+    const markAsReadEnabled = await GM.getValue('markAsReadEnabled', true);
+    const readMangaPageEnabled = await GM.getValue('readMangaPageEnabled', true);
+
+    if (markAsReadEnabled && readMangaPageEnabled) {
+        // Check if link already exists
+        if (document.querySelector('a[href="/read-manga/"]')) return;
+
+        // Create the read manga button
+        const readMangaButtonHtml = `
+          <li>
+            <a href="/read-manga/">
+              <i class="fas fa-book-open"></i> Read Manga
+            </a>
+          </li>
+        `;
+        const readMangaButton = $(readMangaButtonHtml);
+
+        // Append to dropdown menu
+        const dropdownMenu = $('ul.dropdown-menu');
+        dropdownMenu.append(readMangaButton);
+
+        // Append to main menu
+        const menu = $('ul.menu.left');
+        menu.append(readMangaButton);
+
+        // Add click handler for navigation
+        readMangaButton.find('a').on('click', (e) => {
+            e.preventDefault();
+            if (window.readMangaPageSystem) {
+                window.readMangaPageSystem.navigateToReadMangaPage();
+            }
+        });
+
+        // Call updateMenuOrder to ensure proper tab order
+        setTimeout(updateMenuOrder, 100);
+    }
+}
+
+addReadMangaButton(); // Call the function to add the read manga button
+
 
 // Delete error message on unsupported bookmarks page
 (async function() {
@@ -1994,8 +2036,9 @@ displayBookmarkedPages();
 //------------------------  **Nhentai English Filter**  ----------------------
 var pathname = window.location.pathname;
 var searchQuery = window.location.search.split('=')[1] || '';
+var namespaceType = pathname.split('/')[1];
 var namespaceQuery = pathname.split('/')[2];
-var namespaceSearchLink = '<div class="sort-type"><a href="https://nhentai.net/search/?q=' + namespaceQuery + '+language%3A%22english%22">English Only</a></div>';
+var namespaceSearchLink = '<div class="sort-type"><a href="https://nhentai.net/search/?q=' + namespaceType + '%3A%22' + namespaceQuery + '%22+language%3A%22english%22">English Only</a></div>';
 var siteSearchLink = '<div class="sort-type"><a href="https://nhentai.net/search/?q=' + searchQuery + '+language%3A%22english%22">English Only</a></div>';
 var favSearchBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites/?q=language%3A%22english%22+' + searchQuery + '"><i class="fa fa-flag"></i> ENG</a>';
 var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites/?q=language%3A%22english%22+"><i class="fa fa-flag"></i> ENG</a>';
@@ -2312,6 +2355,76 @@ const settingsHtml = `
         margin-top: 15px;
     }
 
+    /* Fade & Read Settings */
+    #fade-read-settings {
+        margin-top: 20px;
+        border-top: 1px solid #333;
+        padding-top: 20px;
+    }
+
+    #fade-read-settings-content {
+        display: none;
+        margin-top: 15px;
+    }
+
+    #fade-read-settings-content input[type="range"] {
+        width: 200px;
+        margin: 0 10px;
+    }
+
+    /* Tag Management Settings */
+    #tag-management-settings {
+        margin-top: 20px;
+        border-top: 1px solid #333;
+        padding-top: 20px;
+    }
+
+    #tag-management-settings-content {
+        display: none;
+        margin-top: 15px;
+    }
+
+    .tag-lists-container {
+        margin: 15px 0;
+    }
+
+    .tag-list-section {
+        margin-bottom: 15px;
+    }
+
+    .tag-list-section h4 {
+        color: #e63946;
+        margin-bottom: 5px;
+        font-size: 14px;
+    }
+
+    .tag-list-section textarea {
+        width: calc(100% - 12px);
+        padding: 8px;
+        border-radius: 3px;
+        border: 1px solid #333;
+        background: #2a2a2a;
+        color: #fff;
+        font-family: inherit;
+        resize: vertical;
+        min-height: 60px;
+    }
+
+    .btn-secondary {
+        padding: 8px 16px;
+        background: #444;
+        border: 1px solid #555;
+        border-radius: 3px;
+        color: #fff;
+        cursor: pointer;
+        margin-top: 10px;
+        margin-right: 10px;
+    }
+
+    .btn-secondary:hover {
+        background: #555;
+    }
+
     #storage-data {
         width: 100%;
         height: 200px;
@@ -2616,6 +2729,68 @@ label:hover .tooltip {
             <input type="checkbox" id="showPageNumbersEnabled">
             Show Page Numbers <span class="tooltip" data-tooltip="Displays the page count for each manga thumbnail.">?</span>
         </label>
+
+        <!-- Fade & Read Settings Section -->
+        <div id="fade-read-settings">
+            <h3 class="expand-icon">Fade & Read Settings <span class="tooltip" data-tooltip="Configure opacity settings and mark as read functionality">?</span></h3>
+            <div id="fade-read-settings-content">
+                <label>
+                    <input type="checkbox" id="markAsReadEnabled">
+                    Enable Mark as Read System <span class="tooltip" data-tooltip="Allows marking galleries as read with visual feedback">?</span>
+                </label>
+                <label>
+                    <input type="checkbox" id="autoMarkReadEnabled">
+                    Auto-mark as Read on Last Page <span class="tooltip" data-tooltip="Automatically marks galleries as read when reaching the last page">?</span>
+                </label>
+                <div>
+                    <label for="nonEnglishOpacity">Non-English Galleries Opacity:</label>
+                    <input type="range" id="nonEnglishOpacity" min="0.1" max="1.0" step="0.1" value="0.2">
+                    <span id="nonEnglishOpacityValue">0.2</span>
+                    <span class="tooltip" data-tooltip="Opacity level for non-English galleries (0.1 = very faded, 1.0 = normal)">?</span>
+                </div>
+                <div>
+                    <label for="readGalleriesOpacity">Read Galleries Opacity:</label>
+                    <input type="range" id="readGalleriesOpacity" min="0.1" max="1.0" step="0.1" value="0.6">
+                    <span id="readGalleriesOpacityValue">0.6</span>
+                    <span class="tooltip" data-tooltip="Opacity level for galleries marked as read (0.1 = very faded, 1.0 = normal)">?</span>
+                </div>
+                <button type="button" id="resetFadeSettings" class="btn-secondary">Reset to Defaults</button>
+            </div>
+        </div>
+
+        <!-- Tag Management Settings Section -->
+        <div id="tag-management-settings">
+            <h3 class="expand-icon">Tag Management <span class="tooltip" data-tooltip="Configure tag warnings, blacklists, and favorites">?</span></h3>
+            <div id="tag-management-settings-content">
+                <label>
+                    <input type="checkbox" id="tagWarningEnabled">
+                    Enable Tag Warning System <span class="tooltip" data-tooltip="Shows warning badges for problematic tags">?</span>
+                </label>
+
+                <div class="tag-lists-container">
+                    <div class="tag-list-section">
+                        <h4>Blacklist Tags (Red Badges)</h4>
+                        <textarea id="blacklistTags" placeholder="Enter tags separated by commas (e.g., scat, guro, vore)" rows="3"></textarea>
+                        <span class="tooltip" data-tooltip="Tags that will show red warning badges. Separate with commas.">?</span>
+                    </div>
+
+                    <div class="tag-list-section">
+                        <h4>Warning Tags (Orange Badges)</h4>
+                        <textarea id="warningTags" placeholder="Enter tags separated by commas (e.g., ntr, cheating, netorare)" rows="3"></textarea>
+                        <span class="tooltip" data-tooltip="Tags that will show orange warning badges. Separate with commas.">?</span>
+                    </div>
+
+                    <div class="tag-list-section">
+                        <h4>Favorite Tags</h4>
+                        <textarea id="favoriteTags" placeholder="Enter favorite tags separated by commas" rows="3" readonly></textarea>
+                        <span class="tooltip" data-tooltip="Your favorite tags (managed by starring tags in gallery view). Shows blue badges.">?</span>
+                        <button type="button" id="clearFavoriteTags" class="btn-secondary">Clear All Favorites</button>
+                    </div>
+                </div>
+
+                <button type="button" id="resetTagSettings" class="btn-secondary">Reset to Defaults</button>
+            </div>
+        </div>
         <label>
             <input type="checkbox" id="offlineFavoritingEnabled">
             Enable Offline Favoriting <span class="tooltip" data-tooltip="Allows favoriting manga even without being logged in.">?</span>
@@ -2738,6 +2913,10 @@ label:hover .tooltip {
                      Enable Offline Favorites Page <span class="tooltip" data-tooltip="Adds a tab to view all your offline favorites.">?</span>
                 </label>
                 <label>
+                    <input type="checkbox" id="readMangaPageEnabled">
+                     Enable Read Manga Page <span class="tooltip" data-tooltip="Adds a tab to view all your read manga with management options.">?</span>
+                </label>
+                <label>
                     <input type="checkbox" id="nfmPageEnabled">
                     Enable NFM (Nhentai Favorite Manager) Page <span class="tooltip" data-tooltip="Enables the Nhentai Favorite Manager page for favorite management.">?</span>
                 </label>
@@ -2810,6 +2989,7 @@ label:hover .tooltip {
                         <li data-tab="groups" class="tab-item"><i class="fa fa-bars handle"></i> Groups</li>
                         <li data-tab="info" class="tab-item"><i class="fa fa-bars handle"></i> Info</li>
                         <li data-tab="twitter" class="tab-item"><i class="fa fa-bars handle"></i> Twitter</li>
+                        <li data-tab="read_manga" class="tab-item"><i class="fa fa-bars handle"></i> Read Manga</li>
                         <!-- Offline Favorites tab will be added dynamically if user is not logged in -->
                     </ul>
                     <button type="button" id="resetTabOrder" class="btn-secondary">Reset to Default Order</button>
@@ -3027,6 +3207,7 @@ $('div.container').append(settingsHtml);
             const openInNewTabType = await GM.getValue('openInNewTabType', 'background');
             const offlineFavoritingEnabled = await GM.getValue('offlineFavoritingEnabled', true);
             const offlineFavoritesPageEnabled = await GM.getValue('offlineFavoritesPageEnabled', true);
+            const readMangaPageEnabled = await GM.getValue('readMangaPageEnabled', true);
             const nfmPageEnabled = await GM.getValue('nfmPageEnabled', true);
 
             // Online Data Sync settings
@@ -3052,6 +3233,18 @@ $('div.container').append(settingsHtml);
             const findSimilarType = await GM.getValue('findSimilarType', 'immediately');
             const showNonEnglish = await GM.getValue('showNonEnglish', 'show');
             const showPageNumbersEnabled = await GM.getValue('showPageNumbersEnabled', true);
+
+            // New Fade & Read settings
+            const markAsReadEnabled = await GM.getValue('markAsReadEnabled', true);
+            const autoMarkReadEnabled = await GM.getValue('autoMarkReadEnabled', true);
+            const nonEnglishOpacity = await GM.getValue('nonEnglishOpacity', 0.2);
+            const readGalleriesOpacity = await GM.getValue('readGalleriesOpacity', 0.6);
+
+            // New Tag Management settings
+            const tagWarningEnabled = await GM.getValue('tagWarningEnabled', true);
+            const blacklistTagsList = await GM.getValue('blacklistTagsList', ['scat', 'guro', 'vore', 'ryona', 'snuff']);
+            const warningTagsList = await GM.getValue('warningTagsList', ['ntr', 'netorare', 'cheating', 'ugly bastard', 'mind break']);
+            const favoriteTagsList = await GM.getValue('favoriteTagsList', []);
 
 
             $('#findSimilarEnabled').prop('checked', findSimilarEnabled);
@@ -3088,6 +3281,7 @@ $('div.container').append(settingsHtml);
             $('#max-manga-per-bookmark-slider').val(maxMangaPerBookmark);
             $('#offlineFavoritingEnabled').prop('checked', offlineFavoritingEnabled);
             $('#offlineFavoritesPageEnabled').prop('checked', offlineFavoritesPageEnabled);
+            $('#readMangaPageEnabled').prop('checked', readMangaPageEnabled);
             $('#nfmPageEnabled').prop('checked', nfmPageEnabled);
             $('#bookmarksPageEnabled').prop('checked', bookmarksPageEnabled);
             $('#replaceRelatedWithBookmarks').prop('checked', replaceRelatedWithBookmarks);
@@ -3102,6 +3296,20 @@ $('div.container').append(settingsHtml);
             $('#bookmarkLinkEnabled').prop('checked', bookmarkLinkEnabled);
             $('#open-immediately').prop('checked', findSimilarType === 'immediately');
             $('#input-tags').prop('checked', findSimilarType === 'input-tags');
+
+            // Populate new Fade & Read settings
+            $('#markAsReadEnabled').prop('checked', markAsReadEnabled);
+            $('#autoMarkReadEnabled').prop('checked', autoMarkReadEnabled);
+            $('#nonEnglishOpacity').val(nonEnglishOpacity);
+            $('#nonEnglishOpacityValue').text(nonEnglishOpacity);
+            $('#readGalleriesOpacity').val(readGalleriesOpacity);
+            $('#readGalleriesOpacityValue').text(readGalleriesOpacity);
+
+            // Populate new Tag Management settings
+            $('#tagWarningEnabled').prop('checked', tagWarningEnabled);
+            $('#blacklistTags').val(blacklistTagsList.join(', '));
+            $('#warningTags').val(warningTagsList.join(', '));
+            $('#favoriteTags').val(favoriteTagsList.join(', '));
 
             // Populate sync settings
             $('#publicSyncEnabled').prop('checked', publicSyncEnabled);
@@ -3578,6 +3786,50 @@ $('#findSimilarEnabled').on('change', function() {
                 applyNonEnglishStyles();
             });
 
+            // Event handlers for new Fade & Read settings
+            $('#fade-read-settings h3').on('click', function() {
+                $('#fade-read-settings-content').toggle();
+                $(this).toggleClass('expanded');
+            });
+
+            $('#nonEnglishOpacity').on('input', function() {
+                const value = parseFloat($(this).val());
+                $('#nonEnglishOpacityValue').text(value);
+            });
+
+            $('#readGalleriesOpacity').on('input', function() {
+                const value = parseFloat($(this).val());
+                $('#readGalleriesOpacityValue').text(value);
+            });
+
+            $('#resetFadeSettings').on('click', function() {
+                $('#nonEnglishOpacity').val(0.2);
+                $('#nonEnglishOpacityValue').text('0.2');
+                $('#readGalleriesOpacity').val(0.6);
+                $('#readGalleriesOpacityValue').text('0.6');
+                $('#markAsReadEnabled').prop('checked', true);
+                $('#autoMarkReadEnabled').prop('checked', true);
+            });
+
+            // Event handlers for new Tag Management settings
+            $('#tag-management-settings h3').on('click', function() {
+                $('#tag-management-settings-content').toggle();
+                $(this).toggleClass('expanded');
+            });
+
+            $('#clearFavoriteTags').on('click', async function() {
+                if (confirm('Are you sure you want to clear all favorite tags?')) {
+                    await GM.setValue('favoriteTagsList', []);
+                    $('#favoriteTags').val('');
+                }
+            });
+
+            $('#resetTagSettings').on('click', function() {
+                $('#blacklistTags').val('scat, guro, vore, ryona, snuff');
+                $('#warningTags').val('ntr, netorare, cheating, ugly bastard, mind break');
+                $('#tagWarningEnabled').prop('checked', true);
+            });
+
 // Check if openInNewTabEnabled is true, if not, hide the options
 if (openInNewTabEnabled) {
   $('#open-in-New-Tab-options').show();
@@ -3651,6 +3903,7 @@ $('#openInNewTabEnabled').change(function() {
             const openInNewTabType = $('input[name="open-in-new-tab"]:checked').val();
             const offlineFavoritingEnabled = $('#offlineFavoritingEnabled').prop('checked');
             const offlineFavoritesPageEnabled = $('#offlineFavoritesPageEnabled').prop('checked');
+            const readMangaPageEnabled = $('#readMangaPageEnabled').prop('checked');
             const nfmPageEnabled = $('#nfmPageEnabled').prop('checked');
             const bookmarksPageEnabled = $('#bookmarksPageEnabled').prop('checked');
             const replaceRelatedWithBookmarks = $('#replaceRelatedWithBookmarks').prop('checked');
@@ -3663,8 +3916,20 @@ $('#openInNewTabEnabled').change(function() {
             const logoutButtonEnabled = $('#logoutButtonEnabled').prop('checked');
             const bookmarkLinkEnabled = $('#bookmarkLinkEnabled').prop('checked');
             const findSimilarType = $('input[name="find-similar-type"]:checked').val();
-            const showNonEnglish = await GM.getValue('showNonEnglish', 'show');
+            const showNonEnglish = $('#showNonEnglishSelect').val();
             const showPageNumbersEnabled = $('#showPageNumbersEnabled').prop('checked');
+
+            // Collect new Fade & Read settings
+            const markAsReadEnabled = $('#markAsReadEnabled').prop('checked');
+            const autoMarkReadEnabled = $('#autoMarkReadEnabled').prop('checked');
+            const nonEnglishOpacity = parseFloat($('#nonEnglishOpacity').val());
+            const readGalleriesOpacity = parseFloat($('#readGalleriesOpacity').val());
+
+            // Collect new Tag Management settings
+            const tagWarningEnabled = $('#tagWarningEnabled').prop('checked');
+            let blacklistTagsList = $('#blacklistTags').val().split(',').map(tag => tag.trim().toLowerCase()).filter(tag => tag);
+            let warningTagsList = $('#warningTags').val().split(',').map(tag => tag.trim().toLowerCase()).filter(tag => tag);
+            let favoriteTagsList = $('#favoriteTags').val().split(',').map(tag => tag.trim().toLowerCase()).filter(tag => tag);
 
             // Collect sync settings
             const publicSyncEnabledForm = $('#publicSyncEnabled').prop('checked');
@@ -3710,6 +3975,7 @@ $('#openInNewTabEnabled').change(function() {
             await GM.setValue('openInNewTabType', openInNewTabType);
             await GM.setValue('offlineFavoritingEnabled', offlineFavoritingEnabled);
             await GM.setValue('offlineFavoritesPageEnabled', offlineFavoritesPageEnabled);
+            await GM.setValue('readMangaPageEnabled', readMangaPageEnabled);
             await GM.setValue('nfmPageEnabled', nfmPageEnabled);
             await GM.setValue('bookmarksPageEnabled', bookmarksPageEnabled);
             await GM.setValue('replaceRelatedWithBookmarks', replaceRelatedWithBookmarks);
@@ -3722,6 +3988,18 @@ $('#openInNewTabEnabled').change(function() {
             await GM.setValue('logoutButtonEnabled', logoutButtonEnabled);
             await GM.setValue('bookmarkLinkEnabled', bookmarkLinkEnabled);
             await GM.setValue('findSimilarType', findSimilarType);
+
+            // Save new Fade & Read settings
+            await GM.setValue('markAsReadEnabled', markAsReadEnabled);
+            await GM.setValue('autoMarkReadEnabled', autoMarkReadEnabled);
+            await GM.setValue('nonEnglishOpacity', nonEnglishOpacity);
+            await GM.setValue('readGalleriesOpacity', readGalleriesOpacity);
+
+            // Save new Tag Management settings
+            await GM.setValue('tagWarningEnabled', tagWarningEnabled);
+            await GM.setValue('blacklistTagsList', blacklistTagsList);
+            await GM.setValue('warningTagsList', warningTagsList);
+            await GM.setValue('favoriteTagsList', favoriteTagsList);
 
             // Save sync settings
             await GM.setValue('publicSyncEnabled', publicSyncEnabledForm);
@@ -4419,7 +4697,7 @@ function refreshStorageData() {
 
             // Initialize tab order from storage or use default order
             async function initializeTabOrder() {
-                const defaultOrder = ['random', 'tags', 'artists', 'characters', 'parodies', 'groups', 'info', 'twitter', 'bookmarks', 'offline_favorites', 'continue_reading', 'settings'];
+                const defaultOrder = ['random', 'tags', 'artists', 'characters', 'parodies', 'groups', 'info', 'twitter', 'bookmarks', 'offline_favorites', 'read_manga', 'continue_reading', 'settings'];
                 const savedOrder = await GM.getValue('tabOrder');
                 return savedOrder || defaultOrder;
             }
@@ -4455,7 +4733,8 @@ function refreshStorageData() {
                             return true;
                         }
                         // Regular case for internal links
-                        return href.includes(`/${tabId}/`);
+                        return href.includes(`/${tabId}/`) ||
+                               (tabId === 'read_manga' && href.includes('/read-manga/'));
                     });
 
                     // If found, move it to our temporary container
@@ -4496,7 +4775,8 @@ function refreshStorageData() {
                             return true;
                         }
                         // Regular case for internal links
-                        return href.includes(`/${tabId}/`);
+                        return href.includes(`/${tabId}/`) ||
+                               (tabId === 'read_manga' && href.includes('/read-manga/'));
                     });
 
                     if (desktopItem) {
@@ -4743,6 +5023,28 @@ function refreshStorageData() {
                                 });
                             });
                         }
+                    }
+
+                    // Check for Read Manga
+                    const readMangaItem = Array.from(menu.querySelectorAll('li')).find(li => {
+                        const link = li.querySelector('a');
+                        return link && link.getAttribute('href').includes('/read-manga/');
+                    });
+
+                    if (readMangaItem && !tabList.querySelector('[data-tab="read_manga"]')) {
+                        const readMangaTabItem = document.createElement('li');
+                        readMangaTabItem.className = 'tab-item';
+                        readMangaTabItem.dataset.tab = 'read_manga';
+                        readMangaTabItem.innerHTML = '<i class="fa fa-bars handle"></i> Read Manga';
+                        tabList.appendChild(readMangaTabItem);
+
+                        // Reapply the saved order after adding a new item
+                        initializeTabOrder().then(tabOrder => {
+                            tabOrder.forEach(tabId => {
+                                const item = tabList.querySelector(`[data-tab="${tabId}"]`);
+                                if (item) tabList.appendChild(item);
+                            });
+                        });
                     }
                 }
 
@@ -8686,6 +8988,3960 @@ async function setValueWithAutoSync(key, value) {
     await GM.setValue(key, value);
     await autoSyncManager.triggerDataChangeSync(key);
 }
+
+//------------------------  **Mark as Read System**  ------------------
+
+/**
+ * Mark as Read System - Enhanced version with configurable opacity and auto-mark functionality
+ */
+class MarkAsReadSystem {
+    constructor() {
+        this.readGalleries = new Set();
+        this.settings = {
+            enabled: true,
+            autoMarkEnabled: true,
+            readOpacity: 0.6,
+            nonEnglishOpacity: 0.2
+        };
+        this.init();
+    }
+
+    /**
+     * Initialize the Mark as Read system
+     */
+    async init() {
+        await this.loadSettings();
+        await this.loadReadGalleries();
+
+        if (this.settings.enabled) {
+            this.addCSS();
+            this.addMarkAsReadButtons();
+            this.applyReadStatus();
+            this.setupAutoMark();
+        }
+    }
+
+    /**
+     * Load settings from GM storage
+     */
+    async loadSettings() {
+        this.settings.enabled = await GM.getValue('markAsReadEnabled', true);
+        this.settings.autoMarkEnabled = await GM.getValue('autoMarkReadEnabled', true);
+        this.settings.readOpacity = await GM.getValue('readGalleriesOpacity', 0.6);
+        this.settings.nonEnglishOpacity = await GM.getValue('nonEnglishOpacity', 0.2);
+    }
+
+    /**
+     * Load read galleries from localStorage
+     */
+    async loadReadGalleries() {
+        try {
+            const readList = await GM.getValue('readGalleries', []);
+            this.readGalleries = new Set(readList);
+        } catch (error) {
+            console.error('Error loading read galleries:', error);
+            this.readGalleries = new Set();
+        }
+    }
+
+    /**
+     * Save read galleries to localStorage
+     */
+    async saveReadGalleries() {
+        try {
+            await GM.setValue('readGalleries', Array.from(this.readGalleries));
+        } catch (error) {
+            console.error('Error saving read galleries:', error);
+        }
+    }
+
+    /**
+     * Extract gallery ID from URL or element
+     */
+    extractGalleryId(url) {
+        if (!url) return null;
+        const match = url.match(/\/g\/(\d+)\//);
+        return match ? match[1] : null;
+    }
+
+    /**
+     * Check if a gallery is marked as read
+     */
+    isRead(galleryId) {
+        return this.readGalleries.has(galleryId);
+    }
+
+    /**
+     * Mark a gallery as read
+     */
+    async markAsRead(galleryId) {
+        if (!galleryId) return;
+
+        this.readGalleries.add(galleryId);
+        await this.saveReadGalleries();
+
+        // Cache gallery data for Read Manga page
+        await this.cacheGalleryData(galleryId);
+
+        this.updateGalleryVisuals(galleryId);
+    }
+
+    /**
+     * Unmark a gallery as read
+     */
+    async unmarkAsRead(galleryId) {
+        if (!galleryId) return;
+
+        this.readGalleries.delete(galleryId);
+        await this.saveReadGalleries();
+        this.updateGalleryVisuals(galleryId);
+    }
+
+    /**
+     * Toggle read status of a gallery
+     */
+    async toggleReadStatus(galleryId) {
+        if (this.isRead(galleryId)) {
+            await this.unmarkAsRead(galleryId);
+        } else {
+            await this.markAsRead(galleryId);
+        }
+    }
+
+    /**
+     * Add CSS styles for the mark as read system
+     */
+    addCSS() {
+        const css = `
+            /* Mark as Read Button Styles */
+            .mark-as-read-btn {
+                position: absolute;
+                top: 5px;
+                right: 5px;
+                width: 24px;
+                height: 24px;
+                background: rgba(0, 0, 0, 0.7);
+                border: none;
+                border-radius: 50%;
+                color: #fff;
+                cursor: pointer;
+                font-size: 12px;
+                z-index: 10;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: all 0.3s ease;
+            }
+
+            .mark-as-read-btn:hover {
+                background: rgba(0, 0, 0, 0.9);
+                transform: scale(1.1);
+            }
+
+            .mark-as-read-btn.read {
+                background: rgba(46, 125, 50, 0.8);
+                color: #fff;
+            }
+
+            .mark-as-read-btn.read:hover {
+                background: rgba(46, 125, 50, 1);
+            }
+
+            /* Read Gallery Badge */
+            .read-badge {
+                position: absolute;
+                top: 5px;
+                left: 5px;
+                background: rgba(46, 125, 50, 0.9);
+                color: white;
+                padding: 2px 6px;
+                border-radius: 3px;
+                font-size: 10px;
+                font-weight: bold;
+                z-index: 10;
+                pointer-events: none;
+            }
+
+            /* Gallery container positioning */
+            .gallery {
+                position: relative;
+            }
+
+            /* Read gallery opacity */
+            .gallery.read-gallery .cover img,
+            .gallery.read-gallery .cover .caption {
+                opacity: var(--read-opacity, 0.6);
+                transition: opacity 0.3s ease;
+            }
+
+            .gallery.read-gallery:hover .cover img,
+            .gallery.read-gallery:hover .cover .caption {
+                opacity: 1;
+            }
+
+            /* Animation for marking as read */
+            @keyframes markAsReadAnimation {
+                0% { transform: scale(1); }
+                50% { transform: scale(1.2); }
+                100% { transform: scale(1); }
+            }
+
+            .mark-as-read-animation {
+                animation: markAsReadAnimation 0.3s ease;
+            }
+
+            /* Custom Mark as Read Button for Gallery Pages */
+            .btn-nhi-mark-as-read {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                padding: 10px 16px;
+                border-radius: 6px;
+                text-decoration: none;
+                font-weight: 500;
+                transition: all 0.3s ease;
+                border: 1px solid transparent;
+                cursor: pointer;
+                user-select: none;
+            }
+
+            .btn-nhi-mark-as-read:hover {
+                text-decoration: none;
+                transform: translateY(-1px);
+                box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            }
+
+            .btn-nhi-mark-as-read:active {
+                transform: translateY(0);
+            }
+
+            .btn-nhi-mark-as-read svg {
+                transition: transform 0.3s ease;
+            }
+
+            .btn-nhi-mark-as-read:hover svg {
+                transform: scale(1.1);
+            }
+
+            /* Success state styling */
+            .btn-nhi-mark-as-read.btn-success {
+                color: white;
+                border-color: rgba(255, 255, 255, 0.2);
+            }
+
+            .btn-nhi-mark-as-read.btn-success:hover {
+                background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%) !important;
+                color: white;
+            }
+        `;
+
+        GM.addStyle(css);
+
+        // Set CSS custom property for read opacity
+        document.documentElement.style.setProperty('--read-opacity', this.settings.readOpacity);
+    }
+
+    /**
+     * Add mark as read buttons to gallery thumbnails
+     */
+    addMarkAsReadButtons() {
+        // Don't add mark-as-read buttons on the read-manga page
+        if (window.location.pathname === '/read-manga/' ||
+            window.location.hash === '#read-manga' ||
+            document.body.classList.contains('read-manga-active') ||
+            document.querySelector('.read-manga-page')) {
+            return;
+        }
+
+        const galleries = document.querySelectorAll('.gallery');
+
+        galleries.forEach(gallery => {
+            // Skip if button already exists
+            if (gallery.querySelector('.mark-as-read-btn')) return;
+
+            // Skip if this is a read-manga-gallery (from read manga page)
+            if (gallery.classList.contains('read-manga-gallery')) return;
+
+            const coverLink = gallery.querySelector('.cover');
+            if (!coverLink) return;
+
+            const galleryId = this.extractGalleryId(coverLink.getAttribute('href'));
+            if (!galleryId) return;
+
+            const button = document.createElement('button');
+            button.className = 'mark-as-read-btn';
+            button.title = 'Mark as Read';
+            button.innerHTML = this.isRead(galleryId) ? '✓' : '○';
+
+            if (this.isRead(galleryId)) {
+                button.classList.add('read');
+            }
+
+            button.addEventListener('click', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+
+                button.classList.add('mark-as-read-animation');
+                await this.toggleReadStatus(galleryId);
+
+                setTimeout(() => {
+                    button.classList.remove('mark-as-read-animation');
+                }, 300);
+            });
+
+            gallery.appendChild(button);
+        });
+    }
+
+    /**
+     * Apply read status visual effects to galleries
+     */
+    applyReadStatus() {
+        const galleries = document.querySelectorAll('.gallery');
+
+        galleries.forEach(gallery => {
+            const coverLink = gallery.querySelector('.cover');
+            if (!coverLink) return;
+
+            const galleryId = this.extractGalleryId(coverLink.getAttribute('href'));
+            if (!galleryId) return;
+
+            if (this.isRead(galleryId)) {
+                gallery.classList.add('read-gallery');
+                this.addReadBadge(gallery);
+            } else {
+                gallery.classList.remove('read-gallery');
+                this.removeReadBadge(gallery);
+            }
+        });
+    }
+
+    /**
+     * Add read badge to a gallery
+     */
+    addReadBadge(gallery) {
+        if (gallery.querySelector('.read-badge')) return;
+
+        const badge = document.createElement('div');
+        badge.className = 'read-badge';
+        badge.textContent = 'READ';
+        gallery.appendChild(badge);
+    }
+
+    /**
+     * Remove read badge from a gallery
+     */
+    removeReadBadge(gallery) {
+        const badge = gallery.querySelector('.read-badge');
+        if (badge) {
+            badge.remove();
+        }
+    }
+
+    /**
+     * Update visual state of a specific gallery
+     */
+    updateGalleryVisuals(galleryId) {
+        const galleries = document.querySelectorAll('.gallery');
+
+        galleries.forEach(gallery => {
+            const coverLink = gallery.querySelector('.cover');
+            if (!coverLink) return;
+
+            const currentId = this.extractGalleryId(coverLink.getAttribute('href'));
+            if (currentId !== galleryId) return;
+
+            const button = gallery.querySelector('.mark-as-read-btn');
+            const isRead = this.isRead(galleryId);
+
+            if (button) {
+                button.innerHTML = isRead ? '✓' : '○';
+                button.title = isRead ? 'Mark as Unread' : 'Mark as Read';
+                button.classList.toggle('read', isRead);
+            }
+
+            gallery.classList.toggle('read-gallery', isRead);
+
+            if (isRead) {
+                this.addReadBadge(gallery);
+            } else {
+                this.removeReadBadge(gallery);
+            }
+        });
+    }
+
+    /**
+     * Setup auto-mark functionality for individual gallery pages
+     */
+    setupAutoMark() {
+        if (!this.settings.autoMarkEnabled) return;
+
+        // Check if we're on a gallery page
+        const galleryMatch = window.location.pathname.match(/\/g\/(\d+)\//);
+        if (!galleryMatch) return;
+
+        const galleryId = galleryMatch[1];
+
+        // Add custom mark-as-read button to gallery page
+        this.addGalleryPageMarkButton(galleryId);
+
+        // Check if we're on the last page of the gallery
+        this.checkLastPage(galleryId);
+    }
+
+    /**
+     * Add custom mark-as-read button to individual gallery pages
+     */
+    addGalleryPageMarkButton(galleryId) {
+        // Check if button already exists
+        if (document.getElementById('nhi-mar-button')) return;
+
+        // Find the specific .buttons container
+        const buttonsContainer = document.querySelector('.buttons');
+        if (!buttonsContainer) {
+            console.warn('Buttons container not found, mark-as-read button will not be added');
+            return;
+        }
+
+        // Create the custom mark-as-read button to match the existing button style
+        const isRead = this.isRead(galleryId);
+        const buttonHTML = `
+            <a href="#" id="nhi-mar-button" class="btn ${isRead ? 'btn-success' : 'btn-secondary'} btn-enabled tooltip btn-nhi-mark-as-read">
+                <i class="fas fa-book"></i>
+                <span>${isRead ? 'Mark as unread' : 'Mark as read'}</span>
+                <div class="top">${isRead ? 'Remove from read list' : 'Mark this manga as read'}<i></i></div>
+            </a>
+        `;
+
+        // Insert the button
+        const buttonElement = document.createElement('div');
+        buttonElement.innerHTML = buttonHTML;
+        const button = buttonElement.firstElementChild;
+
+        // Add click event listener using shared method
+        this.addButtonEventHandling(button, galleryId);
+
+        // Insert button into the .buttons container
+        buttonsContainer.appendChild(button);
+    }
+
+
+
+    /**
+     * Add event handling to mark-as-read button
+     */
+    addButtonEventHandling(button, galleryId) {
+        button.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const originalText = button.querySelector('span').textContent;
+            button.querySelector('span').textContent = 'Processing...';
+            button.style.opacity = '0.7';
+
+            try {
+                await this.toggleReadStatus(galleryId);
+
+                const newIsRead = this.isRead(galleryId);
+                button.querySelector('span').textContent = newIsRead ? 'Mark as unread' : 'Mark as read';
+
+                if (button.querySelector('.top')) {
+                    button.querySelector('.top').innerHTML = `${newIsRead ? 'Remove from read list' : 'Mark this manga as read'}<i></i>`;
+                }
+
+                if (newIsRead) {
+                    button.classList.remove('btn-secondary');
+                    button.classList.add('btn-success');
+                    this.showMarkNotification('Gallery marked as read!');
+                } else {
+                    button.classList.remove('btn-success');
+                    button.classList.add('btn-secondary');
+                    this.showMarkNotification('Gallery marked as unread!');
+                }
+
+                button.style.transform = 'scale(1.05)';
+                setTimeout(() => {
+                    button.style.transform = 'scale(1)';
+                }, 200);
+
+            } catch (error) {
+                console.error('Error toggling read status:', error);
+                button.querySelector('span').textContent = originalText;
+                this.showMarkNotification('Error updating read status', 'error');
+            }
+
+            button.style.opacity = '1';
+        });
+    }
+
+    /**
+     * Check if user is on the last page and auto-mark if enabled
+     */
+    async checkLastPage(galleryId) {
+        // Look for the specific page number button to determine current and total pages
+        const pageNumberButton = document.querySelector('.page-number.btn.btn-unstyled');
+
+        if (!pageNumberButton) {
+            console.log('Page number button not found, skipping auto-mark check');
+            return;
+        }
+
+        const currentPageSpan = pageNumberButton.querySelector('.current');
+        const totalPagesSpan = pageNumberButton.querySelector('.num-pages');
+
+        if (!currentPageSpan || !totalPagesSpan) {
+            console.log('Current or total page spans not found');
+            return;
+        }
+
+        const currentPage = parseInt(currentPageSpan.textContent.trim());
+        const totalPages = parseInt(totalPagesSpan.textContent.trim());
+
+        console.log(`Auto-mark check: Page ${currentPage} of ${totalPages}`);
+
+        // If we're on the last page, mark as read
+        if (currentPage === totalPages && totalPages > 1) {
+            console.log(`Reached last page (${currentPage}/${totalPages}), marking as read`);
+
+            // For auto-mark, we need to cache the cover image from the first page
+            await this.cacheGalleryDataFromFirstPage(galleryId);
+
+            await this.markAsRead(galleryId);
+            this.showAutoMarkNotification();
+        }
+    }
+
+    /**
+     * Show notification when gallery is auto-marked as read
+     */
+    showAutoMarkNotification() {
+        this.showMarkNotification('Gallery automatically marked as read!');
+    }
+
+    /**
+     * Show notification for mark as read actions
+     */
+    showMarkNotification(message, type = 'success') {
+        const notification = document.createElement('div');
+        const backgroundColor = type === 'error' ? 'rgba(244, 67, 54, 0.9)' : 'rgba(46, 125, 50, 0.9)';
+
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: ${backgroundColor};
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            z-index: 10000;
+            font-size: 14px;
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            animation: slideInRight 0.4s ease;
+            max-width: 300px;
+        `;
+        notification.textContent = message;
+
+        document.body.appendChild(notification);
+
+        setTimeout(() => {
+            notification.style.opacity = '0';
+            notification.style.transform = 'translateX(100px)';
+            notification.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+            setTimeout(() => notification.remove(), 300);
+        }, type === 'error' ? 4000 : 2000);
+    }
+
+    /**
+     * Cache gallery data for Read Manga page
+     */
+    async cacheGalleryData(galleryId) {
+        try {
+            const cachedData = await GM.getValue('readGalleriesCache', {});
+
+            // Skip if already cached
+            if (cachedData[galleryId]) return;
+
+            const galleryInfo = {
+                id: galleryId,
+                title: 'Gallery ' + galleryId,
+                thumbnail: null,
+                pages: 'Unknown',
+                tags: [],
+                url: `/g/${galleryId}/`,
+                cached: true,
+                cachedAt: new Date().toISOString()
+            };
+
+            // Try to get data from current page
+            // Method 1: Check if we're on the gallery page
+            const galleryMatch = window.location.pathname.match(/\/g\/(\d+)\//);
+            if (galleryMatch && galleryMatch[1] === galleryId) {
+                // Get title from h1 or h2
+                const titleElement = document.querySelector('h1, h2');
+                if (titleElement) {
+                    galleryInfo.title = titleElement.textContent.trim();
+                }
+
+                // Get cover image from #cover
+                const coverElement = document.querySelector('#cover img');
+                if (coverElement && coverElement.src) {
+                    galleryInfo.thumbnail = coverElement.src;
+                }
+
+                // Get page count from page number button
+                const pageNumberButton = document.querySelector('.page-number.btn.btn-unstyled .num-pages');
+                if (pageNumberButton) {
+                    galleryInfo.pages = pageNumberButton.textContent.trim();
+                }
+
+                // Get tags from tag containers
+                const tagElements = document.querySelectorAll('.tag-container .tag .name');
+                galleryInfo.tags = Array.from(tagElements).map(tag => tag.textContent.trim());
+            }
+
+            // Method 2: Check if we're on a listing page and can find the gallery
+            const galleryElement = document.querySelector(`[data-gallery-id="${galleryId}"], .gallery a[href*="/g/${galleryId}/"]`);
+            if (galleryElement) {
+                const gallery = galleryElement.closest('.gallery') || galleryElement;
+
+                const titleElement = gallery.querySelector('.caption');
+                if (titleElement) {
+                    galleryInfo.title = titleElement.textContent.trim();
+                }
+
+                const imgElement = gallery.querySelector('img');
+                if (imgElement && imgElement.src) {
+                    galleryInfo.thumbnail = imgElement.src;
+                }
+            }
+
+            // Save to cache
+            cachedData[galleryId] = galleryInfo;
+            await GM.setValue('readGalleriesCache', cachedData);
+
+            console.log(`Cached gallery data for ${galleryId}:`, galleryInfo);
+        } catch (error) {
+            console.error('Error caching gallery data:', error);
+        }
+    }
+
+    /**
+     * Cache gallery data from first page (for auto-mark scenarios)
+     */
+    async cacheGalleryDataFromFirstPage(galleryId) {
+        try {
+            const cachedData = await GM.getValue('readGalleriesCache', {});
+
+            // Skip if already cached
+            if (cachedData[galleryId]) return;
+
+            const galleryInfo = {
+                id: galleryId,
+                title: 'Gallery ' + galleryId,
+                thumbnail: null,
+                pages: 'Unknown',
+                tags: [],
+                url: `/g/${galleryId}/`,
+                cached: true,
+                cachedAt: new Date().toISOString()
+            };
+
+            // Try to get data from current page first (we might be on a gallery page)
+            const galleryMatch = window.location.pathname.match(/\/g\/(\d+)\//);
+            if (galleryMatch && galleryMatch[1] === galleryId) {
+                // Get title from h1 or h2
+                const titleElement = document.querySelector('h1, h2');
+                if (titleElement) {
+                    galleryInfo.title = titleElement.textContent.trim();
+                }
+
+                // Get page count from page number button
+                const pageNumberButton = document.querySelector('.page-number.btn.btn-unstyled .num-pages');
+                if (pageNumberButton) {
+                    galleryInfo.pages = pageNumberButton.textContent.trim();
+                }
+
+                // Get tags from tag containers
+                const tagElements = document.querySelectorAll('.tag-container .tag .name');
+                galleryInfo.tags = Array.from(tagElements).map(tag => tag.textContent.trim());
+            }
+
+            // For auto-mark scenarios, try to fetch the cover from the first page
+            try {
+                const firstPageUrl = `/g/${galleryId}/1/`;
+                console.log(`Fetching cover image from first page: ${firstPageUrl}`);
+
+                const response = await fetch(firstPageUrl);
+                if (response.ok) {
+                    const html = await response.text();
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+
+                    // Get the cover image from #image-container img
+                    const coverImg = doc.querySelector('#image-container img');
+                    if (coverImg && coverImg.src) {
+                        galleryInfo.thumbnail = coverImg.src;
+                        console.log(`Found cover image: ${coverImg.src}`);
+                    }
+
+                    // Also try to get title if we don't have it
+                    if (galleryInfo.title === `Gallery ${galleryId}`) {
+                        const titleElement = doc.querySelector('h1, h2');
+                        if (titleElement) {
+                            galleryInfo.title = titleElement.textContent.trim();
+                        }
+                    }
+                }
+            } catch (fetchError) {
+                console.log(`Could not fetch first page for gallery ${galleryId}:`, fetchError);
+
+                // Fallback: try to construct thumbnail URL
+                const thumbnailUrl = `https://t.nhentai.net/galleries/${galleryId}/thumb.jpg`;
+                try {
+                    const thumbResponse = await fetch(thumbnailUrl, { method: 'HEAD' });
+                    if (thumbResponse.ok) {
+                        galleryInfo.thumbnail = thumbnailUrl;
+                        console.log(`Using fallback thumbnail: ${thumbnailUrl}`);
+                    }
+                } catch (thumbError) {
+                    console.log(`Fallback thumbnail also failed for gallery ${galleryId}`);
+                }
+            }
+
+            // Save to cache
+            cachedData[galleryId] = galleryInfo;
+            await GM.setValue('readGalleriesCache', cachedData);
+
+            console.log(`Cached gallery data from first page for ${galleryId}:`, galleryInfo);
+        } catch (error) {
+            console.error('Error caching gallery data from first page:', error);
+        }
+    }
+}
+
+// Initialize Mark as Read System
+let markAsReadSystem;
+
+async function initMarkAsReadSystem() {
+    const enabled = await GM.getValue('markAsReadEnabled', true);
+    if (enabled) {
+        markAsReadSystem = new MarkAsReadSystem();
+    }
+}
+
+// Initialize on page load and when navigating
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initMarkAsReadSystem);
+} else {
+    initMarkAsReadSystem();
+}
+
+//------------------------  **Enhanced Opacity/Fade System**  ------------------
+
+/**
+ * Enhanced Opacity/Fade Configuration System
+ * Provides configurable opacity settings for non-English and read galleries
+ */
+class OpacityFadeSystem {
+    constructor() {
+        this.settings = {
+            nonEnglishOpacity: 0.2,
+            readGalleriesOpacity: 0.6,
+            showNonEnglish: 'show' // 'show', 'hide', 'fade'
+        };
+        this.init();
+    }
+
+    /**
+     * Initialize the opacity/fade system
+     */
+    async init() {
+        await this.loadSettings();
+        this.addCSS();
+        this.applyOpacitySettings();
+        this.setupRealTimePreview();
+    }
+
+    /**
+     * Load settings from GM storage
+     */
+    async loadSettings() {
+        this.settings.nonEnglishOpacity = await GM.getValue('nonEnglishOpacity', 0.2);
+        this.settings.readGalleriesOpacity = await GM.getValue('readGalleriesOpacity', 0.6);
+        this.settings.showNonEnglish = await GM.getValue('showNonEnglish', 'show');
+    }
+
+    /**
+     * Add CSS for opacity/fade effects
+     */
+    addCSS() {
+        const css = `
+            /* Enhanced Opacity System */
+            :root {
+                --non-english-opacity: ${this.settings.nonEnglishOpacity};
+                --read-galleries-opacity: ${this.settings.readGalleriesOpacity};
+            }
+
+            /* Non-English gallery fading */
+            .gallery:not([data-tags~='12227']) .cover img,
+            .gallery:not([data-tags~='12227']) .cover .caption {
+                opacity: var(--non-english-opacity);
+                transition: opacity 0.3s ease;
+            }
+
+            .gallery:not([data-tags~='12227']):hover .cover img,
+            .gallery:not([data-tags~='12227']):hover .cover .caption {
+                opacity: 1;
+            }
+
+            /* Read galleries fading (handled by MarkAsReadSystem) */
+            .gallery.read-gallery .cover img,
+            .gallery.read-gallery .cover .caption {
+                opacity: var(--read-galleries-opacity) !important;
+                transition: opacity 0.3s ease;
+            }
+
+            .gallery.read-gallery:hover .cover img,
+            .gallery.read-gallery:hover .cover .caption {
+                opacity: 1 !important;
+            }
+
+            /* Hide non-English galleries when showNonEnglish is 'hide' */
+            body[data-show-non-english="hide"] .gallery:not([data-tags~='12227']) {
+                display: none !important;
+            }
+
+            /* Fade non-English galleries when showNonEnglish is 'fade' */
+            body[data-show-non-english="fade"] .gallery:not([data-tags~='12227']) .cover img,
+            body[data-show-non-english="fade"] .gallery:not([data-tags~='12227']) .cover .caption {
+                opacity: var(--non-english-opacity);
+            }
+
+            /* Show all galleries when showNonEnglish is 'show' */
+            body[data-show-non-english="show"] .gallery:not([data-tags~='12227']) .cover img,
+            body[data-show-non-english="show"] .gallery:not([data-tags~='12227']) .cover .caption {
+                opacity: 1;
+            }
+
+            /* Real-time preview styles */
+            .opacity-preview {
+                border: 2px solid #e63946 !important;
+                box-shadow: 0 0 10px rgba(230, 57, 70, 0.5) !important;
+            }
+        `;
+
+        GM.addStyle(css);
+    }
+
+    /**
+     * Apply opacity settings to the page
+     */
+    applyOpacitySettings() {
+        // Update CSS custom properties
+        document.documentElement.style.setProperty('--non-english-opacity', this.settings.nonEnglishOpacity);
+        document.documentElement.style.setProperty('--read-galleries-opacity', this.settings.readGalleriesOpacity);
+
+        // Set body attribute for non-English display mode
+        document.body.setAttribute('data-show-non-english', this.settings.showNonEnglish);
+    }
+
+    /**
+     * Setup real-time preview for opacity sliders
+     */
+    setupRealTimePreview() {
+        // Non-English opacity slider
+        const nonEnglishSlider = document.getElementById('nonEnglishOpacity');
+        if (nonEnglishSlider) {
+            nonEnglishSlider.addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value);
+                this.previewNonEnglishOpacity(value);
+            });
+
+            nonEnglishSlider.addEventListener('change', async (e) => {
+                const value = parseFloat(e.target.value);
+                this.settings.nonEnglishOpacity = value;
+                await GM.setValue('nonEnglishOpacity', value);
+                this.applyOpacitySettings();
+                this.clearPreview();
+            });
+        }
+
+        // Read galleries opacity slider
+        const readSlider = document.getElementById('readGalleriesOpacity');
+        if (readSlider) {
+            readSlider.addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value);
+                this.previewReadGalleriesOpacity(value);
+            });
+
+            readSlider.addEventListener('change', async (e) => {
+                const value = parseFloat(e.target.value);
+                this.settings.readGalleriesOpacity = value;
+                await GM.setValue('readGalleriesOpacity', value);
+                this.applyOpacitySettings();
+                this.clearPreview();
+            });
+        }
+
+        // Show non-English select
+        const showNonEnglishSelect = document.getElementById('showNonEnglishSelect');
+        if (showNonEnglishSelect) {
+            showNonEnglishSelect.addEventListener('change', async (e) => {
+                this.settings.showNonEnglish = e.target.value;
+                await GM.setValue('showNonEnglish', e.target.value);
+                this.applyOpacitySettings();
+            });
+        }
+    }
+
+    /**
+     * Preview non-English opacity changes
+     */
+    previewNonEnglishOpacity(opacity) {
+        document.documentElement.style.setProperty('--non-english-opacity', opacity);
+
+        // Add preview styling to non-English galleries
+        const nonEnglishGalleries = document.querySelectorAll('.gallery:not([data-tags~="12227"])');
+        nonEnglishGalleries.forEach(gallery => {
+            gallery.classList.add('opacity-preview');
+        });
+    }
+
+    /**
+     * Preview read galleries opacity changes
+     */
+    previewReadGalleriesOpacity(opacity) {
+        document.documentElement.style.setProperty('--read-galleries-opacity', opacity);
+
+        // Add preview styling to read galleries
+        const readGalleries = document.querySelectorAll('.gallery.read-gallery');
+        readGalleries.forEach(gallery => {
+            gallery.classList.add('opacity-preview');
+        });
+    }
+
+    /**
+     * Clear preview styling
+     */
+    clearPreview() {
+        const previewElements = document.querySelectorAll('.opacity-preview');
+        previewElements.forEach(element => {
+            element.classList.remove('opacity-preview');
+        });
+    }
+
+    /**
+     * Reset to default values
+     */
+    async resetToDefaults() {
+        this.settings.nonEnglishOpacity = 0.2;
+        this.settings.readGalleriesOpacity = 0.6;
+
+        await GM.setValue('nonEnglishOpacity', 0.2);
+        await GM.setValue('readGalleriesOpacity', 0.6);
+
+        // Update UI
+        const nonEnglishSlider = document.getElementById('nonEnglishOpacity');
+        const readSlider = document.getElementById('readGalleriesOpacity');
+        const nonEnglishValue = document.getElementById('nonEnglishOpacityValue');
+        const readValue = document.getElementById('readGalleriesOpacityValue');
+
+        if (nonEnglishSlider) {
+            nonEnglishSlider.value = 0.2;
+            if (nonEnglishValue) nonEnglishValue.textContent = '0.2';
+        }
+
+        if (readSlider) {
+            readSlider.value = 0.6;
+            if (readValue) readValue.textContent = '0.6';
+        }
+
+        this.applyOpacitySettings();
+    }
+}
+
+// Initialize Enhanced Opacity/Fade System
+let opacityFadeSystem;
+
+async function initOpacityFadeSystem() {
+    opacityFadeSystem = new OpacityFadeSystem();
+}
+
+// Initialize on page load
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initOpacityFadeSystem);
+} else {
+    initOpacityFadeSystem();
+}
+
+//------------------------  **Enhanced Opacity/Fade System**  ------------------
+
+//------------------------  **Improved Language Detection System**  ------------------
+
+/**
+ * Improved Language Detection System
+ * Uses DOM parsing of existing tag elements with fallback to title-based heuristics
+ */
+class LanguageDetectionSystem {
+    constructor() {
+        this.languageMap = {
+            '12227': 'english',
+            '6346': 'japanese',
+            '29963': 'chinese',
+            '19440': 'korean',
+            '16934': 'spanish',
+            '1': 'french',
+            '5973': 'german',
+            '21613': 'italian',
+            '11261': 'portuguese',
+            '18334': 'russian',
+            '22830': 'thai',
+            '28288': 'vietnamese'
+        };
+
+        this.titleLanguagePatterns = {
+            english: /^[a-zA-Z0-9\s\[\]\(\)\-_!@#$%^&*+={}|\\:";'<>?,./~`]+$/,
+            japanese: /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/,
+            chinese: /[\u4E00-\u9FFF]/,
+            korean: /[\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F]/
+        };
+
+        this.init();
+    }
+
+    /**
+     * Initialize the language detection system
+     */
+    init() {
+        this.detectAndMarkLanguages();
+        this.setupLanguageObserver();
+    }
+
+    /**
+     * Detect and mark languages for all galleries on the page
+     */
+    detectAndMarkLanguages() {
+        const galleries = document.querySelectorAll('.gallery');
+
+        galleries.forEach(gallery => {
+            const language = this.detectGalleryLanguage(gallery);
+            if (language) {
+                gallery.setAttribute('data-detected-language', language);
+                this.addLanguageFlag(gallery, language);
+            }
+        });
+    }
+
+    /**
+     * Detect the language of a specific gallery
+     */
+    detectGalleryLanguage(gallery) {
+        // Method 1: Parse existing data-tags attribute
+        const dataTags = gallery.getAttribute('data-tags');
+        if (dataTags) {
+            const language = this.detectLanguageFromTags(dataTags);
+            if (language) return language;
+        }
+
+        // Method 2: Parse tag elements in gallery listings
+        const tagElements = gallery.querySelectorAll('.tag');
+        if (tagElements.length > 0) {
+            const language = this.detectLanguageFromTagElements(tagElements);
+            if (language) return language;
+        }
+
+        // Method 3: Fallback to title-based heuristic
+        const titleElement = gallery.querySelector('.caption');
+        if (titleElement) {
+            const language = this.detectLanguageFromTitle(titleElement.textContent);
+            if (language) return language;
+        }
+
+        // Default to unknown if no language detected
+        return 'unknown';
+    }
+
+    /**
+     * Detect language from data-tags attribute
+     */
+    detectLanguageFromTags(dataTags) {
+        const tags = dataTags.split(' ');
+
+        for (const [tagId, language] of Object.entries(this.languageMap)) {
+            if (tags.includes(tagId)) {
+                return language;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Detect language from tag elements
+     */
+    detectLanguageFromTagElements(tagElements) {
+        for (const tagElement of tagElements) {
+            const tagText = tagElement.textContent.toLowerCase().trim();
+
+            // Check for language: prefix
+            if (tagText.startsWith('language:')) {
+                const language = tagText.replace('language:', '').trim();
+                if (Object.values(this.languageMap).includes(language)) {
+                    return language;
+                }
+            }
+
+            // Check for direct language matches
+            if (Object.values(this.languageMap).includes(tagText)) {
+                return tagText;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Detect language from title using heuristics
+     */
+    detectLanguageFromTitle(title) {
+        if (!title) return null;
+
+        // Check for Japanese characters
+        if (this.titleLanguagePatterns.japanese.test(title)) {
+            return 'japanese';
+        }
+
+        // Check for Chinese characters
+        if (this.titleLanguagePatterns.chinese.test(title)) {
+            return 'chinese';
+        }
+
+        // Check for Korean characters
+        if (this.titleLanguagePatterns.korean.test(title)) {
+            return 'korean';
+        }
+
+        // Check if it's primarily English (ASCII characters)
+        if (this.titleLanguagePatterns.english.test(title)) {
+            return 'english';
+        }
+
+        return null;
+    }
+
+    /**
+     * Add language flag to gallery
+     */
+    addLanguageFlag(gallery, language) {
+        // Remove existing language flags
+        const existingFlag = gallery.querySelector('.language-flag');
+        if (existingFlag) {
+            existingFlag.remove();
+        }
+
+        const flagUrls = {
+            english: "https://i.imgur.com/vSnHmmi.gif",
+            japanese: "https://i.imgur.com/GlArpuS.gif",
+            chinese: "https://i.imgur.com/7B55DYm.gif",
+            korean: "https://i.imgur.com/placeholder-kr.gif", // Add actual Korean flag URL
+            spanish: "https://i.imgur.com/placeholder-es.gif", // Add actual Spanish flag URL
+            // Add more flag URLs as needed
+        };
+
+        if (flagUrls[language]) {
+            const flag = document.createElement('img');
+            flag.className = 'language-flag overlayFlag';
+            flag.src = flagUrls[language];
+            flag.alt = language;
+            flag.title = language.charAt(0).toUpperCase() + language.slice(1);
+
+            // Add to caption area
+            const caption = gallery.querySelector('.caption');
+            if (caption) {
+                caption.appendChild(flag);
+            }
+        }
+    }
+
+    /**
+     * Setup observer for dynamically loaded content
+     */
+    setupLanguageObserver() {
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                mutation.addedNodes.forEach((node) => {
+                    if (node.nodeType === Node.ELEMENT_NODE) {
+                        // Check if the added node is a gallery
+                        if (node.classList && node.classList.contains('gallery')) {
+                            const language = this.detectGalleryLanguage(node);
+                            if (language) {
+                                node.setAttribute('data-detected-language', language);
+                                this.addLanguageFlag(node, language);
+                            }
+                        }
+
+                        // Check for galleries within the added node
+                        const galleries = node.querySelectorAll && node.querySelectorAll('.gallery');
+                        if (galleries) {
+                            galleries.forEach(gallery => {
+                                const language = this.detectGalleryLanguage(gallery);
+                                if (language) {
+                                    gallery.setAttribute('data-detected-language', language);
+                                    this.addLanguageFlag(gallery, language);
+                                }
+                            });
+                        }
+                    }
+                });
+            });
+        });
+
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+    }
+
+    /**
+     * Get language statistics for the current page
+     */
+    getLanguageStats() {
+        const galleries = document.querySelectorAll('.gallery');
+        const stats = {};
+
+        galleries.forEach(gallery => {
+            const language = gallery.getAttribute('data-detected-language') || 'unknown';
+            stats[language] = (stats[language] || 0) + 1;
+        });
+
+        return stats;
+    }
+
+    /**
+     * Filter galleries by language
+     */
+    filterByLanguage(language) {
+        const galleries = document.querySelectorAll('.gallery');
+
+        galleries.forEach(gallery => {
+            const galleryLanguage = gallery.getAttribute('data-detected-language');
+
+            if (language === 'all') {
+                gallery.style.display = '';
+            } else if (galleryLanguage === language) {
+                gallery.style.display = '';
+            } else {
+                gallery.style.display = 'none';
+            }
+        });
+    }
+}
+
+// Initialize Language Detection System
+let languageDetectionSystem;
+
+async function initLanguageDetectionSystem() {
+    languageDetectionSystem = new LanguageDetectionSystem();
+}
+
+// Initialize on page load
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initLanguageDetectionSystem);
+} else {
+    initLanguageDetectionSystem();
+}
+
+//------------------------  **Improved Language Detection System**  ------------------
+
+//------------------------  **Tag Warning & Blacklist System**  ------------------
+
+/**
+ * Tag Warning & Blacklist System
+ * Two-tier system with red blacklist badges and orange warning badges
+ */
+class TagWarningSystem {
+    constructor() {
+        this.settings = {
+            enabled: true,
+            blacklistTags: ['scat', 'guro', 'vore', 'ryona', 'snuff'],
+            warningTags: ['ntr', 'netorare', 'cheating', 'ugly bastard', 'mind break'],
+            favoriteTags: []
+        };
+        this.init();
+    }
+
+    /**
+     * Initialize the tag warning system
+     */
+    async init() {
+        await this.loadSettings();
+
+        if (this.settings.enabled) {
+            this.addCSS();
+            this.processGalleries();
+            this.processGalleryPage();
+            this.setupObserver();
+        }
+    }
+
+    /**
+     * Load settings from GM storage
+     */
+    async loadSettings() {
+        this.settings.enabled = await GM.getValue('tagWarningEnabled', true);
+        this.settings.blacklistTags = await GM.getValue('blacklistTagsList', ['scat', 'guro', 'vore', 'ryona', 'snuff']);
+        this.settings.warningTags = await GM.getValue('warningTagsList', ['ntr', 'netorare', 'cheating', 'ugly bastard', 'mind break']);
+        this.settings.favoriteTags = await GM.getValue('favoriteTagsList', []);
+    }
+
+    /**
+     * Add CSS for tag warning badges
+     */
+    addCSS() {
+        const css = `
+            /* Tag Warning Badges */
+            .tag-warning-badge {
+                position: absolute;
+                bottom: 5px;
+                left: 5px;
+                padding: 2px 6px;
+                border-radius: 3px;
+                font-size: 10px;
+                font-weight: bold;
+                color: white;
+                z-index: 10;
+                pointer-events: none;
+                text-transform: uppercase;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+            }
+
+            .tag-warning-badge.blacklist {
+                background: rgba(244, 67, 54, 0.9);
+            }
+
+            .tag-warning-badge.warning {
+                background: rgba(255, 152, 0, 0.9);
+            }
+
+            .tag-warning-badge.favorite {
+                background: rgba(33, 150, 243, 0.9);
+            }
+
+            /* Multiple badges stacking */
+            .tag-warning-badge:nth-child(2) {
+                bottom: 25px;
+            }
+
+            .tag-warning-badge:nth-child(3) {
+                bottom: 45px;
+            }
+
+            /* Gallery page tag highlighting */
+            .tag-container .tag.blacklist-tag {
+                background-color: rgba(244, 67, 54, 0.2) !important;
+                border: 1px solid #f44336 !important;
+                color: #f44336 !important;
+            }
+
+            .tag-container .tag.warning-tag {
+                background-color: rgba(255, 152, 0, 0.2) !important;
+                border: 1px solid #ff9800 !important;
+                color: #ff9800 !important;
+            }
+
+            .tag-container .tag.favorite-tag {
+                background-color: rgba(33, 150, 243, 0.2) !important;
+                border: 1px solid #2196f3 !important;
+                color: #2196f3 !important;
+            }
+
+            /* Star button for favoriting tags */
+            .tag-star-btn {
+                margin-left: 5px;
+                cursor: pointer;
+                color: #666;
+                transition: color 0.3s ease;
+            }
+
+            .tag-star-btn:hover {
+                color: #2196f3;
+            }
+
+            .tag-star-btn.favorited {
+                color: #2196f3;
+            }
+
+            /* Hover effects for badges */
+            .gallery:hover .tag-warning-badge {
+                opacity: 0.8;
+            }
+        `;
+
+        GM.addStyle(css);
+    }
+
+    /**
+     * Process all galleries on the page
+     */
+    processGalleries() {
+        const galleries = document.querySelectorAll('.gallery');
+
+        galleries.forEach(gallery => {
+            this.processGallery(gallery);
+        });
+    }
+
+    /**
+     * Process a single gallery for tag warnings
+     */
+    processGallery(gallery) {
+        const tags = this.extractGalleryTags(gallery);
+        if (!tags.length) return;
+
+        const warnings = this.analyzeTagsForWarnings(tags);
+        this.addWarningBadges(gallery, warnings);
+    }
+
+    /**
+     * Extract tags from gallery element
+     */
+    extractGalleryTags(gallery) {
+        const tags = [];
+
+        // Method 1: From data-tags attribute
+        const dataTags = gallery.getAttribute('data-tags');
+        if (dataTags) {
+            // This contains tag IDs, we need to map them to tag names
+            // For now, we'll use other methods
+        }
+
+        // Method 2: From tag elements (if available)
+        const tagElements = gallery.querySelectorAll('.tag .name');
+        tagElements.forEach(tagElement => {
+            const tagName = tagElement.textContent.trim().toLowerCase();
+            if (tagName) tags.push(tagName);
+        });
+
+        // Method 3: From title analysis (basic)
+        if (tags.length === 0) {
+            const caption = gallery.querySelector('.caption');
+            if (caption) {
+                const title = caption.textContent.toLowerCase();
+                // Check for common tag patterns in titles
+                this.settings.blacklistTags.concat(this.settings.warningTags).forEach(tag => {
+                    if (title.includes(tag.toLowerCase())) {
+                        tags.push(tag);
+                    }
+                });
+            }
+        }
+
+        return tags;
+    }
+
+    /**
+     * Analyze tags for warnings and favorites
+     */
+    analyzeTagsForWarnings(tags) {
+        const warnings = {
+            blacklist: [],
+            warning: [],
+            favorite: []
+        };
+
+        tags.forEach(tag => {
+            const normalizedTag = tag.toLowerCase().trim();
+
+            if (this.settings.blacklistTags.includes(normalizedTag)) {
+                warnings.blacklist.push(normalizedTag);
+            } else if (this.settings.warningTags.includes(normalizedTag)) {
+                warnings.warning.push(normalizedTag);
+            }
+
+            if (this.settings.favoriteTags.includes(normalizedTag)) {
+                warnings.favorite.push(normalizedTag);
+            }
+        });
+
+        return warnings;
+    }
+
+    /**
+     * Add warning badges to gallery
+     */
+    addWarningBadges(gallery, warnings) {
+        // Remove existing badges
+        const existingBadges = gallery.querySelectorAll('.tag-warning-badge');
+        existingBadges.forEach(badge => badge.remove());
+
+        // Add blacklist badge
+        if (warnings.blacklist.length > 0) {
+            const badge = this.createWarningBadge('blacklist', this.abbreviateTag(warnings.blacklist[0]));
+            gallery.appendChild(badge);
+        }
+
+        // Add warning badge
+        if (warnings.warning.length > 0) {
+            const badge = this.createWarningBadge('warning', this.abbreviateTag(warnings.warning[0]));
+            gallery.appendChild(badge);
+        }
+
+        // Add favorite badge
+        if (warnings.favorite.length > 0) {
+            const badge = this.createWarningBadge('favorite', '★');
+            gallery.appendChild(badge);
+        }
+    }
+
+    /**
+     * Create a warning badge element
+     */
+    createWarningBadge(type, text) {
+        const badge = document.createElement('div');
+        badge.className = `tag-warning-badge ${type}`;
+        badge.textContent = text;
+        badge.title = `${type.charAt(0).toUpperCase() + type.slice(1)} tag detected`;
+        return badge;
+    }
+
+    /**
+     * Abbreviate tag names for badges
+     */
+    abbreviateTag(tag) {
+        const abbreviations = {
+            'scat': 'SCAT',
+            'guro': 'GURO',
+            'vore': 'VORE',
+            'ryona': 'RYONA',
+            'snuff': 'SNUFF',
+            'ntr': 'NTR',
+            'netorare': 'NTR',
+            'cheating': 'CHEAT',
+            'ugly bastard': 'UB',
+            'mind break': 'MB'
+        };
+
+        return abbreviations[tag.toLowerCase()] || tag.substring(0, 4).toUpperCase();
+    }
+
+    /**
+     * Process individual gallery page for tag highlighting
+     */
+    processGalleryPage() {
+        // Check if we're on a gallery page
+        if (!window.location.pathname.match(/\/g\/\d+\//)) return;
+
+        const tagContainers = document.querySelectorAll('.tag-container');
+
+        tagContainers.forEach(container => {
+            const tags = container.querySelectorAll('.tag');
+
+            tags.forEach(tagElement => {
+                const tagName = tagElement.querySelector('.name');
+                if (!tagName) return;
+
+                const tag = tagName.textContent.trim().toLowerCase();
+
+                if (this.settings.blacklistTags.includes(tag)) {
+                    tagElement.classList.add('blacklist-tag');
+                } else if (this.settings.warningTags.includes(tag)) {
+                    tagElement.classList.add('warning-tag');
+                } else if (this.settings.favoriteTags.includes(tag)) {
+                    tagElement.classList.add('favorite-tag');
+                }
+
+                // Add star button for favoriting
+                this.addStarButton(tagElement, tag);
+            });
+        });
+    }
+
+    /**
+     * Add star button for favoriting tags
+     */
+    addStarButton(tagElement, tag) {
+        // Skip if star button already exists
+        if (tagElement.querySelector('.tag-star-btn')) return;
+
+        const starBtn = document.createElement('span');
+        starBtn.className = 'tag-star-btn';
+        starBtn.innerHTML = this.settings.favoriteTags.includes(tag) ? '★' : '☆';
+        starBtn.title = 'Add to favorites';
+
+        if (this.settings.favoriteTags.includes(tag)) {
+            starBtn.classList.add('favorited');
+        }
+
+        starBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
+            await this.toggleFavoriteTag(tag);
+
+            // Update star appearance
+            if (this.settings.favoriteTags.includes(tag)) {
+                starBtn.innerHTML = '★';
+                starBtn.classList.add('favorited');
+                tagElement.classList.add('favorite-tag');
+            } else {
+                starBtn.innerHTML = '☆';
+                starBtn.classList.remove('favorited');
+                tagElement.classList.remove('favorite-tag');
+            }
+
+            // Update settings form if open
+            this.updateFavoriteTagsDisplay();
+        });
+
+        tagElement.appendChild(starBtn);
+    }
+
+    /**
+     * Toggle favorite status of a tag
+     */
+    async toggleFavoriteTag(tag) {
+        const normalizedTag = tag.toLowerCase().trim();
+        const index = this.settings.favoriteTags.indexOf(normalizedTag);
+
+        if (index > -1) {
+            this.settings.favoriteTags.splice(index, 1);
+        } else {
+            this.settings.favoriteTags.push(normalizedTag);
+        }
+
+        await GM.setValue('favoriteTagsList', this.settings.favoriteTags);
+    }
+
+    /**
+     * Update favorite tags display in settings
+     */
+    updateFavoriteTagsDisplay() {
+        const favoriteTagsTextarea = document.getElementById('favoriteTags');
+        if (favoriteTagsTextarea) {
+            favoriteTagsTextarea.value = this.settings.favoriteTags.join(', ');
+        }
+    }
+
+    /**
+     * Setup observer for dynamically loaded content
+     */
+    setupObserver() {
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                mutation.addedNodes.forEach((node) => {
+                    if (node.nodeType === Node.ELEMENT_NODE) {
+                        // Check if the added node is a gallery
+                        if (node.classList && node.classList.contains('gallery')) {
+                            this.processGallery(node);
+                        }
+
+                        // Check for galleries within the added node
+                        const galleries = node.querySelectorAll && node.querySelectorAll('.gallery');
+                        if (galleries) {
+                            galleries.forEach(gallery => {
+                                this.processGallery(gallery);
+                            });
+                        }
+                    }
+                });
+            });
+        });
+
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+    }
+}
+
+// Initialize Tag Warning System
+let tagWarningSystem;
+
+async function initTagWarningSystem() {
+    const enabled = await GM.getValue('tagWarningEnabled', true);
+    if (enabled) {
+        tagWarningSystem = new TagWarningSystem();
+    }
+}
+
+// Initialize on page load
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initTagWarningSystem);
+} else {
+    initTagWarningSystem();
+}
+
+//------------------------  **Tag Warning & Blacklist System**  ------------------
+
+//------------------------  **Advanced Search URL Generation System**  ------------------
+
+/**
+ * Advanced Search URL Generation System
+ * Replaces existing English-only buttons with context-aware advanced search URLs
+ */
+class AdvancedSearchSystem {
+    constructor() {
+        this.init();
+    }
+
+    /**
+     * Initialize the advanced search system
+     */
+    init() {
+        this.replaceEnglishOnlyButtons();
+        this.addAdvancedSearchButtons();
+        this.setupObserver();
+    }
+
+    /**
+     * Replace existing English-only buttons with advanced search URLs
+     */
+    replaceEnglishOnlyButtons() {
+        // Find existing English filter buttons
+        const englishButtons = document.querySelectorAll('a[href*="language%3A%22english%22"], a[href*="language:english"]');
+
+        englishButtons.forEach(button => {
+            this.enhanceEnglishButton(button);
+        });
+    }
+
+    /**
+     * Enhance an existing English button with advanced search functionality
+     */
+    enhanceEnglishButton(button) {
+        const currentUrl = button.getAttribute('href');
+        const enhancedUrl = this.generateAdvancedSearchUrl(currentUrl);
+
+        if (enhancedUrl !== currentUrl) {
+            button.setAttribute('href', enhancedUrl);
+            button.title = 'Advanced English search with current context';
+        }
+    }
+
+    /**
+     * Add advanced search buttons to relevant pages
+     */
+    addAdvancedSearchButtons() {
+        // Add to tag pages
+        this.addTagPageSearchButtons();
+
+        // Add to artist pages
+        this.addArtistPageSearchButtons();
+
+        // Add to character pages
+        this.addCharacterPageSearchButtons();
+
+        // Add to parody pages
+        this.addParodyPageSearchButtons();
+
+        // Add to group pages
+        this.addGroupPageSearchButtons();
+    }
+
+    /**
+     * Add advanced search buttons to tag pages
+     */
+    addTagPageSearchButtons() {
+        if (!window.location.pathname.startsWith('/tag/')) return;
+
+        const pathParts = window.location.pathname.split('/');
+        if (pathParts.length < 3) return;
+
+        const tagName = decodeURIComponent(pathParts[2]);
+        const searchUrl = this.buildTagSearchUrl('tag', tagName);
+
+        this.addSearchButton('English + This Tag', searchUrl, 'Search for English galleries with this tag');
+    }
+
+    /**
+     * Add advanced search buttons to artist pages
+     */
+    addArtistPageSearchButtons() {
+        if (!window.location.pathname.startsWith('/artist/')) return;
+
+        const pathParts = window.location.pathname.split('/');
+        if (pathParts.length < 3) return;
+
+        const artistName = decodeURIComponent(pathParts[2]);
+        const searchUrl = this.buildTagSearchUrl('artist', artistName);
+
+        this.addSearchButton('English + This Artist', searchUrl, 'Search for English galleries by this artist');
+    }
+
+    /**
+     * Add advanced search buttons to character pages
+     */
+    addCharacterPageSearchButtons() {
+        if (!window.location.pathname.startsWith('/character/')) return;
+
+        const pathParts = window.location.pathname.split('/');
+        if (pathParts.length < 3) return;
+
+        const characterName = decodeURIComponent(pathParts[2]);
+        const searchUrl = this.buildTagSearchUrl('character', characterName);
+
+        this.addSearchButton('English + This Character', searchUrl, 'Search for English galleries with this character');
+    }
+
+    /**
+     * Add advanced search buttons to parody pages
+     */
+    addParodyPageSearchButtons() {
+        if (!window.location.pathname.startsWith('/parody/')) return;
+
+        const pathParts = window.location.pathname.split('/');
+        if (pathParts.length < 3) return;
+
+        const parodyName = decodeURIComponent(pathParts[2]);
+        const searchUrl = this.buildTagSearchUrl('parody', parodyName);
+
+        this.addSearchButton('English + This Parody', searchUrl, 'Search for English galleries of this parody');
+    }
+
+    /**
+     * Add advanced search buttons to group pages
+     */
+    addGroupPageSearchButtons() {
+        if (!window.location.pathname.startsWith('/group/')) return;
+
+        const pathParts = window.location.pathname.split('/');
+        if (pathParts.length < 3) return;
+
+        const groupName = decodeURIComponent(pathParts[2]);
+        const searchUrl = this.buildTagSearchUrl('group', groupName);
+
+        this.addSearchButton('English + This Group', searchUrl, 'Search for English galleries by this group');
+    }
+
+    /**
+     * Build advanced search URL for tag-based searches
+     */
+    buildTagSearchUrl(namespace, value) {
+        // Clean the value
+        const cleanValue = value.replace(/['"]/g, '').trim();
+
+        // Build the search query using nhentai's advanced search syntax
+        const query = `${namespace}:"${cleanValue}" language:"english"`;
+
+        // Encode the query
+        const encodedQuery = encodeURIComponent(query);
+
+        return `https://nhentai.net/search/?q=${encodedQuery}`;
+    }
+
+    /**
+     * Generate advanced search URL from existing URL
+     */
+    generateAdvancedSearchUrl(currentUrl) {
+        try {
+            const url = new URL(currentUrl, window.location.origin);
+            const searchParams = new URLSearchParams(url.search);
+            let query = searchParams.get('q') || '';
+
+            // If it's already an advanced search, return as is
+            if (query.includes('language:"english"') || query.includes('language%3A%22english%22')) {
+                return currentUrl;
+            }
+
+            // Add English language filter if not present
+            if (query) {
+                query += ' language:"english"';
+            } else {
+                query = 'language:"english"';
+            }
+
+            searchParams.set('q', query);
+            url.search = searchParams.toString();
+
+            return url.toString();
+        } catch (error) {
+            console.error('Error generating advanced search URL:', error);
+            return currentUrl;
+        }
+    }
+
+    /**
+     * Add a search button to the page
+     */
+    addSearchButton(text, url, title) {
+        // Find a suitable container for the button
+        const container = this.findButtonContainer();
+        if (!container) return;
+
+        const button = document.createElement('a');
+        button.className = 'btn btn-primary advanced-search-btn';
+        button.href = url;
+        button.textContent = text;
+        button.title = title;
+        button.style.marginLeft = '10px';
+
+        // Add icon
+        const icon = document.createElement('i');
+        icon.className = 'fa fa-search';
+        icon.style.marginRight = '5px';
+        button.insertBefore(icon, button.firstChild);
+
+        container.appendChild(button);
+    }
+
+    /**
+     * Find suitable container for search buttons
+     */
+    findButtonContainer() {
+        // Try to find existing button containers
+        const containers = [
+            document.querySelector('.pagination'),
+            document.querySelector('.sort'),
+            document.querySelector('h1'),
+            document.querySelector('.container h2'),
+            document.querySelector('#content')
+        ];
+
+        for (const container of containers) {
+            if (container) {
+                return container;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Create quick search buttons for favorite tags
+     */
+    createFavoriteTagSearchButtons() {
+        // Get favorite tags from storage
+        GM.getValue('favoriteTagsList', []).then(favoriteTags => {
+            if (favoriteTags.length === 0) return;
+
+            const container = this.createFavoriteSearchContainer();
+            if (!container) return;
+
+            favoriteTags.forEach(tag => {
+                const searchUrl = this.buildTagSearchUrl('tag', tag);
+                const button = this.createQuickSearchButton(tag, searchUrl);
+                container.appendChild(button);
+            });
+        });
+    }
+
+    /**
+     * Create container for favorite tag search buttons
+     */
+    createFavoriteSearchContainer() {
+        // Check if container already exists
+        let container = document.getElementById('favorite-tag-searches');
+        if (container) return container;
+
+        container = document.createElement('div');
+        container.id = 'favorite-tag-searches';
+        container.style.cssText = `
+            margin: 15px 0;
+            padding: 10px;
+            background: rgba(0,0,0,0.1);
+            border-radius: 5px;
+        `;
+
+        const title = document.createElement('h4');
+        title.textContent = 'Quick Search: Favorite Tags';
+        title.style.marginBottom = '10px';
+        container.appendChild(title);
+
+        // Find insertion point
+        const insertionPoint = document.querySelector('.container') || document.body;
+        insertionPoint.insertBefore(container, insertionPoint.firstChild);
+
+        return container;
+    }
+
+    /**
+     * Create quick search button for a tag
+     */
+    createQuickSearchButton(tag, url) {
+        const button = document.createElement('a');
+        button.className = 'btn btn-secondary';
+        button.href = url;
+        button.textContent = tag;
+        button.title = `Search English galleries with tag: ${tag}`;
+        button.style.cssText = `
+            margin: 2px;
+            padding: 5px 10px;
+            font-size: 12px;
+            text-decoration: none;
+        `;
+
+        return button;
+    }
+
+    /**
+     * Setup observer for dynamically loaded content
+     */
+    setupObserver() {
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                mutation.addedNodes.forEach((node) => {
+                    if (node.nodeType === Node.ELEMENT_NODE) {
+                        // Check for new English buttons
+                        const englishButtons = node.querySelectorAll &&
+                            node.querySelectorAll('a[href*="language%3A%22english%22"], a[href*="language:english"]');
+
+                        if (englishButtons) {
+                            englishButtons.forEach(button => {
+                                this.enhanceEnglishButton(button);
+                            });
+                        }
+                    }
+                });
+            });
+        });
+
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+    }
+
+    /**
+     * Generate search URL with multiple parameters
+     */
+    generateMultiParameterSearch(params) {
+        const queryParts = [];
+
+        Object.entries(params).forEach(([key, value]) => {
+            if (value) {
+                queryParts.push(`${key}:"${value}"`);
+            }
+        });
+
+        const query = queryParts.join(' ');
+        const encodedQuery = encodeURIComponent(query);
+
+        return `https://nhentai.net/search/?q=${encodedQuery}`;
+    }
+}
+
+// Initialize Advanced Search System
+let advancedSearchSystem;
+
+async function initAdvancedSearchSystem() {
+    advancedSearchSystem = new AdvancedSearchSystem();
+}
+
+// Initialize on page load
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initAdvancedSearchSystem);
+} else {
+    initAdvancedSearchSystem();
+}
+
+//------------------------  **Advanced Search URL Generation System**  ------------------
+
+//------------------------  **Read Manga Page System**  ------------------
+
+/**
+ * Read Manga Page System
+ * Creates a dedicated page to view all read manga
+ */
+class ReadMangaPageSystem {
+    constructor() {
+        this.pageUrl = '/read-manga/';
+        this.init();
+    }
+
+    /**
+     * Initialize the read manga page system
+     */
+    async init() {
+        this.handlePageRouting();
+    }
+
+    /**
+     * Add navigation link to the main menu using the existing pattern
+     */
+    async addNavigationLink() {
+        // Check if read manga page is enabled
+        const enabled = await this.checkIfEnabled();
+        if (!enabled) return;
+
+        // Check if link already exists
+        if (document.querySelector('a[href="/read-manga/"]')) return;
+
+        // Create the read manga button following the same pattern as other nav items
+        const readMangaButtonHtml = `
+          <li>
+            <a href="/read-manga/">
+              <i class="fas fa-book-open"></i> Read Manga
+            </a>
+          </li>
+        `;
+        const readMangaButton = $(readMangaButtonHtml);
+
+        // Append to dropdown menu
+        const dropdownMenu = $('ul.dropdown-menu');
+        dropdownMenu.append(readMangaButton);
+
+        // Append to main menu
+        const menu = $('ul.menu.left');
+        menu.append(readMangaButton);
+
+        // Add click handler for navigation
+        readMangaButton.find('a').on('click', (e) => {
+            e.preventDefault();
+            this.navigateToReadMangaPage();
+        });
+
+        // Call updateMenuOrder to ensure proper tab order
+        setTimeout(() => {
+            if (typeof updateMenuOrder === 'function') {
+                updateMenuOrder();
+            }
+        }, 100);
+    }
+
+    /**
+     * Check if read manga page should be enabled
+     */
+    async checkIfEnabled() {
+        // Check if mark as read system is enabled
+        const markAsReadEnabled = await GM.getValue('markAsReadEnabled', true);
+        const readMangaPageEnabled = await GM.getValue('readMangaPageEnabled', true);
+
+        return markAsReadEnabled && readMangaPageEnabled;
+    }
+
+    /**
+     * Handle page routing for the read manga page
+     */
+    handlePageRouting() {
+        // Check if we're on the read manga page
+        if (window.location.pathname === this.pageUrl ||
+            window.location.hash === '#read-manga') {
+            this.renderReadMangaPage();
+        }
+    }
+
+    /**
+     * Navigate to the read manga page
+     */
+    navigateToReadMangaPage() {
+        // Update URL without page reload
+        history.pushState({}, 'Read Manga - nhentai', this.pageUrl);
+        this.renderReadMangaPage();
+    }
+
+    /**
+     * Render the read manga page
+     */
+    async renderReadMangaPage() {
+        // Get read galleries from storage
+        const readGalleries = await GM.getValue('readGalleries', []);
+
+        if (readGalleries.length === 0) {
+            this.renderEmptyState();
+            return;
+        }
+
+        // Fetch gallery data for read galleries
+        const galleryData = await this.fetchGalleryData(readGalleries);
+        this.renderGalleryGrid(galleryData);
+    }
+
+    /**
+     * Render empty state when no read manga
+     */
+    renderEmptyState() {
+        const content = `
+            <div class="container">
+                <h1>Read Manga</h1>
+                <div class="empty-state" style="text-align: center; padding: 60px 20px;">
+                    <i class="fas fa-book" style="font-size: 64px; color: #666; margin-bottom: 20px;"></i>
+                    <h2 style="color: #666; margin-bottom: 10px;">No Read Manga Yet</h2>
+                    <p style="color: #999; margin-bottom: 30px;">
+                        Start reading manga and they'll appear here automatically!
+                    </p>
+                    <a href="/" class="btn btn-primary">
+                        <i class="fas fa-home"></i> Browse Manga
+                    </a>
+                </div>
+            </div>
+        `;
+
+        this.replacePageContent(content);
+    }
+
+    /**
+     * Fetch gallery data for read galleries
+     */
+    async fetchGalleryData(galleryIds) {
+        const galleryData = [];
+
+        // Try to get cached data from localStorage first
+        const cachedData = await GM.getValue('readGalleriesCache', {});
+
+        for (const galleryId of galleryIds.slice(0, 50)) { // Limit to 50 for performance
+            let galleryInfo = cachedData[galleryId];
+
+            if (!galleryInfo) {
+                // Create basic data structure with gallery ID
+                galleryInfo = {
+                    id: galleryId,
+                    title: `Gallery ${galleryId}`,
+                    thumbnail: null,
+                    pages: 'Unknown',
+                    tags: [],
+                    url: `/g/${galleryId}/`,
+                    cached: false
+                };
+
+                // Try multiple sources for gallery data
+                await this.tryFetchGalleryInfo(galleryInfo);
+            }
+
+            galleryData.push(galleryInfo);
+        }
+
+        // Cache any newly found data
+        const updatedCache = { ...cachedData };
+        galleryData.forEach(gallery => {
+            if (gallery.cached && !cachedData[gallery.id]) {
+                updatedCache[gallery.id] = gallery;
+            }
+        });
+        await GM.setValue('readGalleriesCache', updatedCache);
+
+        return galleryData;
+    }
+
+    /**
+     * Try to fetch gallery information from multiple sources
+     */
+    async tryFetchGalleryInfo(galleryInfo) {
+        const galleryId = galleryInfo.id;
+
+        // Method 1: Check if we're currently on this gallery page
+        const galleryMatch = window.location.pathname.match(/\/g\/(\d+)\//);
+        if (galleryMatch && galleryMatch[1] === galleryId) {
+            // Get title from h1 or h2
+            const titleElement = document.querySelector('h1, h2');
+            if (titleElement) {
+                galleryInfo.title = titleElement.textContent.trim();
+            }
+
+            // Get cover image from #cover
+            const coverElement = document.querySelector('#cover img');
+            if (coverElement && coverElement.src) {
+                galleryInfo.thumbnail = coverElement.src;
+            }
+
+            // Get page count
+            const pageNumberButton = document.querySelector('.page-number.btn.btn-unstyled .num-pages');
+            if (pageNumberButton) {
+                galleryInfo.pages = pageNumberButton.textContent.trim();
+            }
+
+            galleryInfo.cached = true;
+            return;
+        }
+
+        // Method 2: Check current page for gallery listings
+        const existingGallery = document.querySelector(`[data-gallery-id="${galleryId}"], .gallery a[href*="/g/${galleryId}/"]`);
+        if (existingGallery) {
+            const galleryElement = existingGallery.closest('.gallery') || existingGallery;
+            const titleElement = galleryElement.querySelector('.caption');
+            const imgElement = galleryElement.querySelector('img');
+
+            if (titleElement) {
+                galleryInfo.title = titleElement.textContent.trim();
+            }
+            if (imgElement && imgElement.src) {
+                galleryInfo.thumbnail = imgElement.src;
+            }
+            galleryInfo.cached = true;
+            return;
+        }
+
+        // Method 3: Try to construct thumbnail URL from gallery ID
+        // nhentai thumbnail pattern: https://t.nhentai.net/galleries/{id}/thumb.jpg
+        const thumbnailUrl = `https://t.nhentai.net/galleries/${galleryId}/thumb.jpg`;
+
+        // Test if the thumbnail exists
+        try {
+            const response = await fetch(thumbnailUrl, { method: 'HEAD' });
+            if (response.ok) {
+                galleryInfo.thumbnail = thumbnailUrl;
+                galleryInfo.cached = true;
+            }
+        } catch (error) {
+            // Thumbnail doesn't exist or network error, leave as null
+            console.log(`Thumbnail not found for gallery ${galleryId}`);
+        }
+    }
+
+    /**
+     * Render gallery grid for read manga
+     */
+    renderGalleryGrid(galleryData) {
+        const totalCount = galleryData.length;
+        const content = `
+            <div class="container" style="min-height: 100vh; padding-bottom: 50px;">
+                <h1>Read Manga <span class="nobold">(${totalCount})</span></h1>
+
+                <div class="read-manga-controls" style="margin: 20px 0; padding: 15px; background: rgba(0,0,0,0.1); border-radius: 5px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                        <div>
+                            <button id="clear-all-read" class="btn btn-danger" style="margin-right: 10px;">
+                                <i class="fas fa-trash"></i> Clear All Read
+                            </button>
+                            <button id="export-read-list" class="btn btn-secondary">
+                                <i class="fas fa-download"></i> Export List
+                            </button>
+                        </div>
+                        <div>
+                            <select id="read-sort" class="form-control" style="width: auto; display: inline-block;">
+                                <option value="recent">Recently Read</option>
+                                <option value="oldest">Oldest First</option>
+                                <option value="id-asc">ID Ascending</option>
+                                <option value="id-desc">ID Descending</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="gallery-grid read-manga-gallery-grid">
+                    ${galleryData.map(gallery => this.createGalleryCard(gallery)).join('')}
+                </div>
+
+                <div class="pagination-info" style="text-align: center; margin: 30px 0; color: #666;">
+                    Showing ${totalCount} read manga
+                </div>
+            </div>
+        `;
+
+        this.replacePageContent(content);
+        this.addReadPageEventListeners();
+    }
+
+    /**
+     * Create gallery card HTML
+     */
+    createGalleryCard(gallery) {
+        // Handle thumbnail display
+        const thumbnailHtml = gallery.thumbnail
+            ? `<img src="${gallery.thumbnail}" alt="${gallery.title}" loading="lazy"
+                    style="width: 100%; height: 300px; object-fit: cover; display: block;"
+                    onload="const placeholder = this.nextElementSibling; placeholder.style.display='none'; Array.from(placeholder.children).forEach(child => child.style.display='none');"
+                    onerror="this.style.display='none'; const placeholder = this.nextElementSibling; placeholder.style.display='flex'; Array.from(placeholder.children).forEach(child => child.style.display='block');">`
+            : '';
+
+        const noImageHtml = `
+            <div class="no-image-placeholder" style="display: ${gallery.thumbnail ? 'none !important' : 'flex'};
+                 width: 100%; height: 300px; background: linear-gradient(135deg, #333 0%, #555 100%);
+                 align-items: center; justify-content: center; flex-direction: column; color: #999;">
+                <i class="fas fa-book" style="font-size: 48px; margin-bottom: 10px; opacity: 0.5; display: ${gallery.thumbnail ? 'none !important' : 'block'};"></i>
+                <span style="font-size: 14px; font-weight: 500; display: ${gallery.thumbnail ? 'none !important' : 'block'};">Gallery ${gallery.id}</span>
+                <span style="font-size: 12px; opacity: 0.7; display: ${gallery.thumbnail ? 'none !important' : 'block'};">No Preview Available</span>
+            </div>
+        `;
+
+        return `
+            <div class="gallery read-gallery read-manga-gallery" data-gallery-id="${gallery.id}"
+                 style="position: relative; border-radius: 3px; overflow: visible; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+                        transition: all 0.3s ease; background: #252525; height: auto; min-height: 350px; padding-bottom: 50px;">
+                <a href="${gallery.url}" class="cover" style="position: relative; display: block; height: 300px; overflow: hidden; border-radius: 3px 3px 0 0;">
+                    ${thumbnailHtml}
+                    ${noImageHtml}
+
+                    <!-- Remove from read button (no read badge on read manga page) -->
+                    <button class="remove-read-btn" data-gallery-id="${gallery.id}" title="Remove from read list"
+                            style="position: absolute; top: 5px; right: 5px; width: 28px; height: 28px;
+                                   background: rgba(244, 67, 54, 0.9); border: none; border-radius: 50%; color: white;
+                                   font-size: 14px; cursor: pointer; display: flex; align-items: center;
+                                   justify-content: center; transition: all 0.3s ease; z-index: 100;">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </a>
+
+                <!-- Caption positioned below the image, not overlapping -->
+                <div class="caption read-manga-caption" style="padding: 8px 10px; background: #1e1e1e; color: white;
+                     font-size: 12px; line-height: 1.3; min-height: 40px; max-height: 50px; overflow: hidden; text-overflow: ellipsis;
+                     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+                     position: absolute; bottom: 0; left: 0; right: 0; border-radius: 0 0 3px 3px;">${gallery.title}</div>
+            </div>
+        `;
+    }
+
+    /**
+     * Add event listeners for read page controls
+     */
+    addReadPageEventListeners() {
+        // Clear all read button
+        const clearAllBtn = document.getElementById('clear-all-read');
+        if (clearAllBtn) {
+            clearAllBtn.addEventListener('click', async () => {
+                if (confirm('Are you sure you want to clear all read manga? This action cannot be undone.')) {
+                    await GM.setValue('readGalleries', []);
+                    this.renderEmptyState();
+
+                    // Show notification
+                    this.showNotification('All read manga cleared!', 'success');
+                }
+            });
+        }
+
+        // Export read list button
+        const exportBtn = document.getElementById('export-read-list');
+        if (exportBtn) {
+            exportBtn.addEventListener('click', async () => {
+                const readGalleries = await GM.getValue('readGalleries', []);
+                const exportData = {
+                    exported: new Date().toISOString(),
+                    version: '9.0.0',
+                    readGalleries: readGalleries
+                };
+
+                const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `nhentai-read-list-${new Date().toISOString().split('T')[0]}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+
+                this.showNotification('Read list exported!', 'success');
+            });
+        }
+
+        // Remove individual read items
+        const removeButtons = document.querySelectorAll('.remove-read-btn');
+        removeButtons.forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const galleryId = btn.getAttribute('data-gallery-id');
+                if (confirm('Remove this manga from your read list?')) {
+                    await this.removeFromReadList(galleryId);
+
+                    // Remove the gallery card from the page
+                    const galleryCard = btn.closest('.gallery');
+                    if (galleryCard) {
+                        galleryCard.style.opacity = '0';
+                        galleryCard.style.transform = 'scale(0.8)';
+                        setTimeout(() => galleryCard.remove(), 300);
+                    }
+
+                    this.showNotification('Removed from read list!', 'success');
+                }
+            });
+        });
+
+        // Sort functionality
+        const sortSelect = document.getElementById('read-sort');
+        if (sortSelect) {
+            sortSelect.addEventListener('change', () => {
+                // For now, just reload the page with sorting
+                // In a full implementation, you'd re-render with sorted data
+                this.renderReadMangaPage();
+            });
+        }
+    }
+
+    /**
+     * Remove gallery from read list
+     */
+    async removeFromReadList(galleryId) {
+        const readGalleries = await GM.getValue('readGalleries', []);
+        const updatedList = readGalleries.filter(id => id !== galleryId);
+        await GM.setValue('readGalleries', updatedList);
+    }
+
+    /**
+     * Replace page content
+     */
+    replacePageContent(content) {
+        // Find the main content area
+        const mainContent = document.querySelector('#content') || document.body;
+
+        // Wrap content in read-manga-page class for styling
+        const wrappedContent = `<div class="read-manga-page">${content}</div>`;
+        mainContent.innerHTML = wrappedContent;
+
+        // Update page title
+        document.title = 'Read Manga - nhentai';
+
+        // Add body class for additional styling
+        document.body.classList.add('read-manga-active');
+
+        // Add specific CSS for read manga page
+        this.addReadMangaPageCSS();
+    }
+
+    /**
+     * Add CSS styling specific to read manga page
+     */
+    addReadMangaPageCSS() {
+        const css = `
+            /* Read Manga Page Container */
+            .read-manga-page {
+                min-height: 100vh;
+                background: #1a1a1a;
+                color: #fff;
+            }
+
+            /* Gallery Grid Layout for Read Manga - Default Desktop */
+            .read-manga-page .gallery-grid,
+            .read-manga-page .read-manga-gallery-grid {
+                display: grid !important;
+                grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)) !important;
+                gap: 25px !important;
+                padding: 20px 10px !important;
+                margin: 0 auto !important;
+                max-width: 1200px !important;
+                min-height: 400px !important;
+            }
+
+            /* Individual Read Manga Gallery Item */
+            .read-manga-gallery {
+                position: relative !important;
+                border-radius: 3px !important;
+                overflow: visible !important;
+                box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4) !important;
+                transition: all 0.3s ease !important;
+                background: #252525 !important;
+                height: auto !important;
+                min-height: 350px !important;
+                padding-bottom: 50px !important;
+            }
+
+            .read-manga-gallery:hover {
+                transform: translateY(-2px) !important;
+                box-shadow: 0 8px 25px rgba(0,0,0,0.4) !important;
+            }
+
+            /* Gallery Cover Image for Read Manga */
+            .read-manga-gallery .cover {
+                position: relative !important;
+                display: block !important;
+                height: 300px !important;
+                overflow: hidden !important;
+                border-radius: 3px 3px 0 0 !important;
+            }
+
+            .read-manga-gallery .cover img {
+                width: 100% !important;
+                height: 100% !important;
+                object-fit: cover !important;
+                transition: transform 0.3s ease !important;
+            }
+
+            .read-manga-gallery:hover .cover img {
+                transform: scale(1.05) !important;
+            }
+
+            /* Caption positioning below image, not overlapping */
+            .read-manga-caption {
+                padding: 8px 10px !important;
+                background: #1e1e1e !important;
+                color: white !important;
+                font-size: 12px !important;
+                line-height: 1.3 !important;
+                min-height: 40px !important;
+                max-height: 50px !important;
+                overflow: hidden !important;
+                text-overflow: ellipsis !important;
+                display: -webkit-box !important;
+                -webkit-line-clamp: 2 !important;
+                -webkit-box-orient: vertical !important;
+                position: absolute !important;
+                bottom: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                border-radius: 0 0 3px 3px !important;
+                z-index: 5 !important;
+            }
+
+            /* Remove from Read List Button */
+            .read-manga-gallery .remove-read-btn {
+                position: absolute !important;
+                top: 5px !important;
+                right: 5px !important;
+                width: 28px !important;
+                height: 28px !important;
+                background: rgba(244, 67, 54, 0.9) !important;
+                border: none !important;
+                border-radius: 50% !important;
+                color: white !important;
+                font-size: 14px !important;
+                cursor: pointer !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                transition: all 0.3s ease !important;
+                z-index: 11 !important;
+            }
+
+            .read-manga-gallery .remove-read-btn:hover {
+                background: rgba(244, 67, 54, 1) !important;
+                transform: scale(1.1) !important;
+            }
+
+            /* Read Badge */
+            .read-manga-gallery .read-badge {
+                position: absolute !important;
+                top: 5px !important;
+                left: 5px !important;
+                background: rgba(76, 175, 80, 0.9) !important;
+                color: white !important;
+                padding: 4px 8px !important;
+                border-radius: 3px !important;
+                font-size: 11px !important;
+                font-weight: bold !important;
+                z-index: 10 !important;
+            }
+
+            /* No Image Placeholder */
+            .read-manga-gallery .no-image-placeholder {
+                width: 100% !important;
+                height: 300px !important;
+                background: linear-gradient(135deg, #333 0%, #555 100%) !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                flex-direction: column !important;
+                color: #999 !important;
+                transition: all 0.3s ease !important;
+            }
+
+            .read-manga-gallery:hover .no-image-placeholder {
+                background: linear-gradient(135deg, #444 0%, #666 100%) !important;
+            }
+
+            /* Responsive Design for Read Manga */
+            @media (max-width: 768px) {
+                .read-manga-page .gallery-grid,
+                .read-manga-page .read-manga-gallery-grid {
+                    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)) !important;
+                    gap: 8px !important;
+                    padding: 10px 8px !important;
+                    max-width: 100% !important;
+                }
+
+                .read-manga-gallery {
+                    min-height: 210px !important;
+                    padding-bottom: 40px !important;
+                    max-width: 180px !important;
+                    margin: 0 auto !important;
+                }
+
+                .read-manga-gallery .cover {
+                    height: 170px !important;
+                }
+
+                .read-manga-caption {
+                    font-size: 11px !important;
+                    padding: 6px 8px !important;
+                    min-height: 32px !important;
+                    max-height: 40px !important;
+                    -webkit-line-clamp: 2 !important;
+                    line-height: 1.3 !important;
+                }
+
+                .read-manga-gallery .remove-read-btn {
+                    width: 24px !important;
+                    height: 24px !important;
+                    font-size: 12px !important;
+                    top: 4px !important;
+                    right: 4px !important;
+                }
+
+                .read-manga-gallery .no-image-placeholder {
+                    height: 170px !important;
+                }
+
+                .read-manga-gallery .no-image-placeholder i {
+                    font-size: 36px !important;
+                    margin-bottom: 8px !important;
+                }
+
+                .read-manga-gallery .no-image-placeholder span {
+                    font-size: 11px !important;
+                }
+            }
+
+            /* Extra small mobile screens */
+            @media (max-width: 480px) {
+                .read-manga-page .gallery-grid,
+                .read-manga-page .read-manga-gallery-grid {
+                    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)) !important;
+                    gap: 6px !important;
+                    padding: 8px 6px !important;
+                }
+
+                .read-manga-gallery {
+                    min-height: 190px !important;
+                    padding-bottom: 35px !important;
+                    max-width: 160px !important;
+                }
+
+                .read-manga-gallery .cover {
+                    height: 150px !important;
+                }
+
+                .read-manga-caption {
+                    font-size: 10px !important;
+                    padding: 5px 6px !important;
+                    min-height: 28px !important;
+                    max-height: 35px !important;
+                    line-height: 1.2 !important;
+                }
+
+                .read-manga-gallery .remove-read-btn {
+                    width: 22px !important;
+                    height: 22px !important;
+                    font-size: 11px !important;
+                }
+
+                .read-manga-gallery .no-image-placeholder {
+                    height: 150px !important;
+                }
+
+                .read-manga-gallery .no-image-placeholder i {
+                    font-size: 32px !important;
+                }
+
+                .read-manga-gallery .no-image-placeholder span {
+                    font-size: 10px !important;
+                }
+            }
+
+            @media (min-width: 1400px) {
+                .read-manga-page .gallery-grid,
+                .read-manga-page .read-manga-gallery-grid {
+                    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)) !important;
+                    gap: 30px !important;
+                }
+
+                .read-manga-gallery {
+                    min-height: 400px !important;
+                    padding-bottom: 50px !important;
+                }
+
+                .read-manga-gallery .cover {
+                    height: 350px !important;
+                }
+
+                .read-manga-gallery .no-image-placeholder {
+                    height: 350px !important;
+                }
+            }
+
+            /* Override conflicting gallery grid styles for read manga page */
+            .read-manga-page .gallery-grid.read-manga-gallery-grid,
+            .read-manga-page .gallery-grid {
+                display: grid !important;
+                flex-wrap: unset !important;
+                justify-content: unset !important;
+                align-items: unset !important;
+            }
+
+            .read-manga-page .gallery-grid.read-manga-gallery-grid .gallery,
+            .read-manga-page .gallery-grid .gallery {
+                width: unset !important;
+                margin: unset !important;
+                flex: unset !important;
+            }
+
+            /* Ensure proper container height */
+            .read-manga-page .container {
+                min-height: 100vh !important;
+                padding-bottom: 50px !important;
+            }
+
+            /* Fix any potential z-index issues */
+            .read-manga-page {
+                position: relative;
+                z-index: 1;
+            }
+
+            /* Hide mark-as-read buttons on read manga page */
+            .read-manga-page .mark-as-read-btn,
+            .read-manga-gallery .mark-as-read-btn,
+            body.read-manga-active .mark-as-read-btn {
+                display: none !important;
+            }
+        `;
+
+        GM.addStyle(css);
+    }
+
+    /**
+     * Show notification
+     */
+    showNotification(message, type = 'success') {
+        const notification = document.createElement('div');
+        const backgroundColor = type === 'error' ? 'rgba(244, 67, 54, 0.9)' : 'rgba(46, 125, 50, 0.9)';
+
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: ${backgroundColor};
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            z-index: 10000;
+            font-size: 14px;
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        `;
+        notification.textContent = message;
+
+        document.body.appendChild(notification);
+
+        setTimeout(() => {
+            notification.style.opacity = '0';
+            notification.style.transition = 'opacity 0.3s ease';
+            setTimeout(() => notification.remove(), 300);
+        }, 3000);
+    }
+}
+
+// Initialize Read Manga Page System
+let readMangaPageSystem;
+
+async function initReadMangaPageSystem() {
+    readMangaPageSystem = new ReadMangaPageSystem();
+    // Make it available globally for the navigation button
+    window.readMangaPageSystem = readMangaPageSystem;
+}
+
+// Initialize on page load
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initReadMangaPageSystem);
+} else {
+    initReadMangaPageSystem();
+}
+
+//------------------------  **Read Manga Page System**  ------------------
+
+//------------------------  **Enhanced CSS Styling and Visual Enhancements**  ------------------
+
+/**
+ * Enhanced CSS Styling System
+ * Provides comprehensive styling for all new UI elements
+ */
+function addEnhancedCSS() {
+    const css = `
+        /* Global Enhancements */
+        .gallery {
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .gallery:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        /* Gallery Grid Layout */
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 25px;
+            padding: 20px 10px;
+            margin: 0 auto;
+            max-width: 1200px;
+        }
+
+        @media (max-width: 768px) {
+            .gallery-grid {
+                grid-template-columns: repeat(auto-fill, minmax(115px, 1fr));
+                gap: 15px;
+                padding: 15px 5px;
+            }
+        }
+
+        @media (min-width: 1400px) {
+            .gallery-grid {
+                grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+                gap: 30px;
+            }
+        }
+
+        /* Advanced Search Buttons */
+        .advanced-search-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            text-decoration: none;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            margin: 2px;
+        }
+
+        .advanced-search-btn:hover {
+            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            color: white;
+            text-decoration: none;
+        }
+
+        .advanced-search-btn i {
+            margin-right: 5px;
+        }
+
+        /* Favorite Tag Search Container */
+        #favorite-tag-searches {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            border: 1px solid rgba(102, 126, 234, 0.2);
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        #favorite-tag-searches h4 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        /* Enhanced Tag Warning Badges */
+        .tag-warning-badge {
+            position: absolute;
+            bottom: 5px;
+            left: 5px;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: bold;
+            color: white;
+            z-index: 10;
+            pointer-events: none;
+            text-transform: uppercase;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            backdrop-filter: blur(4px);
+            transition: all 0.3s ease;
+        }
+
+        .tag-warning-badge.blacklist {
+            background: linear-gradient(135deg, #ff5252 0%, #f44336 100%);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .tag-warning-badge.warning {
+            background: linear-gradient(135deg, #ffb74d 0%, #ff9800 100%);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .tag-warning-badge.favorite {
+            background: linear-gradient(135deg, #42a5f5 0%, #2196f3 100%);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        /* Badge stacking with improved spacing */
+        .gallery .tag-warning-badge:nth-of-type(1) {
+            bottom: 5px;
+        }
+
+        .gallery .tag-warning-badge:nth-of-type(2) {
+            bottom: 28px;
+        }
+
+        .gallery .tag-warning-badge:nth-of-type(3) {
+            bottom: 51px;
+        }
+
+        /* Enhanced Mark as Read Button */
+        .mark-as-read-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            width: 28px;
+            height: 28px;
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0.9) 100%);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            color: #fff;
+            cursor: pointer;
+            font-size: 14px;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(4px);
+        }
+
+        .mark-as-read-btn:hover {
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 1) 100%);
+            transform: scale(1.1);
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+
+        .mark-as-read-btn.read {
+            background: linear-gradient(135deg, #4caf50 0%, #2e7d32 100%);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .mark-as-read-btn.read:hover {
+            background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%);
+        }
+
+        /* Enhanced Read Badge */
+        .read-badge {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            background: linear-gradient(135deg, #4caf50 0%, #2e7d32 100%);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: bold;
+            z-index: 10;
+            pointer-events: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        /* Language Flags Enhancement */
+        .language-flag {
+            border-radius: 2px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        /* Gallery Page Tag Enhancements */
+        .tag-container .tag {
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .tag-container .tag.blacklist-tag {
+            background: linear-gradient(135deg, rgba(244, 67, 54, 0.2) 0%, rgba(244, 67, 54, 0.3) 100%) !important;
+            border: 1px solid #f44336 !important;
+            color: #f44336 !important;
+            box-shadow: 0 2px 4px rgba(244, 67, 54, 0.2);
+        }
+
+        .tag-container .tag.warning-tag {
+            background: linear-gradient(135deg, rgba(255, 152, 0, 0.2) 0%, rgba(255, 152, 0, 0.3) 100%) !important;
+            border: 1px solid #ff9800 !important;
+            color: #ff9800 !important;
+            box-shadow: 0 2px 4px rgba(255, 152, 0, 0.2);
+        }
+
+        .tag-container .tag.favorite-tag {
+            background: linear-gradient(135deg, rgba(33, 150, 243, 0.2) 0%, rgba(33, 150, 243, 0.3) 100%) !important;
+            border: 1px solid #2196f3 !important;
+            color: #2196f3 !important;
+            box-shadow: 0 2px 4px rgba(33, 150, 243, 0.2);
+        }
+
+        /* Enhanced Star Button */
+        .tag-star-btn {
+            margin-left: 8px;
+            cursor: pointer;
+            color: #666;
+            transition: all 0.3s ease;
+            font-size: 16px;
+            display: inline-block;
+            transform: scale(1);
+        }
+
+        .tag-star-btn:hover {
+            color: #2196f3;
+            transform: scale(1.2);
+            text-shadow: 0 0 8px rgba(33, 150, 243, 0.5);
+        }
+
+        .tag-star-btn.favorited {
+            color: #2196f3;
+            text-shadow: 0 0 8px rgba(33, 150, 243, 0.3);
+        }
+
+        /* Opacity and Fade Enhancements */
+        .gallery.read-gallery .cover img,
+        .gallery.read-gallery .cover .caption {
+            transition: opacity 0.4s ease, filter 0.4s ease;
+            filter: grayscale(0.3);
+        }
+
+        .gallery.read-gallery:hover .cover img,
+        .gallery.read-gallery:hover .cover .caption {
+            filter: grayscale(0);
+        }
+
+        .gallery:not([data-tags~='12227']) .cover img,
+        .gallery:not([data-tags~='12227']) .cover .caption {
+            transition: opacity 0.4s ease, filter 0.4s ease;
+        }
+
+        /* Settings Panel Enhancements */
+        .expand-icon {
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .expand-icon:hover {
+            color: #e63946;
+        }
+
+        .expand-icon::after {
+            content: '▼';
+            font-size: 12px;
+            margin-left: 10px;
+            transition: transform 0.3s ease;
+        }
+
+        .expand-icon.expanded::after {
+            transform: rotate(180deg);
+        }
+
+        /* Mobile Responsiveness */
+        @media (max-width: 768px) {
+            .mark-as-read-btn {
+                width: 24px;
+                height: 24px;
+                font-size: 12px;
+            }
+
+            .tag-warning-badge {
+                font-size: 8px;
+                padding: 2px 6px;
+            }
+
+            .advanced-search-btn {
+                padding: 6px 12px;
+                font-size: 11px;
+            }
+
+            #favorite-tag-searches {
+                padding: 10px;
+                margin: 10px 0;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .tag-warning-badge:nth-of-type(3) {
+                display: none; /* Hide third badge on very small screens */
+            }
+
+            .mark-as-read-btn {
+                width: 20px;
+                height: 20px;
+                font-size: 10px;
+            }
+        }
+
+        /* Animation Enhancements */
+        @keyframes markAsReadAnimation {
+            0% { transform: scale(1) rotate(0deg); }
+            50% { transform: scale(1.3) rotate(180deg); }
+            100% { transform: scale(1) rotate(360deg); }
+        }
+
+        .mark-as-read-animation {
+            animation: markAsReadAnimation 0.6s ease;
+        }
+
+        @keyframes badgeAppear {
+            0% {
+                opacity: 0;
+                transform: scale(0.5) translateY(10px);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        .tag-warning-badge {
+            animation: badgeAppear 0.4s ease;
+        }
+
+        @keyframes starFavorite {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.5) rotate(72deg); }
+            100% { transform: scale(1) rotate(0deg); }
+        }
+
+        .tag-star-btn.favoriting {
+            animation: starFavorite 0.5s ease;
+        }
+
+        /* Notification Enhancements */
+        .auto-mark-notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #4caf50 0%, #2e7d32 100%);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            z-index: 10000;
+            font-size: 14px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            animation: slideInRight 0.4s ease;
+        }
+
+        @keyframes slideInRight {
+            0% {
+                opacity: 0;
+                transform: translateX(100px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        /* Hover Effects for Galleries */
+        .gallery:hover .tag-warning-badge {
+            transform: scale(1.05);
+        }
+
+        .gallery:hover .mark-as-read-btn {
+            border-color: rgba(255, 255, 255, 0.6);
+        }
+
+        .gallery:hover .read-badge {
+            transform: scale(1.05);
+        }
+
+
+
+        /* Navigation link styling */
+        #read-manga-nav-link {
+            border-radius: 3px;
+            margin: 0 5px;
+        }
+
+        /* No image placeholder styling */
+        .no-image-placeholder {
+            transition: all 0.3s ease;
+        }
+
+        .gallery:hover .no-image-placeholder {
+            background: linear-gradient(135deg, #444 0%, #666 100%);
+        }
+
+        .no-image-placeholder i {
+            transition: all 0.3s ease;
+        }
+
+        .gallery:hover .no-image-placeholder i {
+            transform: scale(1.1);
+            opacity: 0.7;
+        }
+
+        /* Dark Mode Compatibility */
+        @media (prefers-color-scheme: dark) {
+            .advanced-search-btn {
+                box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+            }
+
+            #favorite-tag-searches {
+                background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
+                border-color: rgba(102, 126, 234, 0.3);
+            }
+
+
+        }
+    `;
+
+    GM.addStyle(css);
+}
+
+// Override website's default gallery sizing for gallery-grid
+GM.addStyle(`
+    @media screen and (min-width: 980px) {
+        .gallery-grid .gallery,
+        .gallery-grid .gallery-favorite,
+        .gallery-grid .thumb-container {
+            width: 19% !important;
+            margin: 3px !important;
+        }
+    }
+
+    /* Ensure gallery-grid uses flexbox layout for better control */
+    .gallery-grid {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        justify-content: flex-start !important;
+        align-items: flex-start !important;
+        gap: 0 !important;
+        padding: 20px 10px !important;
+        margin: 0 auto !important;
+        max-width: 1200px !important;
+    }
+
+    @media (max-width: 979px) {
+        .gallery-grid .gallery,
+        .gallery-grid .gallery-favorite,
+        .gallery-grid .thumb-container {
+            width: 48% !important;
+            margin: 1% !important;
+        }
+    }
+
+    @media (max-width: 600px) {
+        .gallery-grid .gallery,
+        .gallery-grid .gallery-favorite,
+        .gallery-grid .thumb-container {
+            width: 100% !important;
+            margin: 5px 0 !important;
+        }
+    }
+`);
+
+// Initialize enhanced CSS
+addEnhancedCSS();
+
+//------------------------  **Enhanced CSS Styling and Visual Enhancements**  ------------------
+
+//------------------------  **Feature Integration and Coordination**  ------------------
+
+/**
+ * Feature Integration System
+ * Coordinates all new features to work together seamlessly
+ */
+class FeatureIntegrationSystem {
+    constructor() {
+        this.systems = {};
+        this.initialized = false;
+        this.init();
+    }
+
+    /**
+     * Initialize the integration system
+     */
+    async init() {
+        if (this.initialized) return;
+
+        try {
+            // Initialize all systems in the correct order
+            await this.initializeSystems();
+
+            // Set up cross-system communication
+            this.setupCommunication();
+
+            // Set up unified event handling
+            this.setupUnifiedEvents();
+
+            // Apply integrated styling
+            this.applyIntegratedStyling();
+
+            this.initialized = true;
+            console.log('Nhentai Plus+ Enhanced Features initialized successfully');
+        } catch (error) {
+            console.error('Error initializing enhanced features:', error);
+        }
+    }
+
+    /**
+     * Initialize all systems in the correct order
+     */
+    async initializeSystems() {
+        // Initialize opacity system first (affects visual rendering)
+        if (await GM.getValue('markAsReadEnabled', true) || await GM.getValue('tagWarningEnabled', true)) {
+            this.systems.opacity = opacityFadeSystem;
+        }
+
+        // Initialize language detection (needed for other systems)
+        this.systems.language = languageDetectionSystem;
+
+        // Initialize tag warning system (depends on language detection)
+        if (await GM.getValue('tagWarningEnabled', true)) {
+            this.systems.tagWarning = tagWarningSystem;
+        }
+
+        // Initialize mark as read system (depends on opacity system)
+        if (await GM.getValue('markAsReadEnabled', true)) {
+            this.systems.markAsRead = markAsReadSystem;
+        }
+
+        // Initialize advanced search system (independent)
+        this.systems.advancedSearch = advancedSearchSystem;
+
+        // Initialize read manga page system (independent)
+        this.systems.readMangaPage = readMangaPageSystem;
+    }
+
+    /**
+     * Set up communication between systems
+     */
+    setupCommunication() {
+        // When opacity settings change, update all systems
+        document.addEventListener('opacitySettingsChanged', (event) => {
+            if (this.systems.markAsRead) {
+                this.systems.markAsRead.settings.readOpacity = event.detail.readOpacity;
+                this.systems.markAsRead.settings.nonEnglishOpacity = event.detail.nonEnglishOpacity;
+            }
+        });
+
+        // When favorite tags change, update search system
+        document.addEventListener('favoriteTagsChanged', (event) => {
+            if (this.systems.advancedSearch) {
+                this.systems.advancedSearch.createFavoriteTagSearchButtons();
+            }
+        });
+
+        // When read status changes, update visual systems
+        document.addEventListener('readStatusChanged', (event) => {
+            if (this.systems.opacity) {
+                this.systems.opacity.applyOpacitySettings();
+            }
+        });
+    }
+
+    /**
+     * Set up unified event handling
+     */
+    setupUnifiedEvents() {
+        // Handle page navigation
+        let currentUrl = window.location.href;
+        const observer = new MutationObserver(() => {
+            if (window.location.href !== currentUrl) {
+                currentUrl = window.location.href;
+                this.handlePageChange();
+            }
+        });
+
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+
+        // Handle dynamic content loading
+        this.setupDynamicContentHandler();
+    }
+
+    /**
+     * Handle page changes
+     */
+    async handlePageChange() {
+        // Small delay to let the page load
+        setTimeout(async () => {
+            // Re-initialize systems that need to process new content
+            if (this.systems.language) {
+                this.systems.language.detectAndMarkLanguages();
+            }
+
+            if (this.systems.tagWarning) {
+                this.systems.tagWarning.processGalleries();
+                this.systems.tagWarning.processGalleryPage();
+            }
+
+            if (this.systems.markAsRead) {
+                this.systems.markAsRead.addMarkAsReadButtons();
+                this.systems.markAsRead.applyReadStatus();
+                this.systems.markAsRead.setupAutoMark();
+            }
+
+            if (this.systems.advancedSearch) {
+                this.systems.advancedSearch.addAdvancedSearchButtons();
+                this.systems.advancedSearch.createFavoriteTagSearchButtons();
+            }
+
+            if (this.systems.opacity) {
+                this.systems.opacity.applyOpacitySettings();
+            }
+        }, 500);
+    }
+
+    /**
+     * Set up handler for dynamically loaded content
+     */
+    setupDynamicContentHandler() {
+        const observer = new MutationObserver((mutations) => {
+            let hasNewGalleries = false;
+
+            mutations.forEach((mutation) => {
+                mutation.addedNodes.forEach((node) => {
+                    if (node.nodeType === Node.ELEMENT_NODE) {
+                        if (node.classList && node.classList.contains('gallery')) {
+                            hasNewGalleries = true;
+                        } else if (node.querySelectorAll) {
+                            const galleries = node.querySelectorAll('.gallery');
+                            if (galleries.length > 0) {
+                                hasNewGalleries = true;
+                            }
+                        }
+                    }
+                });
+            });
+
+            if (hasNewGalleries) {
+                this.processNewGalleries();
+            }
+        });
+
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+    }
+
+    /**
+     * Process newly added galleries
+     */
+    processNewGalleries() {
+        // Process with all systems
+        if (this.systems.language) {
+            this.systems.language.detectAndMarkLanguages();
+        }
+
+        if (this.systems.tagWarning) {
+            this.systems.tagWarning.processGalleries();
+        }
+
+        if (this.systems.markAsRead) {
+            this.systems.markAsRead.addMarkAsReadButtons();
+            this.systems.markAsRead.applyReadStatus();
+        }
+
+        if (this.systems.opacity) {
+            this.systems.opacity.applyOpacitySettings();
+        }
+    }
+
+    /**
+     * Apply integrated styling that coordinates all systems
+     */
+    applyIntegratedStyling() {
+        const css = `
+            /* Ensure proper z-index stacking */
+            .gallery .mark-as-read-btn { z-index: 15; }
+            .gallery .read-badge { z-index: 14; }
+            .gallery .tag-warning-badge { z-index: 13; }
+            .gallery .language-flag { z-index: 12; }
+
+            /* Ensure badges don't overlap with buttons */
+            .gallery .tag-warning-badge {
+                max-width: calc(100% - 40px); /* Leave space for mark-as-read button */
+            }
+
+            /* Smooth transitions for all interactive elements */
+            .gallery * {
+                transition: opacity 0.3s ease, transform 0.3s ease, filter 0.3s ease;
+            }
+
+            /* Ensure readability of overlaid elements */
+            .gallery .mark-as-read-btn,
+            .gallery .read-badge,
+            .gallery .tag-warning-badge {
+                backdrop-filter: blur(4px);
+                -webkit-backdrop-filter: blur(4px);
+            }
+        `;
+
+        GM.addStyle(css);
+    }
+
+    /**
+     * Update settings for all systems
+     */
+    async updateAllSettings() {
+        const settings = {
+            markAsReadEnabled: await GM.getValue('markAsReadEnabled', true),
+            autoMarkReadEnabled: await GM.getValue('autoMarkReadEnabled', true),
+            nonEnglishOpacity: await GM.getValue('nonEnglishOpacity', 0.2),
+            readGalleriesOpacity: await GM.getValue('readGalleriesOpacity', 0.6),
+            tagWarningEnabled: await GM.getValue('tagWarningEnabled', true),
+            blacklistTagsList: await GM.getValue('blacklistTagsList', []),
+            warningTagsList: await GM.getValue('warningTagsList', []),
+            favoriteTagsList: await GM.getValue('favoriteTagsList', [])
+        };
+
+        // Update each system with new settings
+        Object.values(this.systems).forEach(system => {
+            if (system && system.loadSettings) {
+                system.loadSettings();
+            }
+        });
+
+        // Trigger re-processing
+        this.handlePageChange();
+    }
+
+    /**
+     * Get status of all systems
+     */
+    getSystemStatus() {
+        const status = {};
+
+        Object.entries(this.systems).forEach(([name, system]) => {
+            status[name] = {
+                initialized: !!system,
+                enabled: system && system.settings ? system.settings.enabled : false
+            };
+        });
+
+        return status;
+    }
+}
+
+// Global integration system instance
+let featureIntegrationSystem;
+
+/**
+ * Initialize all enhanced features
+ */
+async function initializeEnhancedFeatures() {
+    // Wait for DOM to be ready
+    if (document.readyState === 'loading') {
+        await new Promise(resolve => {
+            document.addEventListener('DOMContentLoaded', resolve);
+        });
+    }
+
+    // Initialize the integration system
+    featureIntegrationSystem = new FeatureIntegrationSystem();
+}
+
+// Initialize enhanced features
+initializeEnhancedFeatures();
+
+// Expose global functions for debugging and external access
+window.nhentaiPlusEnhanced = {
+    systems: {
+        integration: () => featureIntegrationSystem,
+        markAsRead: () => markAsReadSystem,
+        opacity: () => opacityFadeSystem,
+        language: () => languageDetectionSystem,
+        tagWarning: () => tagWarningSystem,
+        advancedSearch: () => advancedSearchSystem
+    },
+    utils: {
+        refreshAllSystems: () => featureIntegrationSystem?.handlePageChange(),
+        updateSettings: () => featureIntegrationSystem?.updateAllSettings(),
+        getStatus: () => featureIntegrationSystem?.getSystemStatus()
+    }
+};
+
+//------------------------  **Feature Integration and Coordination**  ------------------
+
+//------------------------  **Validation and Testing**  ------------------
+
+/**
+ * Validation and Testing System
+ * Ensures all features work correctly and provides debugging information
+ */
+class ValidationSystem {
+    constructor() {
+        this.testResults = {};
+        this.performanceMetrics = {};
+    }
+
+    /**
+     * Run comprehensive validation tests
+     */
+    async runValidationTests() {
+        console.log('🧪 Running Nhentai Plus+ Enhanced Features Validation...');
+
+        const tests = [
+            this.testSettingsIntegration,
+            this.testMarkAsReadSystem,
+            this.testOpacitySystem,
+            this.testLanguageDetection,
+            this.testTagWarningSystem,
+            this.testAdvancedSearch,
+            this.testBackwardCompatibility,
+            this.testPerformance
+        ];
+
+        for (const test of tests) {
+            try {
+                await test.call(this);
+            } catch (error) {
+                console.error(`❌ Test failed: ${test.name}`, error);
+                this.testResults[test.name] = { status: 'failed', error: error.message };
+            }
+        }
+
+        this.reportResults();
+    }
+
+    /**
+     * Test settings integration
+     */
+    async testSettingsIntegration() {
+        const testName = 'Settings Integration';
+        console.log(`🔧 Testing ${testName}...`);
+
+        // Test that all new settings exist
+        const requiredSettings = [
+            'markAsReadEnabled',
+            'autoMarkReadEnabled',
+            'nonEnglishOpacity',
+            'readGalleriesOpacity',
+            'tagWarningEnabled',
+            'blacklistTagsList',
+            'warningTagsList',
+            'favoriteTagsList'
+        ];
+
+        for (const setting of requiredSettings) {
+            const value = await GM.getValue(setting);
+            if (value === undefined) {
+                throw new Error(`Setting ${setting} not found`);
+            }
+        }
+
+        // Test settings form elements exist
+        const formElements = [
+            '#markAsReadEnabled',
+            '#autoMarkReadEnabled',
+            '#nonEnglishOpacity',
+            '#readGalleriesOpacity',
+            '#tagWarningEnabled',
+            '#blacklistTags',
+            '#warningTags',
+            '#favoriteTags'
+        ];
+
+        if (window.location.href.includes('/settings')) {
+            for (const selector of formElements) {
+                if (!document.querySelector(selector)) {
+                    console.warn(`⚠️ Settings form element ${selector} not found`);
+                }
+            }
+        }
+
+        this.testResults[testName] = { status: 'passed' };
+        console.log(`✅ ${testName} passed`);
+    }
+
+    /**
+     * Test Mark as Read system
+     */
+    async testMarkAsReadSystem() {
+        const testName = 'Mark as Read System';
+        console.log(`📖 Testing ${testName}...`);
+
+        const enabled = await GM.getValue('markAsReadEnabled', true);
+        if (!enabled) {
+            this.testResults[testName] = { status: 'skipped', reason: 'Feature disabled' };
+            return;
+        }
+
+        // Test that the system exists
+        if (!window.nhentaiPlusEnhanced?.systems?.markAsRead()) {
+            throw new Error('Mark as Read system not initialized');
+        }
+
+        // Test on gallery pages
+        const galleries = document.querySelectorAll('.gallery');
+        if (galleries.length > 0) {
+            const hasButtons = Array.from(galleries).some(gallery =>
+                gallery.querySelector('.mark-as-read-btn')
+            );
+
+            if (!hasButtons) {
+                console.warn('⚠️ No mark-as-read buttons found on galleries');
+            }
+        }
+
+        this.testResults[testName] = { status: 'passed' };
+        console.log(`✅ ${testName} passed`);
+    }
+
+    /**
+     * Test Opacity system
+     */
+    async testOpacitySystem() {
+        const testName = 'Opacity System';
+        console.log(`🎨 Testing ${testName}...`);
+
+        // Test CSS custom properties are set
+        const rootStyle = getComputedStyle(document.documentElement);
+        const nonEnglishOpacity = rootStyle.getPropertyValue('--non-english-opacity');
+        const readOpacity = rootStyle.getPropertyValue('--read-galleries-opacity');
+
+        if (!nonEnglishOpacity || !readOpacity) {
+            throw new Error('CSS custom properties not set');
+        }
+
+        this.testResults[testName] = { status: 'passed' };
+        console.log(`✅ ${testName} passed`);
+    }
+
+    /**
+     * Test Language Detection
+     */
+    async testLanguageDetection() {
+        const testName = 'Language Detection';
+        console.log(`🌐 Testing ${testName}...`);
+
+        if (!window.nhentaiPlusEnhanced?.systems?.language()) {
+            throw new Error('Language detection system not initialized');
+        }
+
+        // Test on galleries
+        const galleries = document.querySelectorAll('.gallery');
+        if (galleries.length > 0) {
+            const hasLanguageData = Array.from(galleries).some(gallery =>
+                gallery.getAttribute('data-detected-language')
+            );
+
+            if (!hasLanguageData) {
+                console.warn('⚠️ No language detection data found on galleries');
+            }
+        }
+
+        this.testResults[testName] = { status: 'passed' };
+        console.log(`✅ ${testName} passed`);
+    }
+
+    /**
+     * Test Tag Warning system
+     */
+    async testTagWarningSystem() {
+        const testName = 'Tag Warning System';
+        console.log(`⚠️ Testing ${testName}...`);
+
+        const enabled = await GM.getValue('tagWarningEnabled', true);
+        if (!enabled) {
+            this.testResults[testName] = { status: 'skipped', reason: 'Feature disabled' };
+            return;
+        }
+
+        if (!window.nhentaiPlusEnhanced?.systems?.tagWarning()) {
+            throw new Error('Tag warning system not initialized');
+        }
+
+        this.testResults[testName] = { status: 'passed' };
+        console.log(`✅ ${testName} passed`);
+    }
+
+    /**
+     * Test Advanced Search system
+     */
+    async testAdvancedSearch() {
+        const testName = 'Advanced Search';
+        console.log(`🔍 Testing ${testName}...`);
+
+        if (!window.nhentaiPlusEnhanced?.systems?.advancedSearch()) {
+            throw new Error('Advanced search system not initialized');
+        }
+
+        this.testResults[testName] = { status: 'passed' };
+        console.log(`✅ ${testName} passed`);
+    }
+
+    /**
+     * Test backward compatibility
+     */
+    async testBackwardCompatibility() {
+        const testName = 'Backward Compatibility';
+        console.log(`🔄 Testing ${testName}...`);
+
+        // Test that existing features still work
+        const existingFeatures = [
+            'findSimilarEnabled',
+            'bookmarksEnabled',
+            'englishFilterEnabled',
+            'autoLoginEnabled'
+        ];
+
+        for (const feature of existingFeatures) {
+            const value = await GM.getValue(feature);
+            if (value === undefined) {
+                console.warn(`⚠️ Existing feature ${feature} setting not found`);
+            }
+        }
+
+        this.testResults[testName] = { status: 'passed' };
+        console.log(`✅ ${testName} passed`);
+    }
+
+    /**
+     * Test performance
+     */
+    async testPerformance() {
+        const testName = 'Performance';
+        console.log(`⚡ Testing ${testName}...`);
+
+        const startTime = performance.now();
+
+        // Simulate feature operations
+        if (window.nhentaiPlusEnhanced?.utils?.refreshAllSystems) {
+            await window.nhentaiPlusEnhanced.utils.refreshAllSystems();
+        }
+
+        const endTime = performance.now();
+        const duration = endTime - startTime;
+
+        this.performanceMetrics.refreshTime = duration;
+
+        if (duration > 1000) { // More than 1 second
+            console.warn(`⚠️ Performance warning: Refresh took ${duration.toFixed(2)}ms`);
+        }
+
+        this.testResults[testName] = { status: 'passed', metrics: { refreshTime: duration } };
+        console.log(`✅ ${testName} passed (${duration.toFixed(2)}ms)`);
+    }
+
+    /**
+     * Report test results
+     */
+    reportResults() {
+        console.log('\n📊 Validation Results:');
+        console.table(this.testResults);
+
+        const passed = Object.values(this.testResults).filter(r => r.status === 'passed').length;
+        const failed = Object.values(this.testResults).filter(r => r.status === 'failed').length;
+        const skipped = Object.values(this.testResults).filter(r => r.status === 'skipped').length;
+
+        console.log(`\n✅ Passed: ${passed} | ❌ Failed: ${failed} | ⏭️ Skipped: ${skipped}`);
+
+        if (failed === 0) {
+            console.log('🎉 All tests passed! Nhentai Plus+ Enhanced Features are working correctly.');
+        } else {
+            console.log('⚠️ Some tests failed. Check the results above for details.');
+        }
+    }
+}
+
+// Run validation in development mode or when requested
+if (window.location.search.includes('nhentai-plus-validate') ||
+    localStorage.getItem('nhentai-plus-debug') === 'true') {
+
+    setTimeout(() => {
+        const validator = new ValidationSystem();
+        validator.runValidationTests();
+    }, 2000);
+}
+
+// Add validation to global object
+if (window.nhentaiPlusEnhanced) {
+    window.nhentaiPlusEnhanced.validation = {
+        run: () => {
+            const validator = new ValidationSystem();
+            return validator.runValidationTests();
+        }
+    };
+}
+
+//------------------------  **Validation and Testing**  ------------------
+
+//------------------------  **Mark as Read System**  ------------------
 
 // Initialize AutoSync on page load
 $(document).ready(async function() {

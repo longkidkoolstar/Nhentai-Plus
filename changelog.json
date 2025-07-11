@@ -1,4 +1,27 @@
 {
+"9.0.0": {
+    "date": "2025-07-11",
+    "changes": [
+      "🆕 MAJOR: Mark as Read System - Complete reading tracking system with visual feedback",
+      "📖 NEW: Read Manga Page - Dedicated page to view and manage all read manga",
+      "🔘 NEW: Mark as Read Buttons - One-click buttons on gallery thumbnails to mark/unmark as read",
+      "⚡ NEW: Auto-Mark on Last Page - Automatically marks galleries as read when reaching the final page",
+      "🎨 NEW: Enhanced Opacity System - Configurable fade levels for read and non-English galleries",
+      "📱 NEW: Mobile-Responsive Read Manga Page - Optimized grid layout for all device sizes",
+      "🗂️ NEW: Read Manga Management - Clear all, remove individual items, and sorting options",
+      "💾 NEW: Gallery Data Caching - Automatic caching of cover images, titles, and metadata",
+      "🔄 NEW: Smart Cover Fetching - Auto-fetches cover images from first page for auto-marked galleries",
+      "🎯 NEW: Visual Read Indicators - Clear visual feedback with READ badges and opacity changes",
+      "⚙️ NEW: Configurable Settings - Separate controls for mark-as-read system and read manga page",
+      "🔧 NEW: Enhanced Integration - Seamless integration with existing bookmark and sync systems",
+      "📊 NEW: Read Statistics - Track and display total count of read manga",
+      "🎨 IMPROVEMENT: Enhanced UI/UX - Modern styling with smooth animations and transitions",
+      "🔒 IMPROVEMENT: Data Persistence - Reliable storage and retrieval of read manga data",
+      "📱 IMPROVEMENT: Cross-Device Compatibility - Works seamlessly across desktop and mobile",
+      "⚡ PERFORMANCE: Optimized Rendering - Efficient gallery processing and display",
+      "🛡️ STABILITY: Error Handling - Robust error handling and fallback mechanisms"
+    ]
+  },
 "8.1.4.1": {
     "date": "2025-07-08",
     "changes": [
