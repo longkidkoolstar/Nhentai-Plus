@@ -1714,6 +1714,10 @@ for (const page of bookmarkedPages) {
                 const updatedListItem = $(`<li class="bookmark-item ${mangaBookMarkingType}-mode"><a href="${manga.url}" class="bookmark-link">${content}</a><button class="delete-button">✖</button></li>`);
                 listItem.replaceWith(updatedListItem);
 
+                // Add title attribute with tags for hover tooltip
+                const tooltipText = `${title}\n\nTags: ${tags.join(', ')}`;
+                updatedListItem.find('.bookmark-link').attr('title', tooltipText);
+
                 // Add delete functionality
                 updatedListItem.find('.delete-button').click(async function() {
                     const updatedBookmarkedMangas = bookmarkedMangas.filter(m => m.url !== manga.url);
@@ -1829,6 +1833,77 @@ for (const page of bookmarkedPages) {
 
             .bookmark-item:hover .delete-button {
                 opacity: 1;
+            }
+
+            /* Bookmark hover tooltip styling */
+            .bookmark-link[title]:hover::after {
+                content: attr(title);
+                position: fixed;
+                background: rgba(0, 0, 0, 0.9);
+                color: white;
+                padding: 8px 12px;
+                border-radius: 6px;
+                font-size: 12px;
+                line-height: 1.4;
+                white-space: pre-line;
+                max-width: 300px;
+                word-wrap: break-word;
+                z-index: 999999;
+                pointer-events: none;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                backdrop-filter: blur(4px);
+                top: 20px;
+                left: 20px;
+            }
+
+            /* Hide default browser tooltip */
+            .bookmark-link[title] {
+                position: relative;
+            }
+
+            /* Gallery caption hover tooltip styling */
+            .gallery .caption[title]:hover::after {
+                content: attr(title);
+                position: fixed;
+                background: rgba(0, 0, 0, 0.9);
+                color: white;
+                padding: 8px 12px;
+                border-radius: 6px;
+                font-size: 12px;
+                line-height: 1.4;
+                white-space: pre-line;
+                max-width: 300px;
+                word-wrap: break-word;
+                z-index: 999999;
+                pointer-events: none;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                backdrop-filter: blur(4px);
+                top: 20px;
+                left: 20px;
+            }
+
+            /* General tooltip styling for any element with title attribute */
+            [title]:hover::after {
+                content: attr(title);
+                position: fixed !important;
+                background: rgba(0, 0, 0, 0.9) !important;
+                color: white !important;
+                padding: 8px 12px !important;
+                border-radius: 6px !important;
+                font-size: 12px !important;
+                line-height: 1.4 !important;
+                white-space: pre-line !important;
+                max-width: 300px !important;
+                word-wrap: break-word !important;
+                z-index: 999999 !important;
+                pointer-events: none !important;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+                border: 1px solid rgba(255, 255, 255, 0.2) !important;
+                backdrop-filter: blur(4px) !important;
+                top: 20px !important;
+                left: 20px !important;
             }
 
             .title-only {
@@ -6549,19 +6624,13 @@ async function replaceRelatedWithBookmarks() {
             // Format the title with manga name if available
             let displayTitle = title || `Manga ${bookmark.id}`;
 
-            // Get language flag if available
-            let languageFlag = '';
-            if (language && LANGUAGE_FLAGS[language]) {
-                languageFlag = `<img src="${LANGUAGE_FLAGS[language]}" alt="${language}" style="margin-right: 5px; vertical-align: middle; height: 12px; display: inline-block;">`;
-            }
-
-            // Create gallery HTML with centered title
+            // Create gallery HTML with centered title (no inline language flag)
             const galleryHTML = `
-                <div class="gallery" data-tags="${tagIdsString}">
+                <div class="gallery" data-tags="${tagIdsString}" data-detected-language="${language || ''}">
                     <a href="/g/${bookmark.id}/" class="cover" style="padding:0 0 ${aspectRatio}% 0">
                         <img class="lazyload" width="250" height="353" data-src="${thumbUrl}" src="${thumbUrl}">
                         <noscript><img src="${thumbUrl}" width="250" height="353" /></noscript>
-                        <div class="caption" style="text-align: center;">${languageFlag}${displayTitle}</div>
+                        <div class="caption" style="text-align: center;">${displayTitle}</div>
                     </a>
                 </div>
             `;
@@ -6569,9 +6638,11 @@ async function replaceRelatedWithBookmarks() {
             // Add to container
             galleryContainer.insertAdjacentHTML('beforeend', galleryHTML);
 
+            // Get the newly added gallery element
+            const lastGallery = galleryContainer.lastElementChild;
+
             // Add matching tags info if available
             if (matchingTags && matchingTags.length > 0) {
-                const lastGallery = galleryContainer.lastElementChild;
                 const caption = lastGallery.querySelector('.caption');
 
                 const tagsInfo = document.createElement('div');
@@ -6582,6 +6653,14 @@ async function replaceRelatedWithBookmarks() {
                 tagsInfo.style.marginTop = '5px';
                 tagsInfo.style.textAlign = 'center';
                 caption.appendChild(tagsInfo);
+            }
+
+            // Add language flag using the overlay system if language is available
+            if (language && lastGallery) {
+                // Check if we have access to the language flag system
+                if (typeof window.nhentaiPlus !== 'undefined' && window.nhentaiPlus.systems && window.nhentaiPlus.systems.languageDetection) {
+                    window.nhentaiPlus.systems.languageDetection.addLanguageFlag(lastGallery, language);
+                }
             }
         } catch (error) {
             console.error(`Error creating gallery item for bookmark ${bookmark.id}:`, error);
@@ -7994,31 +8073,48 @@ async function addPageNumbersToThumbnails() {
 
     // Function to add page number display to a gallery item
     async function addPageNumberToGallery(galleryItem) {
-        // Check if this gallery already has a page number display
-        if (galleryItem.querySelector('.page-number-display')) {
-            return;
-        }
-
-        // Get the manga URL
+        // Get the manga URL first
         const coverLink = galleryItem.querySelector('.cover');
         if (!coverLink) return;
 
+        // Check if this specific cover link already has a page number display
+        if (coverLink.querySelector('.page-number-display')) {
+            return;
+        }
+
+        // Mark this cover as being processed to prevent race conditions
+        if (coverLink.dataset.pageNumberProcessing === 'true') {
+            return;
+        }
+        coverLink.dataset.pageNumberProcessing = 'true';
+
         const mangaUrl = coverLink.getAttribute('href');
-        if (!mangaUrl) return;
+        if (!mangaUrl) {
+            coverLink.dataset.pageNumberProcessing = 'false';
+            return;
+        }
 
         const fullUrl = `https://nhentai.net${mangaUrl}`;
 
-        // Try to get page count
-        const pageCount = await getPageCount(fullUrl);
-        if (pageCount) {
-            // Create and add the page number display
-            const pageNumberDisplay = document.createElement('div');
-            pageNumberDisplay.className = 'page-number-display';
-            pageNumberDisplay.textContent = `${pageCount} ${pageCount === 1 ? 'page' : 'pages'}`;
+        try {
+            // Try to get page count
+            const pageCount = await getPageCount(fullUrl);
+            if (pageCount) {
+                // Double-check that no page number display was added while we were fetching
+                if (!coverLink.querySelector('.page-number-display')) {
+                    // Create and add the page number display
+                    const pageNumberDisplay = document.createElement('div');
+                    pageNumberDisplay.className = 'page-number-display';
+                    pageNumberDisplay.textContent = `${pageCount} ${pageCount === 1 ? 'page' : 'pages'}`;
 
-            // Add to the cover element
-            coverLink.style.position = 'relative';
-            coverLink.appendChild(pageNumberDisplay);
+                    // Add to the cover element
+                    coverLink.style.position = 'relative';
+                    coverLink.appendChild(pageNumberDisplay);
+                }
+            }
+        } finally {
+            // Always clear the processing flag
+            coverLink.dataset.pageNumberProcessing = 'false';
         }
     }
 
@@ -10136,10 +10232,50 @@ class LanguageDetectionSystem {
      * Add language flag to gallery
      */
     addLanguageFlag(gallery, language) {
-        // Remove existing language flags
-        const existingFlag = gallery.querySelector('.language-flag');
-        if (existingFlag) {
-            existingFlag.remove();
+        const caption = gallery.querySelector('.caption');
+        if (!caption) return;
+
+        // Remove all existing flag elements (both old and new systems)
+        const existingFlags = gallery.querySelectorAll('.language-flag, .overlayFlag');
+        existingFlags.forEach(flag => flag.remove());
+
+        // Remove inline flag images from caption text content
+        const captionTextNodes = Array.from(caption.childNodes).filter(node => node.nodeType === Node.TEXT_NODE);
+        captionTextNodes.forEach(textNode => {
+            // Check if this text node contains inline flag HTML
+            if (textNode.textContent && textNode.textContent.includes('<img')) {
+                // This shouldn't happen with text nodes, but let's be safe
+                textNode.remove();
+            }
+        });
+
+        // Remove inline flag images that might be direct children
+        const inlineFlags = caption.querySelectorAll('img[style*="margin-right: 5px"][style*="vertical-align: middle"]');
+        inlineFlags.forEach(flag => flag.remove());
+
+        // Clean up caption innerHTML to remove any remaining inline flag HTML
+        if (caption.innerHTML.includes('style="margin-right: 5px; vertical-align: middle; height: 12px"')) {
+            // Extract just the text content, removing any inline flag HTML
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = caption.innerHTML;
+
+            // Remove all img elements with the inline flag styling
+            const inlineImgs = tempDiv.querySelectorAll('img[style*="margin-right: 5px"]');
+            inlineImgs.forEach(img => img.remove());
+
+            // Get the cleaned text content
+            const cleanText = tempDiv.textContent || tempDiv.innerText || '';
+
+            // Preserve any matching-tags divs
+            const matchingTagsDiv = caption.querySelector('.matching-tags');
+
+            // Clear caption and add back clean text
+            caption.innerHTML = cleanText;
+
+            // Re-add matching tags if they existed
+            if (matchingTagsDiv) {
+                caption.appendChild(matchingTagsDiv);
+            }
         }
 
         const flagUrls = {
@@ -10158,11 +10294,8 @@ class LanguageDetectionSystem {
             flag.alt = language;
             flag.title = language.charAt(0).toUpperCase() + language.slice(1);
 
-            // Add to caption area
-            const caption = gallery.querySelector('.caption');
-            if (caption) {
-                caption.appendChild(flag);
-            }
+            // Add the new flag to caption area
+            caption.appendChild(flag);
         }
     }
 
@@ -10324,6 +10457,7 @@ class TagWarningSystem {
 
             .tag-warning-badge.warning {
                 background: rgba(255, 152, 0, 0.9);
+                z-index: 100000;
             }
 
             .tag-warning-badge.favorite {
@@ -12527,6 +12661,43 @@ class FeatureIntegrationSystem {
     applyIntegratedStyling() {
         const css = `
             /* Ensure proper z-index stacking */
+            .gallery .cover {
+                position: relative;
+            }
+            .gallery .caption {
+                z-index: 20;
+            }
+            .gallery .caption * {
+                z-index: 21;
+            }
+
+            /* Mobile-specific z-index fixes for flexbox layout */
+            @media (max-width: 768px) {
+                .gallery-grid .gallery .cover {
+                    position: relative !important;
+                }
+
+                .gallery-grid .gallery .caption * {
+                    z-index: 10000 !important;
+                    position: relative !important;
+                }
+            }
+
+            /* Ensure captions appear above related container and all other elements */
+            .gallery .caption {
+                z-index: 9999 !important;
+            }
+            .gallery .caption * {
+                z-index: 10000 !important;
+            }
+
+            /* Specifically target related container galleries */
+            #related-container .gallery .caption {
+                z-index: 9999 !important;
+                position: relative !important;
+                top: 310px !important;
+            }
+
             .gallery .mark-as-read-btn { z-index: 15; }
             .gallery .read-badge { z-index: 14; }
             .gallery .tag-warning-badge { z-index: 13; }
@@ -12548,6 +12719,11 @@ class FeatureIntegrationSystem {
             .gallery .tag-warning-badge {
                 backdrop-filter: blur(4px);
                 -webkit-backdrop-filter: blur(4px);
+            }
+
+            .gallery-grid .gallery .caption {
+                z-index: 9999 !important;
+                position: relative !important;
             }
         `;
 
@@ -12942,6 +13118,71 @@ if (window.nhentaiPlusEnhanced) {
 //------------------------  **Validation and Testing**  ------------------
 
 //------------------------  **Mark as Read System**  ------------------
+
+// Function to add title attributes to gallery captions for better hover tooltips
+function addGalleryCaptionTooltips() {
+    const galleries = document.querySelectorAll('.gallery');
+    galleries.forEach(gallery => {
+        const caption = gallery.querySelector('.caption');
+        if (caption && !caption.hasAttribute('title')) {
+            // Get the title text (remove any extra elements like flags)
+            let titleText = caption.textContent.trim();
+
+            // Extract tags from data-tags attribute
+            const dataTags = gallery.getAttribute('data-tags');
+            let tagsText = '';
+            if (dataTags) {
+                // Convert tag IDs to readable format if possible
+                tagsText = '\n\nHover for details';
+            }
+
+            // Set the title attribute
+            caption.setAttribute('title', titleText + tagsText);
+        }
+    });
+}
+
+// Initialize gallery caption tooltips
+$(document).ready(function() {
+    // Add tooltips to existing galleries
+    addGalleryCaptionTooltips();
+
+    // Watch for new galleries being added dynamically
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            if (mutation.type === 'childList') {
+                mutation.addedNodes.forEach(function(node) {
+                    if (node.nodeType === 1) { // Element node
+                        if (node.classList && node.classList.contains('gallery')) {
+                            const caption = node.querySelector('.caption');
+                            if (caption && !caption.hasAttribute('title')) {
+                                let titleText = caption.textContent.trim();
+                                caption.setAttribute('title', titleText);
+                            }
+                        }
+                        // Also check if the added node contains galleries
+                        const galleries = node.querySelectorAll && node.querySelectorAll('.gallery');
+                        if (galleries) {
+                            galleries.forEach(gallery => {
+                                const caption = gallery.querySelector('.caption');
+                                if (caption && !caption.hasAttribute('title')) {
+                                    let titleText = caption.textContent.trim();
+                                    caption.setAttribute('title', titleText);
+                                }
+                            });
+                        }
+                    }
+                });
+            }
+        });
+    });
+
+    // Start observing
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+});
 
 // Initialize AutoSync on page load
 $(document).ready(async function() {
