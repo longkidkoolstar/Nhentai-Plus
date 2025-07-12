@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      9.0.0.1
+// @version      9.0.0
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -21,7 +21,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "9.0.0.1";
+const CURRENT_VERSION = "9.0.0";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -10457,7 +10457,6 @@ class TagWarningSystem {
 
             .tag-warning-badge.warning {
                 background: rgba(255, 152, 0, 0.9);
-                z-index: 100000;
             }
 
             .tag-warning-badge.favorite {
@@ -12676,28 +12675,15 @@ class FeatureIntegrationSystem {
                 .gallery-grid .gallery .cover {
                     position: relative !important;
                 }
-
+                .gallery-grid .gallery .caption {
+                    z-index: 30 !important;
+                    position: relative !important;
+                }
                 .gallery-grid .gallery .caption * {
-                    z-index: 10000 !important;
+                    z-index: 31 !important;
                     position: relative !important;
                 }
             }
-
-            /* Ensure captions appear above related container and all other elements */
-            .gallery .caption {
-                z-index: 9999 !important;
-            }
-            .gallery .caption * {
-                z-index: 10000 !important;
-            }
-
-            /* Specifically target related container galleries */
-            #related-container .gallery .caption {
-                z-index: 9999 !important;
-                position: relative !important;
-                top: 310px !important;
-            }
-
             .gallery .mark-as-read-btn { z-index: 15; }
             .gallery .read-badge { z-index: 14; }
             .gallery .tag-warning-badge { z-index: 13; }
@@ -12719,11 +12705,6 @@ class FeatureIntegrationSystem {
             .gallery .tag-warning-badge {
                 backdrop-filter: blur(4px);
                 -webkit-backdrop-filter: blur(4px);
-            }
-
-            .gallery-grid .gallery .caption {
-                z-index: 9999 !important;
-                position: relative !important;
             }
         `;
 
