@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      9.0.0
+// @version      9.0.1
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -21,7 +21,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "9.0.0";
+const CURRENT_VERSION = "9.0.1";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -11973,11 +11973,12 @@ function addEnhancedCSS() {
             position: relative;
             transition: all 0.3s ease;
         }
-
+        /* Commented out as this was causing captions to appear under galleries
         .gallery:hover {
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(0,0,0,0.3);
         }
+        */
 
         /* Gallery Grid Layout */
         .gallery-grid {

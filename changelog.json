@@ -1,4 +1,11 @@
 {
+"9.0.1": {
+    "date": "2025-07-12",
+    "changes": [
+      "fix: update version to 9.0.1 and remove hover effect",
+      "fix: Remove gallery hover effect that was causing captions to appear under galleries"
+    ]
+  },
 "9.0.0": {
     "date": "2025-07-11",
     "changes": [
