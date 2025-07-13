@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      9.0.1
+// @version      9.1.0
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -21,7 +21,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "9.0.1";
+const CURRENT_VERSION = "9.1.0";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -1009,7 +1009,41 @@ addFindAltButton();
             $(".findVersionButton").click(function(e) {
                 e.preventDefault();
                 AddAltVersionsToThis($(this));
+                updateMarkAsReadButtonPosition($(this).closest('.gallery')); // Pass the gallery context
             });
+
+//------------- UPD CSS BASED ON SETTINGS RQ -----------------------------
+                        // Function to update the position of the mark-as-read button
+            async function updateMarkAsReadButtonPosition(galleryContext) {
+                const markAsReadButton = galleryContext.find('.mark-as-read-btn');
+                const showPageNumbersEnabled = await GM.getValue('showPageNumbersEnabled', true);
+                console.log(showPageNumbersEnabled);
+                if (showPageNumbersEnabled || $('.findVersionButton').length > 0) { // Check if find alt version button exists
+                    markAsReadButton.css('top', '40px'); 
+                } else {
+                    markAsReadButton.css('top', '5px');
+                }
+            }
+
+            // Function to adjust the position of a specific element
+            setInterval(function() {
+                const pageNumberDisplay = $('.page-number-display');
+                if (pageNumberDisplay.length > 0) {
+                    $('.mark-as-read-btn').css('top', '40px');
+                }
+            }, 1000);
+
+            // Function to adjust the position of tag warning badges
+            setInterval(function() {
+                if ($('.findVersionButton').length > 0) {
+                    $('.tag-warning-badge').css({
+                        'bottom': '40px',
+                        'left': '10px'
+                    });
+                }
+            }, 100);
+
+//------------- UPD CSS BASED ON SETTINGS RQ -----------------------------
 
             if (auto_group_on_page_comics) GroupAltVersionsOnPage();
 

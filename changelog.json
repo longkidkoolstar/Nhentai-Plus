@@ -1,4 +1,12 @@
 {
+"9.1.0": {
+    "date": "2025-07-13",
+    "changes": [
+      "feat: adjust element positions based on settings and UI state",
+      "- Update mark-as-read button position dynamically based on page numbers and alt version button visibility",
+      "- Add interval checks to adjust tag warning badges when alt version button is present"
+    ]
+  },
 "9.0.1": {
     "date": "2025-07-12",
     "changes": [
