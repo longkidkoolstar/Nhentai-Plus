@@ -1,4 +1,22 @@
 {
+  "9.3.0": {
+    "date": "2024-07-14",
+    "changes": [
+      "feat(read-manga): add sorting functionality and enhance UI styling",
+      "Implement gallery sorting by recent/oldest read and ID order",
+      "Redesign read manga page with modern gradients and animations",
+      "Improve mobile responsiveness and control elements"
+    ]
+  },
+"9.2.0": {
+    "date": "2024-07-14",
+    "changes": [
+      "feat(mark-as-read): enhance justRead processing and caching",
+      "Add checkAndApplyJustRead method to parse gallery objects from localStorage",
+      "Update cacheGalleryData to accept optional title and coverImageUrl parameters",
+      "Implement enhanced gallery data caching with metadata support"
+    ]
+  },
 "9.1.1": {
     "date": "2024-07-14",
     "changes": [
