@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      9.1.0
+// @version      9.2.0
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -21,7 +21,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "9.1.0";
+const CURRENT_VERSION = "9.2.0";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -9148,6 +9148,7 @@ class MarkAsReadSystem {
             this.addMarkAsReadButtons();
             this.applyReadStatus();
             this.setupAutoMark();
+            await this.checkAndApplyJustRead(); // New: Check and apply justRead data
         }
     }
 
@@ -9183,6 +9184,47 @@ class MarkAsReadSystem {
         } catch (error) {
             console.error('Error saving read galleries:', error);
         }
+    }
+
+    /**
+     * Check for 'justRead' key in localStorage, apply, and remove it.
+     */
+    async checkAndApplyJustRead() {
+        const justReadData = localStorage.getItem('justRead');
+        if (justReadData) {
+            try {
+                const galleries = JSON.parse(justReadData);
+                if (Array.isArray(galleries)) {
+                    let markedCount = 0;
+                    for (const gallery of galleries) {
+                        if (gallery && gallery.id && !this.readGalleries.has(gallery.id)) {
+                            this.readGalleries.add(gallery.id);
+                            await this.cacheGalleryData(gallery.id, gallery.title, gallery.coverImageUrl);
+                            markedCount++;
+                        }
+                    }
+                    if (markedCount > 0) {
+                        await this.saveReadGalleries();
+                        this.applyReadStatus(); // Re-apply styles to reflect new reads
+                        this.showAutoMarkNotification(markedCount);
+                    }
+                }
+            } catch (error) {
+                console.error('Error parsing justRead data from localStorage:', error);
+            } finally {
+                localStorage.removeItem('justRead'); // Always remove after processing
+            }
+        }
+    }
+
+    /**
+     * Show a notification for auto-marked galleries.
+     */
+    showAutoMarkNotification(count) {
+        // Placeholder for notification logic. Implement as needed.
+        console.log(`Auto-marked ${count} galleries as read from 'justRead' data.`);
+        // Example: You might want to use a more visible notification system here.
+        // For instance, a temporary div that fades out, similar to the changelog popup.
     }
 
     /**
@@ -9687,7 +9729,7 @@ class MarkAsReadSystem {
     /**
      * Cache gallery data for Read Manga page
      */
-    async cacheGalleryData(galleryId) {
+    async cacheGalleryData(galleryId, title = null, coverImageUrl = null) {
         try {
             const cachedData = await GM.getValue('readGalleriesCache', {});
 
@@ -9696,8 +9738,8 @@ class MarkAsReadSystem {
 
             const galleryInfo = {
                 id: galleryId,
-                title: 'Gallery ' + galleryId,
-                thumbnail: null,
+                title: title || 'Gallery ' + galleryId,
+                thumbnail: coverImageUrl || null,
                 pages: 'Unknown',
                 tags: [],
                 url: `/g/${galleryId}/`,

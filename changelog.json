@@ -1,4 +1,10 @@
 {
+"9.1.1": {
+    "date": "2024-07-14",
+    "changes": [
+      "feat: Added justRead processing - now correctly parses gallery objects from localStorage, including title and cover image, and caches them for the Read Manga page. This feature works in collaboration with the `nhentaimangaloader` script."
+    ]
+  },
 "9.1.0": {
     "date": "2025-07-13",
     "changes": [
