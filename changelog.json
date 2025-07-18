@@ -1,6 +1,16 @@
 {
+  "9.3.1": {
+    "date": "2025-07-18",
+    "changes": [
+      "feat(tooltips): add toggle for gallery caption tooltips and improve tooltip handling",
+      "Add new setting to enable/disable gallery caption tooltips",
+      "Make tooltip display conditional on setting value",
+      "Remove redundant bookmark hover tooltip CSS",
+      "Update tooltip-related functions to respect setting"
+    ]
+  },
   "9.3.0": {
-    "date": "2024-07-14",
+    "date": "2025-07-14",
     "changes": [
       "feat(read-manga): add sorting functionality and enhance UI styling",
       "Implement gallery sorting by recent/oldest read and ID order",
@@ -9,7 +19,7 @@
     ]
   },
 "9.2.0": {
-    "date": "2024-07-14",
+    "date": "2025-07-14",
     "changes": [
       "feat(mark-as-read): enhance justRead processing and caching",
       "Add checkAndApplyJustRead method to parse gallery objects from localStorage",
@@ -18,7 +28,7 @@
     ]
   },
 "9.1.1": {
-    "date": "2024-07-14",
+    "date": "2025-07-14",
     "changes": [
       "feat: Added justRead processing - now correctly parses gallery objects from localStorage, including title and cover image, and caches them for the Read Manga page. This feature works in collaboration with the `nhentaimangaloader` script."
     ]

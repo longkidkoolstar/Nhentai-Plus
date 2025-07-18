@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      9.3.0
+// @version      9.3.1
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -21,7 +21,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "9.3.0";
+const CURRENT_VERSION = "9.3.1";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -240,7 +240,6 @@ async function createFindSimilarButton() {
 
     $('#lockedTagsCount').hide();
 
-// Nhentai Plus+.user.js (154-221)
 // Handle click event for 'Find Similar' button
 findSimilarButton.click(async function() {
     const tagsContainer = $('div.tag-container.field-name:contains("Tags:")');
@@ -1750,7 +1749,10 @@ for (const page of bookmarkedPages) {
 
                 // Add title attribute with tags for hover tooltip
                 const tooltipText = `${title}\n\nTags: ${tags.join(', ')}`;
-                updatedListItem.find('.bookmark-link').attr('title', tooltipText);
+                const galleryCaptionTooltipsEnabled = await GM.getValue('galleryCaptionTooltipsEnabled', true);
+                if (galleryCaptionTooltipsEnabled) {
+                    updatedListItem.find('.bookmark-link').attr('title', tooltipText);
+                }
 
                 // Add delete functionality
                 updatedListItem.find('.delete-button').click(async function() {
@@ -1869,27 +1871,6 @@ for (const page of bookmarkedPages) {
                 opacity: 1;
             }
 
-            /* Bookmark hover tooltip styling */
-            .bookmark-link[title]:hover::after {
-                content: attr(title);
-                position: fixed;
-                background: rgba(0, 0, 0, 0.9);
-                color: white;
-                padding: 8px 12px;
-                border-radius: 6px;
-                font-size: 12px;
-                line-height: 1.4;
-                white-space: pre-line;
-                max-width: 300px;
-                word-wrap: break-word;
-                z-index: 999999;
-                pointer-events: none;
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-                border: 1px solid rgba(255, 255, 255, 0.2);
-                backdrop-filter: blur(4px);
-                top: 20px;
-                left: 20px;
-            }
 
             /* Hide default browser tooltip */
             .bookmark-link[title] {
@@ -1897,7 +1878,7 @@ for (const page of bookmarkedPages) {
             }
 
             /* Gallery caption hover tooltip styling */
-            .gallery .caption[title]:hover::after {
+            .gallery .caption[title].tooltip-enabled:hover::after {
                 content: attr(title);
                 position: fixed;
                 background: rgba(0, 0, 0, 0.9);
@@ -2908,6 +2889,7 @@ label:hover .tooltip {
             <input type="checkbox" id="tooltipsEnabled">
             Enable Tooltips <span class="tooltip" data-tooltip="Enables or disables tooltips.">?</span>
         </label>
+
         <label>
             <input type="checkbox" id="findSimilarEnabled">
             Enable Find Similar Button <span class="tooltip" data-tooltip="Finds similar manga based on the current one.">?</span>
@@ -3066,7 +3048,12 @@ label:hover .tooltip {
                         <input type="radio" id="random-open-in-current-tab" name="random-open-type" value="current-tab">
                         Open Random Manga in Current Tab <span class="tooltip" data-tooltip="Opens the randomly selected manga in the current tab.">?</span>
                     </label>
+                    
                 </div>
+                        <label>
+            <input type="checkbox" id="galleryCaptionTooltipsEnabled">
+            Enable Gallery Caption Tooltips <span class="tooltip" data-tooltip="Enables or disables tooltips for gallery captions showing tags.">?</span>
+        </label>
             </div>
                 <div class="section-header">Navigation</div>
 
@@ -3311,6 +3298,7 @@ $('div.container').append(settingsHtml);
             const bookmarkArrangementType = await GM.getValue('bookmarkArrangementType', 'default');
             const monthFilterEnabled = await GM.getValue('monthFilterEnabled', true);
             const tooltipsEnabled = await GM.getValue('tooltipsEnabled', true);
+            const galleryCaptionTooltipsEnabled = await GM.getValue('galleryCaptionTooltipsEnabled', true);
             const mangagroupingenabled = await GM.getValue('mangagroupingenabled', true);
             const maxMangaPerBookmark = await GM.getValue('maxMangaPerBookmark', 5);
             const openInNewTabType = await GM.getValue('openInNewTabType', 'background');
@@ -3386,6 +3374,7 @@ $('div.container').append(settingsHtml);
             $('#mangaBookMarkingButtonEnabled').prop('checked', mangaBookMarkingButtonEnabled);
             $('#monthFilterEnabled').prop('checked', monthFilterEnabled);
             $('#tooltipsEnabled').prop('checked', tooltipsEnabled);
+            $('#galleryCaptionTooltipsEnabled').prop('checked', galleryCaptionTooltipsEnabled);
             $('#mangagroupingenabled').prop('checked', mangagroupingenabled);
             $('#max-manga-per-bookmark-slider').val(maxMangaPerBookmark);
             $('#offlineFavoritingEnabled').prop('checked', offlineFavoritingEnabled);
@@ -3826,6 +3815,15 @@ $('#findSimilarEnabled').on('change', function() {
                 $('.tooltip').toggle(this.checked);
             });
 
+            // Toggle gallery caption tooltips
+            const toggleGalleryCaptionTooltips = (enabled) => {
+                $('.gallery .caption[title]').toggleClass('tooltip-enabled', enabled);
+            };
+            toggleGalleryCaptionTooltips(galleryCaptionTooltipsEnabled);
+            $('#galleryCaptionTooltipsEnabled').on('change', function() {
+                toggleGalleryCaptionTooltips(this.checked);
+            });
+
             if (findAltMangaThumbnailEnabled){
                 $('#find-Alt-Manga-Thumbnail-options').show();
 
@@ -4007,6 +4005,7 @@ $('#openInNewTabEnabled').change(function() {
             const bookmarkArrangementType = $('#bookmark-arrangement-type').val();
             const monthFilterEnabled = $('#monthFilterEnabled').prop('checked');
             const tooltipsEnabled = $('#tooltipsEnabled').prop('checked');
+            const galleryCaptionTooltipsEnabled = $('#galleryCaptionTooltipsEnabled').prop('checked');
             const mangagroupingenabled = $('#mangagroupingenabled').prop('checked');
             const maxMangaPerBookmark = parseInt($('#max-manga-per-bookmark-slider').val());
             const openInNewTabType = $('input[name="open-in-new-tab"]:checked').val();
@@ -4079,6 +4078,7 @@ $('#openInNewTabEnabled').change(function() {
             await GM.setValue('bookmarkArrangementType', bookmarkArrangementType);
             await GM.setValue('monthFilterEnabled', monthFilterEnabled);
             await GM.setValue('tooltipsEnabled', tooltipsEnabled);
+            await GM.setValue('galleryCaptionTooltipsEnabled', galleryCaptionTooltipsEnabled);
             await GM.setValue('mangagroupingenabled', mangagroupingenabled);
             await GM.setValue('maxMangaPerBookmark', maxMangaPerBookmark);
             await GM.setValue('openInNewTabType', openInNewTabType);
@@ -13472,8 +13472,10 @@ if (window.nhentaiPlusEnhanced) {
 //------------------------  **Mark as Read System**  ------------------
 
 // Function to add title attributes to gallery captions for better hover tooltips
-function addGalleryCaptionTooltips() {
+async function addGalleryCaptionTooltips() {
     const galleries = document.querySelectorAll('.gallery');
+    const galleryCaptionTooltipsEnabled = await GM.getValue('galleryCaptionTooltipsEnabled', true);
+    
     galleries.forEach(gallery => {
         const caption = gallery.querySelector('.caption');
         if (caption && !caption.hasAttribute('title')) {
@@ -13488,8 +13490,11 @@ function addGalleryCaptionTooltips() {
                 tagsText = '\n\nHover for details';
             }
 
-            // Set the title attribute
+            // Set the title attribute and tooltip-enabled class
             caption.setAttribute('title', titleText + tagsText);
+            if (galleryCaptionTooltipsEnabled) {
+                caption.classList.add('tooltip-enabled');
+            }
         }
     });
 }
@@ -13500,7 +13505,9 @@ $(document).ready(function() {
     addGalleryCaptionTooltips();
 
     // Watch for new galleries being added dynamically
-    const observer = new MutationObserver(function(mutations) {
+    const observer = new MutationObserver(async function(mutations) {
+        const galleryCaptionTooltipsEnabled = await GM.getValue('galleryCaptionTooltipsEnabled', true);
+        
         mutations.forEach(function(mutation) {
             if (mutation.type === 'childList') {
                 mutation.addedNodes.forEach(function(node) {
@@ -13510,6 +13517,9 @@ $(document).ready(function() {
                             if (caption && !caption.hasAttribute('title')) {
                                 let titleText = caption.textContent.trim();
                                 caption.setAttribute('title', titleText);
+                                if (galleryCaptionTooltipsEnabled) {
+                                    caption.classList.add('tooltip-enabled');
+                                }
                             }
                         }
                         // Also check if the added node contains galleries
@@ -13520,6 +13530,9 @@ $(document).ready(function() {
                                 if (caption && !caption.hasAttribute('title')) {
                                     let titleText = caption.textContent.trim();
                                     caption.setAttribute('title', titleText);
+                                    if (galleryCaptionTooltipsEnabled) {
+                                        caption.classList.add('tooltip-enabled');
+                                    }
                                 }
                             });
                         }
