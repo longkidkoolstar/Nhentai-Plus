@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      9.3.1
+// @version      9.4.0
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -21,7 +21,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "9.3.1";
+const CURRENT_VERSION = "9.4.0";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -3007,6 +3007,14 @@ label:hover .tooltip {
                     <input type="checkbox" id="readMangaPageEnabled">
                      Enable Read Manga Page <span class="tooltip" data-tooltip="Adds a tab to view all your read manga with management options.">?</span>
                 </label>
+                <div id="read-manga-page-options" style="display: none; margin-left: 20px; margin-bottom: 15px;">
+                    <div>
+                        <label for="max-read-manga-display-slider">Max Read Manga to Display:</label>
+                        <input type="range" id="max-read-manga-display-slider" min="10" max="500" step="10" value="50">
+                        <span id="max-read-manga-display-value">50</span>
+                        <span class="tooltip" data-tooltip="Sets the maximum number of manga displayed on the Read Manga page. Higher values may affect performance.">?</span>
+                    </div>
+                </div>
                 <label>
                     <input type="checkbox" id="nfmPageEnabled">
                     Enable NFM (Nhentai Favorite Manager) Page <span class="tooltip" data-tooltip="Enables the Nhentai Favorite Manager page for favorite management.">?</span>
@@ -3305,6 +3313,7 @@ $('div.container').append(settingsHtml);
             const offlineFavoritingEnabled = await GM.getValue('offlineFavoritingEnabled', true);
             const offlineFavoritesPageEnabled = await GM.getValue('offlineFavoritesPageEnabled', true);
             const readMangaPageEnabled = await GM.getValue('readMangaPageEnabled', true);
+            const maxReadMangaDisplay = await GM.getValue('maxReadMangaDisplay', 100);
             const nfmPageEnabled = await GM.getValue('nfmPageEnabled', true);
 
             // Online Data Sync settings
@@ -3380,6 +3389,12 @@ $('div.container').append(settingsHtml);
             $('#offlineFavoritingEnabled').prop('checked', offlineFavoritingEnabled);
             $('#offlineFavoritesPageEnabled').prop('checked', offlineFavoritesPageEnabled);
             $('#readMangaPageEnabled').prop('checked', readMangaPageEnabled);
+            
+            // Initialize Read Manga Page options
+            $('#max-read-manga-display-slider').val(maxReadMangaDisplay);
+            $('#max-read-manga-display-value').text(maxReadMangaDisplay);
+            $('#read-manga-page-options').toggle(readMangaPageEnabled);
+            
             $('#nfmPageEnabled').prop('checked', nfmPageEnabled);
             $('#bookmarksPageEnabled').prop('checked', bookmarksPageEnabled);
             $('#replaceRelatedWithBookmarks').prop('checked', replaceRelatedWithBookmarks);
@@ -3886,6 +3901,17 @@ $('#findSimilarEnabled').on('change', function() {
                     $('#manga-bookmarking-options').hide();
                 }
             });
+            
+            // Add event listener for Read Manga Page options
+            $('#readMangaPageEnabled').on('change', function() {
+                $('#read-manga-page-options').toggle($(this).is(':checked'));
+            });
+            
+            // Update the display value for the max read manga slider
+            $('#max-read-manga-display-slider').on('input', function() {
+                const value = parseInt($(this).val());
+                $('#max-read-manga-display-value').text(value);
+            });
 
             $('#showNonEnglishSelect').on('change', async () => {
                 const showNonEnglish = $('#showNonEnglishSelect').val();
@@ -4012,6 +4038,7 @@ $('#openInNewTabEnabled').change(function() {
             const offlineFavoritingEnabled = $('#offlineFavoritingEnabled').prop('checked');
             const offlineFavoritesPageEnabled = $('#offlineFavoritesPageEnabled').prop('checked');
             const readMangaPageEnabled = $('#readMangaPageEnabled').prop('checked');
+            const maxReadMangaDisplay = parseInt($('#max-read-manga-display-slider').val());
             const nfmPageEnabled = $('#nfmPageEnabled').prop('checked');
             const bookmarksPageEnabled = $('#bookmarksPageEnabled').prop('checked');
             const replaceRelatedWithBookmarks = $('#replaceRelatedWithBookmarks').prop('checked');
@@ -4085,6 +4112,7 @@ $('#openInNewTabEnabled').change(function() {
             await GM.setValue('offlineFavoritingEnabled', offlineFavoritingEnabled);
             await GM.setValue('offlineFavoritesPageEnabled', offlineFavoritesPageEnabled);
             await GM.setValue('readMangaPageEnabled', readMangaPageEnabled);
+            await GM.setValue('maxReadMangaDisplay', maxReadMangaDisplay);
             await GM.setValue('nfmPageEnabled', nfmPageEnabled);
             await GM.setValue('bookmarksPageEnabled', bookmarksPageEnabled);
             await GM.setValue('replaceRelatedWithBookmarks', replaceRelatedWithBookmarks);
@@ -11393,8 +11421,11 @@ class ReadMangaPageSystem {
 
         // Try to get cached data from localStorage first
         const cachedData = await GM.getValue('readGalleriesCache', {});
+        
+        // Get the user-configured limit (default to 100 if not set)
+        const maxReadMangaDisplay = await GM.getValue('maxReadMangaDisplay', 100);
 
-        for (const galleryId of galleryIds.slice(0, 50)) { // Limit to 50 for performance
+        for (const galleryId of galleryIds.slice(0, maxReadMangaDisplay)) { // Use configurable limit
             let galleryInfo = cachedData[galleryId];
 
             if (!galleryInfo) {

@@ -1,4 +1,11 @@
 {
+    "9.4.0": {
+    "date": "2025-07-25",
+    "changes": [
+      "feat(read-manga): add configurable limit for read manga display",
+      "Add slider in settings to control maximum number of manga displayed on Read Manga page. Defaults to 100 with range from 10-500 to balance performance and usability."
+    ]
+  },
   "9.3.1": {
     "date": "2025-07-18",
     "changes": [
