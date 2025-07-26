@@ -1,4 +1,11 @@
 {
+    "9.4.1": {
+    "date": "2025-07-26",
+    "changes": [
+      "fix(read-manga): ensure recent reads are displayed correctly",
+      "Reverse the order of read galleries before slicing to ensure the most recently read manga are displayed when a limit is applied."
+    ]
+  },
     "9.4.0": {
     "date": "2025-07-25",
     "changes": [
@@ -6,6 +13,7 @@
       "Add slider in settings to control maximum number of manga displayed on Read Manga page. Defaults to 100 with range from 10-500 to balance performance and usability."
     ]
   },
+
   "9.3.1": {
     "date": "2025-07-18",
     "changes": [

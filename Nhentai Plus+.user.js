@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      9.4.0
+// @version      9.4.1
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -21,7 +21,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "9.4.0";
+const CURRENT_VERSION = "9.4.1";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -11425,7 +11425,10 @@ class ReadMangaPageSystem {
         // Get the user-configured limit (default to 100 if not set)
         const maxReadMangaDisplay = await GM.getValue('maxReadMangaDisplay', 100);
 
-        for (const galleryId of galleryIds.slice(0, maxReadMangaDisplay)) { // Use configurable limit
+        // Reverse the array to get the most recent reads first, then slice
+        const recentGalleryIds = galleryIds.slice().reverse();
+
+        for (const galleryId of recentGalleryIds.slice(0, maxReadMangaDisplay)) { // Use configurable limit
             let galleryInfo = cachedData[galleryId];
 
             if (!galleryInfo) {
