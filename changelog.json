@@ -1,4 +1,11 @@
 {
+    "9.4.2": {
+    "date": "2025-09-27",
+    "changes": [
+      "fix(bookmarks): fix multiple bookmark removal in bookmark page",
+      "Fixed an issue where only the first bookmark could be removed properly, and subsequent removals would reappear after refresh"
+    ]
+  },
     "9.4.1": {
     "date": "2025-07-26",
     "changes": [

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      9.4.1
+// @version      9.4.2
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -21,7 +21,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "9.4.1";
+const CURRENT_VERSION = "9.4.2";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -1622,8 +1622,13 @@ for (const page of bookmarkedPages) {
 
             // Add delete functionality
             updatedListItem.find('.delete-button-pages').click(async function() {
-                const updatedBookmarkedPages = bookmarkedPages.filter(p => p !== page);
+                // Get the latest bookmarked pages to ensure we're working with current data
+                const currentBookmarkedPages = await GM.getValue('bookmarkedPages', []);
+                const updatedBookmarkedPages = currentBookmarkedPages.filter(p => p !== page);
                 await GM.setValue('bookmarkedPages', updatedBookmarkedPages);
+                
+                // Update the local bookmarkedPages variable to keep it in sync
+                bookmarkedPages = updatedBookmarkedPages;
 
                 // Get the list of manga IDs for this bookmark
                 const bookmarkMangaIds = await GM.getValue(`bookmark_manga_ids_${page}`, []);
