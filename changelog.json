@@ -1,4 +1,10 @@
 {
+    "9.5.1": {
+    "date": "2025-10-14",
+    "changes": [
+      "fix(random-hentai): Implement retry mechanism with exponential backoff for 429 (Too Many Requests) errors, waiting 5s then 10s before retrying."
+    ]
+  },
     "9.5.0": {
     "date": "2025-10-14",
     "changes": [

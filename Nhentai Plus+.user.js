@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      9.5.0
+// @version      9.5.1
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -21,7 +21,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "9.5.0";
+const CURRENT_VERSION = "9.5.1";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -5683,22 +5683,98 @@ function hideLoadingPopup() {
     }
 }
 
-async function fetchRandomHentai() {
+async function fetchRandomHentai(retryCount = 0) {
     try {
         if (!window.searchInProgress) return; // Stop if search was canceled
         const response = await fetch('https://nhentai.net/random/', { method: 'HEAD' });
+        
+        // Handle 429 Too Many Requests error
+        if (response.status === 429) {
+            console.log(`Received 429 Too Many Requests in fetchRandomHentai. Retry attempt: ${retryCount + 1}`);
+            
+            // Calculate wait time with exponential backoff (5s, then 10s max)
+            const waitTime = Math.min(5000 * Math.pow(2, retryCount), 10000);
+            
+            // Show message in loading popup
+            const loadingPopup = document.getElementById('randomLoadingPopup');
+            if (loadingPopup) {
+                const statusElement = loadingPopup.querySelector('.random-status');
+                if (statusElement) {
+                    statusElement.textContent = `Rate limited. Waiting ${waitTime/1000}s before retry...`;
+                }
+            }
+            
+            // Wait before retrying
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+            
+            // Max retries (3 attempts total)
+            if (retryCount < 2) {
+                return fetchRandomHentai(retryCount + 1);
+            } else {
+                console.error('Max retries reached for 429 error in fetchRandomHentai');
+                return;
+            }
+        }
+        
         await analyzeURL(response.url);
     } catch (error) {
         console.error('Error fetching random URL:', error);
+        
+        // Check if error is related to rate limiting
+        if (error.message && error.message.includes('429')) {
+            console.log(`Caught 429 error in fetchRandomHentai. Retry attempt: ${retryCount + 1}`);
+            
+            // Calculate wait time with exponential backoff (5s, then 10s max)
+            const waitTime = Math.min(5000 * Math.pow(2, retryCount), 10000);
+            
+            // Wait before retrying
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+            
+            // Max retries (3 attempts total)
+            if (retryCount < 2) {
+                return fetchRandomHentai(retryCount + 1);
+            }
+        }
     }
 }
 
-async function analyzeURL(url) {
+async function analyzeURL(url, retryCount = 0) {
     try {
         if (!window.searchInProgress) {
             return; // Stop if search was canceled
         }
+        
         const response = await fetch(url);
+        
+        // Handle 429 Too Many Requests error with retry mechanism
+        if (response.status === 429) {
+            console.log(`Received 429 Too Many Requests. Retry attempt: ${retryCount + 1}`);
+            
+            // Calculate wait time with exponential backoff (5s, then 10s max)
+            const waitTime = Math.min(5000 * Math.pow(2, retryCount), 10000);
+            
+            // Show message in loading popup
+            const loadingPopup = document.getElementById('randomLoadingPopup');
+            if (loadingPopup) {
+                const statusElement = loadingPopup.querySelector('.random-status');
+                if (statusElement) {
+                    statusElement.textContent = `Rate limited. Waiting ${waitTime/1000}s before retry...`;
+                }
+            }
+            
+            // Wait before retrying
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+            
+            // Max retries (3 attempts total)
+            if (retryCount < 2) {
+                return analyzeURL(url, retryCount + 1);
+            } else {
+                console.error('Max retries reached for 429 error');
+                fetchRandomHentai(); // Try a new random manga
+                return;
+            }
+        }
+        
         const html = await response.text();
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
@@ -5752,6 +5828,34 @@ async function analyzeURL(url) {
         }
     } catch (error) {
         console.error('Error analyzing page:', error);
+        
+        // Check if error is related to rate limiting
+        if (error.message && error.message.includes('429')) {
+            console.log(`Caught 429 error. Retry attempt: ${retryCount + 1}`);
+            
+            // Calculate wait time with exponential backoff (5s, then 10s max)
+            const waitTime = Math.min(5000 * Math.pow(2, retryCount), 10000);
+            
+            // Show message in loading popup
+            const loadingPopup = document.getElementById('randomLoadingPopup');
+            if (loadingPopup) {
+                const statusElement = loadingPopup.querySelector('.random-status');
+                if (statusElement) {
+                    statusElement.textContent = `Rate limited. Waiting ${waitTime/1000}s before retry...`;
+                }
+            }
+            
+            // Wait before retrying
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+            
+            // Max retries (3 attempts total)
+            if (retryCount < 2) {
+                return analyzeURL(url, retryCount + 1);
+            }
+        }
+        
+        // For other errors or max retries reached, try a new random manga
+        fetchRandomHentai();
     }
 }
 
