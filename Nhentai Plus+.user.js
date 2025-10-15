@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      9.4.2
+// @version      9.5.0
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -21,7 +21,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "9.4.2";
+const CURRENT_VERSION = "9.5.0";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -5569,6 +5569,7 @@ async function arePreferencesSet() {
         const pagesMin = parseInt(await GM.getValue('randomPrefPagesMin', ''), 10);
         const pagesMax = parseInt(await GM.getValue('randomPrefPagesMax', ''), 10);
 
+        // Language check works the same whether it's a single language or multiple comma-separated languages
         return language || tags.length > 0 || !isNaN(pagesMin) || !isNaN(pagesMax);
     } catch (error) {
         console.error('Error checking preferences:', error);
@@ -5756,7 +5757,8 @@ async function analyzeURL(url) {
 
 async function meetsUserPreferences(tags, pages) {
     try {
-        const preferredLanguage = (await GM.getValue('randomPrefLanguage', '')).toLowerCase();
+        const preferredLanguageInput = (await GM.getValue('randomPrefLanguage', '')).toLowerCase();
+        const preferredLanguages = preferredLanguageInput ? preferredLanguageInput.split(',').map(lang => lang.trim().toLowerCase()) : [];
         const preferredTags = (await GM.getValue('randomPrefTags', [])).map(tag => tag.toLowerCase());
         const blacklistedTags = (await GM.getValue('blacklistedTags', [])).map(tag => tag.toLowerCase()).filter(tag => tag !== '');
         const preferredPagesMin = parseInt(await GM.getValue('randomPrefPagesMin', ''), 10);
@@ -5766,7 +5768,11 @@ async function meetsUserPreferences(tags, pages) {
         // Strip tag counts and only keep the tag names
         const cleanedTags = tags.map(tag => tag.replace(/\d+K?$/, '').trim().toLowerCase());
 
-        const hasPreferredLanguage = preferredLanguage ? cleanedTags.includes(preferredLanguage) : true;
+        // Check if any of the preferred languages match
+        let hasPreferredLanguage = true;
+        if (preferredLanguages.length > 0) {
+            hasPreferredLanguage = preferredLanguages.some(lang => cleanedTags.includes(lang));
+        }
 
         let hasPreferredTags;
         if (preferredTags.length > 0) {
