@@ -1,12 +1,13 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      9.5.1
+// @version      9.6.0
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
 // @require      https://code.jquery.com/jquery-3.6.0.min.js
 // @require      https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js
+// @require      https://cdn.jsdelivr.net/npm/lz-string@1.4.4/libs/lz-string.min.js
 // @icon         https://i.imgur.com/AOs1HMS.png
 // @license      MIT
 // @grant        GM.setValue
@@ -21,7 +22,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "9.5.1";
+const CURRENT_VERSION = "9.6.0";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -8831,7 +8832,7 @@ class OnlineDataSync {
         return uuid;
     }
 
-    // Collect all syncable data
+    // Collect essential syncable data (reduced for bandwidth efficiency)
     async collectSyncData() {
         const allKeys = await GM.listValues();
         const syncData = {
@@ -8840,26 +8841,25 @@ class OnlineDataSync {
             userUUID: await this.getUserUUID(),
             data: {}
         };
-
-        // Define which keys to sync
-        const syncableKeys = [
-            'bookmarkedPages', 'offlineFavorites', 'mustAddTags', 'mustAddTagsEnabled',
-            'randomPrefLanguage', 'randomPrefTags', 'randomPrefPagesMin', 'randomPrefPagesMax',
-            'blacklistedTags', 'findSimilarEnabled', 'bookmarksEnabled', 'maxTagsToSelect',
-            'showNonEnglish', 'showPageNumbersEnabled', 'maxMangaPerBookmark',
-            'englishFilterEnabled', 'autoLoginEnabled','findAltmangaEnabled',
-            'bookmarksEnabled', 'language', 'tags', 'pagesMin', 'pagesMax', 'matchAllTags',
-            'mustAddTagsEnabled', 'findAltMangaThumbnailEnabled', 'openInNewTabEnabled',
-            'mangaBookMarkingButtonEnabled', 'mangaBookMarkingType', 'bookmarkArrangementType',
-            'monthFilterEnabled', 'tooltipsEnabled', 'mangagroupingenabled', 'maxMangaPerBookmark',
-            'openInNewTabType', 'offlineFavoritingEnabled', 'offlineFavoritesPageEnabled',
-            'nfmPageEnabled', 'publicSyncEnabled', 'privateSyncEnabled',
-            'autoSyncEnabled', 'syncInterval', 'lastSyncUpload',
-            'lastSyncDownload', 'bookmarksPageEnabled', 'replaceRelatedWithBookmarks',
-            'enableRelatedFlipButton', 'twitterButtonEnabled', 'enableRandomButton',
-            'randomOpenType', 'profileButtonEnabled', 'infoButtonEnabled', 'logoutButtonEnabled',
-            'bookmarkLinkEnabled', 'findSimilarType', 'bookmarkedMangas'
-        ];
+        // Define which keys to sync 
+         const syncableKeys = [ 
+             'bookmarkedPages', 'offlineFavorites', 'mustAddTags', 'mustAddTagsEnabled', 
+             'randomPrefLanguage', 'randomPrefTags', 'randomPrefPagesMin', 'randomPrefPagesMax', 
+             'blacklistedTags', 'findSimilarEnabled', 'bookmarksEnabled', 'maxTagsToSelect', 
+             'showNonEnglish', 'showPageNumbersEnabled', 'maxMangaPerBookmark', 
+             'englishFilterEnabled', 'autoLoginEnabled','findAltmangaEnabled', 
+             'bookmarksEnabled', 'language', 'tags', 'pagesMin', 'pagesMax', 'matchAllTags', 
+             'mustAddTagsEnabled', 'findAltMangaThumbnailEnabled', 'openInNewTabEnabled', 
+             'mangaBookMarkingButtonEnabled', 'mangaBookMarkingType', 'bookmarkArrangementType', 
+             'monthFilterEnabled', 'tooltipsEnabled', 'mangagroupingenabled', 'maxMangaPerBookmark', 
+             'openInNewTabType', 'offlineFavoritingEnabled', 'offlineFavoritesPageEnabled', 
+             'nfmPageEnabled', 'publicSyncEnabled', 'privateSyncEnabled', 
+             'autoSyncEnabled', 'syncInterval', 'lastSyncUpload', 
+             'lastSyncDownload', 'bookmarksPageEnabled', 'replaceRelatedWithBookmarks', 
+             'enableRelatedFlipButton', 'twitterButtonEnabled', 'enableRandomButton', 
+             'randomOpenType', 'profileButtonEnabled', 'infoButtonEnabled', 'logoutButtonEnabled', 
+             'bookmarkLinkEnabled', 'findSimilarType', 'bookmarkedMangas' 
+         ];
 
         for (const key of syncableKeys) {
             if (allKeys.includes(key)) {
@@ -8999,15 +8999,83 @@ class OnlineDataSync {
 
 // JSONStorage.net provider implementation
 class JSONStorageProvider {
+    // Compress individual user data using LZString compression
+    compressUserData(userData) {
+        try {
+            return {
+                isCompressed: true,
+                version: CURRENT_VERSION,
+                compressedData: LZString.compressToBase64(JSON.stringify(userData))
+            };
+        } catch (error) {
+            console.error('User data compression failed, using uncompressed data:', error);
+            return userData; // Fallback to uncompressed data
+        }
+    }
+    
+    // Decompress individual user data if it's compressed
+    decompressUserData(userData) {
+        try {
+            if (userData && userData.isCompressed && userData.compressedData) {
+                return JSON.parse(LZString.decompressFromBase64(userData.compressedData));
+            }
+            return userData; // Return as is if not compressed
+        } catch (error) {
+            console.error('User data decompression failed:', error);
+            return userData; // Return original data if decompression fails
+        }
+    }
+
+    // Process data for upload - compresses each user's data individually
+    prepareDataForUpload(data) {
+        // If data doesn't have users structure, return as is
+        if (!data || !data.users) return data;
+        
+        // Create a copy of the data structure
+        const processedData = {
+            ...data,
+            users: {}
+        };
+        
+        // Compress each user's data individually
+        for (const [uuid, userData] of Object.entries(data.users)) {
+            processedData.users[uuid] = this.compressUserData(userData);
+        }
+        
+        return processedData;
+    }
+    
+    // Process downloaded data - decompresses each user's data individually
+    processDownloadedData(data) {
+        // If data doesn't have users structure, return as is
+        if (!data || !data.users) return data;
+        
+        // Create a copy of the data structure
+        const processedData = {
+            ...data,
+            users: {}
+        };
+        
+        // Decompress each user's data individually
+        for (const [uuid, userData] of Object.entries(data.users)) {
+            processedData.users[uuid] = this.decompressUserData(userData);
+        }
+        
+        return processedData;
+    }
+
     async upload(config, data) {
         return new Promise((resolve, reject) => {
+            // Process data for upload (compress each user's data individually)
+            const processedData = this.prepareDataForUpload(data);
+            
             GM.xmlHttpRequest({
                 method: 'PUT',
                 url: `${config.url}?apiKey=${config.apiKey}`,
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                data: JSON.stringify(data),
+                data: JSON.stringify(processedData),
                 onload: function(response) {
                     if (response.status === 200) {
                         resolve(JSON.parse(response.responseText));
@@ -9032,11 +9100,14 @@ class JSONStorageProvider {
                 },
                 onload: function(response) {
                     if (response.status === 200) {
-                        resolve(JSON.parse(response.responseText));
+                        const data = JSON.parse(response.responseText);
+                        // Process downloaded data (decompress each user's data individually)
+                        const processedData = this.processDownloadedData(data);
+                        resolve(processedData);
                     } else {
                         reject(new Error(`Download failed: ${response.status} ${response.statusText}`));
                     }
-                },
+                }.bind(this),
                 onerror: function(error) {
                     reject(new Error(`Network error: ${error}`));
                 }

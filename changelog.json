@@ -1,4 +1,13 @@
 {
+    "9.6.0": {
+        "date": "2025-10-16",
+        "changes": [
+            "feat(sync): Implement data compression for sync data to reduce storage size and improve performance.",
+            "feat(sync): Ensure backward compatibility for sync data, allowing older uncompressed data to be processed correctly.",
+            "feat(sync): Maintain multi-user data separation and compression for individual users within the sync system.",
+            "feat(sync): Expanded syncable keys to include all user preferences and data for comprehensive synchronization."
+        ]
+    },
     "9.5.1": {
     "date": "2025-10-14",
     "changes": [
