@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      9.6.0
+// @version      9.6.1
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -22,7 +22,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "9.6.0";
+const CURRENT_VERSION = "9.6.1";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -9002,9 +9002,12 @@ class JSONStorageProvider {
     // Compress individual user data using LZString compression
     compressUserData(userData) {
         try {
+            // Preserve the original version if it exists, otherwise use current version
+            const preservedVersion = userData.version || CURRENT_VERSION;
+            
             return {
                 isCompressed: true,
-                version: CURRENT_VERSION,
+                version: preservedVersion,
                 compressedData: LZString.compressToBase64(JSON.stringify(userData))
             };
         } catch (error) {

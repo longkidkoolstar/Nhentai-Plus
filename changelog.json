@@ -1,4 +1,10 @@
 {
+    "9.6.1": {
+        "date": "2025-10-16",
+        "changes": [
+            "fix(sync): Preserve original version number for other users' data during compression."
+        ]
+    },
     "9.6.0": {
         "date": "2025-10-16",
         "changes": [
