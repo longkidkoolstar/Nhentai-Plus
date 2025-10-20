@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      9.6.1
+// @version      9.6.2
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -6384,6 +6384,8 @@ async function replaceRelatedWithBookmarks() {
     const bookmarks = await getBookmarksFromStorage();
     if (!bookmarks || bookmarks.length === 0) {
         console.log('No bookmarks found');
+        // Restore original content instead of returning to prevent infinite loading
+        relatedContainer.innerHTML = originalContent;
         return;
     }
 
@@ -6501,6 +6503,11 @@ async function replaceRelatedWithBookmarks() {
     if (bookmarksWithMatches.length === 0) {
         console.log('No related bookmarks found with matching tags');
         relatedContainer.innerHTML = originalContent;
+        // Update the header text after restoring original content
+        const originalHeader = relatedContainer.querySelector('h2');
+        if (originalHeader) {
+            originalHeader.textContent = 'More Like This (There were no Bookmarks that match this manga)';
+        }
         return;
     }
 

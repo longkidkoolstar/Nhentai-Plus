@@ -1,4 +1,11 @@
 {
+    "9.6.2": {
+        "date": "2025-10-19",
+        "changes": [
+            "fix(related-manga): Prevent infinite loading when no bookmarks and 'Replace Related Manga' is enabled.",
+            "feat(related-manga): Update text to 'More Like This (There were no Bookmarks that match this manga)' when no matching bookmarks are found."
+        ]
+    },
     "9.6.1": {
         "date": "2025-10-16",
         "changes": [
