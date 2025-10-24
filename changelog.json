@@ -1,4 +1,16 @@
 {
+  "9.7.0": {
+    "date": "2025-10-24",
+    "changes": [
+      "feat(search): add Smart Tag auto-parameter for tag and language input",
+      "Automatically wraps plain tag or language text in advanced search syntax (e.g., tag:\"...\" and language:\"...\") when enabled.",
+      "feat(settings): add toggle to enable Smart Tag behavior",
+      "feat(taxonomy): load Smart Tag taxonomy from GitHub raw URL",
+      "perf(taxonomy): cache compressed byType payload locally for faster startup",
+      "fix(taxonomy): avoid JSONStorage size limits by switching to GitHub-hosted JSON",
+      "chore(version): bump userscript version to 9.7.0"
+    ]
+  },
     "9.6.2": {
         "date": "2025-10-19",
         "changes": [

@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Nhentai Plus+ Settings Preview</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue", Arial, sans-serif; margin: 24px; background: #111; color: #ddd; }
+    .settings-section { background: #1a1a1a; border: 1px solid #333; border-radius: 8px; padding: 16px; max-width: 720px; }
+    h2 { margin: 0 0 12px; font-size: 18px; color: #fff; }
+    .row { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid #222; }
+    .row:first-child { border-top: none; }
+    label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+    input[type="checkbox"] { width: 18px; height: 18px; }
+    .hint { font-size: 12px; color: #aaa; margin-left: 28px; }
+    .muted { color: #bbb; }
+    .note { margin-top: 16px; font-size: 13px; color: #9bd; }
+    .divider { height: 1px; background: #333; margin: 12px 0; }
+  </style>
+</head>
+<body>
+  <div class="settings-section">
+    <h2>Search Settings (Preview)</h2>
+    <div class="row">
+      <label for="mustAddTagsEnabled">
+        <input type="checkbox" id="mustAddTagsEnabled" checked>
+        <span class="muted">Enable Must-Add-Tags</span>
+      </label>
+    </div>
+    <div class="row">
+      <input type="text" id="must-add-tags" placeholder="space-separated tags like: language:english tag:sole-male" style="flex:1; padding:8px; border-radius:6px; border:1px solid #333; background:#141414; color:#ddd;">
+    </div>
+    <div class="divider"></div>
+    <div class="row">
+      <label for="smartTagEnabled" title="Automatically wraps plain tag or language text in advanced search syntax">
+        <input type="checkbox" id="smartTagEnabled" checked>
+        <span>Enable Smart Tag (auto-parameterize tag/language)</span>
+      </label>
+    </div>
+    <p class="hint">Example: typing <em>english</em> becomes <code>language:"english"</code>; typing <em>mind control</em> becomes <code>tag:"mind control"</code> after it’s been encountered on pages.</p>
+    <p class="note">This is a static preview of the settings UI. Smart Tag learns multi‑word tags automatically from saved data; there is no separate phrases input.</p>
+  </div>
+</body>
+</html>

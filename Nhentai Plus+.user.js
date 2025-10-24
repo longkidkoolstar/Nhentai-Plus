@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      9.6.2
+// @version      9.7.0
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -22,7 +22,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "9.6.1";
+const CURRENT_VERSION = "9.7.0";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -265,6 +265,8 @@ findSimilarButton.click(async function() {
         const probability = Math.sqrt(tagCount); // Adjust this formula as needed
         return { name: tagName, count: tagCount, probability: probability };
     });
+
+    await addKnownMultiwordTags(tagsData.map(t => t.name));
 
     // Shuffle tag data array to randomize selection
     shuffleArray(tagsData);
@@ -1725,12 +1727,14 @@ for (const page of bookmarkedPages) {
                         });
                         console.log(`Fetched tags for ${manga.url}:`, tags); // Log the fetched tags
                         await GM.setValue(`tags_${manga.url}`, tags); // Save tags for future use
+                        await addKnownMultiwordTags(tags);
                     } catch (error) {
                         console.error(`Error fetching tags for: ${manga.url}`, error);
                         tags = []; // Default to empty if fetch fails
                     }
                 } else {
                     console.log(`Retrieved cached tags for ${manga.url}:`, tags); // Log cached tags
+                    await addKnownMultiwordTags(tags);
                 }
 
                 let content = "";
@@ -2811,6 +2815,10 @@ label:hover .tooltip {
         Enable Must Add Tags <span class="tooltip" data-tooltip="Enable or disable the 'Must Add Tags' feature.">?</span>
     </label>
     <label>Must Add Tags: <input type="text" id="must-add-tags"> <span class="tooltip" data-tooltip="Tags that must be included in search. Separate with commas.">?</span></label>
+    <label>
+        <input type="checkbox" id="smartTagEnabled">
+        Enable Smart Tag <span class="tooltip" data-tooltip="Automatically wraps plain tag or language input into advanced search syntax (e.g., tag:&quot;...&quot; or language:&quot;...&quot;)">?</span>
+    </label>
 
         <label>
             Show Non-English:
@@ -3305,6 +3313,7 @@ $('div.container').append(settingsHtml);
             const blacklistedTags = await GM.getValue('blacklistedTags', []);
             const mustAddTagsEnabled = await GM.getValue('mustAddTagsEnabled', false);
             const mustAddTags = (await GM.getValue('mustAddTags', [])).map(tag => tag.toLowerCase());
+            const smartTagEnabled = await GM.getValue('smartTagEnabled', true);
             const findAltMangaThumbnailEnabled = await GM.getValue('findAltMangaThumbnailEnabled', true);
             const openInNewTabEnabled = await GM.getValue('openInNewTabEnabled', true);
             const mangaBookMarkingButtonEnabled = await GM.getValue('mangaBookMarkingButtonEnabled', true);
@@ -3380,6 +3389,7 @@ $('div.container').append(settingsHtml);
             $('#mustAddTagsEnabled').prop('checked', mustAddTagsEnabled);
             $('#must-add-tags').val(mustAddTags.join(', '));
             $('#must-add-tags').prop('disabled', !mustAddTagsEnabled);
+            $('#smartTagEnabled').prop('checked', smartTagEnabled);
 
             $('#mustAddTagsEnabled').on('change', function() {
                 $('#must-add-tags').prop('disabled', !$(this).is(':checked'));
@@ -4022,6 +4032,7 @@ $('#openInNewTabEnabled').change(function() {
             let blacklistedTags = $('#blacklisted-tags').val().split(',').map(tag => tag.trim());
             blacklistedTags = blacklistedTags.map(tag => tag.replace(/-/g, ' ')); // Replace hyphens with spaces
             const mustAddTagsEnabled = $('#mustAddTagsEnabled').is(':checked');
+            const smartTagEnabled = $('#smartTagEnabled').is(':checked');
             let mustAddTags = [];
             if (mustAddTagsEnabled) {
                 mustAddTags = $('#must-add-tags').val().split(',').map(tag => tag.trim());
@@ -4100,6 +4111,7 @@ $('#openInNewTabEnabled').change(function() {
             await GM.setValue('blacklistedTags', blacklistedTags);
             await GM.setValue('mustAddTagsEnabled', mustAddTagsEnabled);
             await GM.setValue('mustAddTags', mustAddTags);
+            await GM.setValue('smartTagEnabled', smartTagEnabled);
             await GM.setValue('randomPrefTags', tags);
             await GM.setValue('randomPrefPagesMin', pagesMin);
             await GM.setValue('randomPrefPagesMax', pagesMax);
@@ -5787,6 +5799,7 @@ async function analyzeURL(url, retryCount = 0) {
         const tags = Array.from(doc.querySelectorAll('#tags .tag')).map(tag => tag.textContent.trim());
         const pages = parseInt(doc.querySelector('#tags .tag-container:nth-last-child(2) .name')?.textContent.trim(), 10);
         const uploadDate = doc.querySelector('#tags .tag-container:last-child time')?.getAttribute('datetime');
+        await addKnownMultiwordTags(tags);
 
         // Extract and handle languages
         let languages = [];
@@ -6378,7 +6391,23 @@ async function replaceRelatedWithBookmarks() {
         return tag.querySelector('.name')?.textContent.trim().toLowerCase() || '';
     }).filter(tag => tag !== '');
 
+    // Learn artist names from the Artists group on the page
+    try {
+        const tagGroups = Array.from(tagsContainer.querySelectorAll('.tag-container'));
+        const artistGroup = tagGroups.find(c => {
+            const fn = c.querySelector('.field-name');
+            return fn && /artists/i.test(fn.textContent);
+        });
+        if (artistGroup) {
+            const artistsNow = Array.from(artistGroup.querySelectorAll('a.tag .name')).map(el => el.textContent.trim());
+            if (artistsNow.length) {
+                addKnownArtists(artistsNow);
+            }
+        }
+    } catch (_) {}
+
     console.log('Current manga tags:', currentTags);
+    await addKnownMultiwordTags(currentTags);
 
     // Get all bookmarks
     const bookmarks = await getBookmarksFromStorage();
@@ -8500,6 +8529,21 @@ setTimeout(async function() {
                 const doc = new DOMParser().parseFromString(html, 'text/html');
                 const tagsList = doc.querySelectorAll('#tags .tag');
                 
+                // Extract artist names specifically
+                try {
+                  const tagGroups = Array.from(doc.querySelectorAll('#tags .tag-container'));
+                  const artistGroup = tagGroups.find(c => {
+                    const fn = c.querySelector('.field-name');
+                    return fn && /artists/i.test(fn.textContent);
+                  });
+                  if (artistGroup) {
+                    const artists = Array.from(artistGroup.querySelectorAll('a.tag .name')).map(el => el.textContent.trim());
+                    if (artists.length) {
+                      addKnownArtists(artists);
+                    }
+                  }
+                } catch (_) {}
+                
                 // Get the title
                 const titleElement = doc.querySelector('h1.title');
                 const title = titleElement ? titleElement.textContent.trim() : null;
@@ -8507,6 +8551,7 @@ setTimeout(async function() {
                 if (tagsList.length > 0) {
                   const tags = Array.from(tagsList).map(tag => tag.textContent.trim());
                   console.log(`Fetched tags for ${mangaUrl}:`, tags);
+                  await addKnownMultiwordTags(tags);
                   mangaInfo = {
                     id: mangaId,
                     url: mangaUrl,
@@ -8706,6 +8751,14 @@ setTimeout(async function() {
      // Set up background processing regardless of current page
      setupBackgroundProcessing();
 
+    // Bootstrap learned multiword tags from any stored data
+    bootstrapKnownMultiwordTagsFromStorage();
+
+    // Fetch taxonomy daily and assimilate known artists
+    if (typeof taxonomyManager !== 'undefined') {
+      taxonomyManager.fetchIfStale().catch(e => console.warn('Taxonomy fetch failed', e));
+    }
+
     // Update manga cache when limit changes
     updateMangaCache();
 }, 2000);
@@ -8720,20 +8773,262 @@ setTimeout(async function() {
 // Ensure this is defined globally or within a scope accessible to both handlers
 const originalOpen = XMLHttpRequest.prototype.open;
 
+async function addKnownMultiwordTags(tagsArray) {
+  try {
+    const norm = t => t.trim().toLowerCase().replace(/-/g, ' ');
+    const incoming = (tagsArray || []).map(norm).filter(t => t && /\s/.test(t));
+    let known = await GM.getValue('knownMultiwordTags', []);
+    const set = new Set(known);
+    let changed = false;
+    for (const t of incoming) {
+      if (!set.has(t)) { set.add(t); changed = true; }
+    }
+    if (changed) {
+      const updated = Array.from(set);
+      if (updated.length > 2000) updated.splice(0, updated.length - 2000);
+      await GM.setValue('knownMultiwordTags', updated);
+    }
+  } catch (e) {
+    console.error('SmartTag: failed to update known multiword tags', e);
+  }
+}
+
+async function addKnownArtists(items) {
+  try {
+    const names = [];
+    for (const it of (items || [])) {
+      if (!it) continue;
+      if (typeof it === 'string') {
+        const s = it.trim();
+        if (s) names.push(s);
+      } else if (typeof it === 'object') {
+        const type = (it.type || it.ns || it.namespace || '').toLowerCase();
+        const href = (it.href || it.url || it.link || '');
+        if (type === 'artist' || (typeof href === 'string' && href.includes('/artist/'))) {
+          const name = (it.name || it.text || it.value || '').trim();
+          if (name) names.push(name);
+        }
+      }
+    }
+    if (names.length === 0) return;
+    const norm = s => s.toLowerCase().replace(/-/g, ' ').trim();
+    const incoming = names.map(norm).filter(Boolean);
+    let known = await GM.getValue('knownArtists', []);
+    const set = new Set(known);
+    let changed = false;
+    for (const n of incoming) {
+      if (!set.has(n)) { set.add(n); changed = true; }
+    }
+    if (changed) {
+      const updated = Array.from(set);
+      if (updated.length > 2000) updated.splice(0, updated.length - 2000);
+      await GM.setValue('knownArtists', updated);
+    }
+  } catch (e) {
+    console.warn('SmartTag: failed to update known artists', e);
+  }
+}
+
+async function bootstrapKnownMultiwordTagsFromStorage() {
+  try {
+    let keys = [];
+    if (typeof GM.listValues === 'function') {
+      keys = await GM.listValues();
+    } else if (typeof GM_listValues === 'function') {
+      try { keys = GM_listValues(); } catch (_) { keys = []; }
+    }
+    const batches = [];
+    const artistBatches = [];
+    for (const key of keys) {
+      if (key.startsWith('tags_')) {
+        const arr = await GM.getValue(key, null);
+        if (Array.isArray(arr)) batches.push(arr);
+      } else if (key.startsWith('manga_')) {
+        const obj = await GM.getValue(key, null);
+        if (obj && Array.isArray(obj.tags)) {
+          batches.push(obj.tags);
+          const artistNames = obj.tags
+            .filter(t => typeof t === 'string' && /^artist:"/.test(t))
+            .map(t => t.replace(/^artist:"(.*)"$/, '$1'));
+          if (artistNames.length) artistBatches.push(artistNames);
+        }
+      } else if (key === 'mustAddTags') {
+        const arr = await GM.getValue(key, []);
+        if (Array.isArray(arr)) {
+          batches.push(arr);
+          const artistNames = arr
+            .filter(s => typeof s === 'string' && /^artist:/.test(s))
+            .map(s => s.replace(/^artist:"?([^"]+)"?$/, '$1').trim());
+          if (artistNames.length) artistBatches.push(artistNames);
+        }
+      }
+    }
+    for (const list of batches) {
+      await addKnownMultiwordTags(list);
+    }
+    for (const artists of artistBatches) {
+      await addKnownArtists(artists);
+    }
+  } catch (e) {
+    console.warn('SmartTag: bootstrap from storage failed', e);
+  }
+}
+
 // Handle form submissions
 document.querySelector('form.search').addEventListener('submit', async function(e) {
     e.preventDefault();
     const searchInput = this.querySelector('input[name="q"]');
-    let query = searchInput.value; // Get the raw query string
-    // Always split the query into an array of tags
-    let queryArray = query.split(/\s+/).filter(tag => tag.length > 0).map(tag => tag.toLowerCase());
+    let raw = (searchInput.value || '').trim();
+
+    const smartTagEnabled = await GM.getValue('smartTagEnabled', true);
     const mustAddTagsEnabled = await GM.getValue('mustAddTagsEnabled', false);
-const mustAddTags = (await GM.getValue('mustAddTags', [])).map(tag => tag.toLowerCase());
-if (mustAddTagsEnabled) {
-        queryArray = [...new Set([...queryArray, ...mustAddTags])];
+    const mustAddTags = (await GM.getValue('mustAddTags', [])).map(tag => tag.toLowerCase());
+    if (typeof taxonomyManager !== 'undefined') {
+        await taxonomyManager.ensureLoaded();
     }
-    query = queryArray.join(' ');
-    window.location.href = `/search/?q=${encodeURIComponent(query)}`;
+
+    function isLanguage(str) {
+        const s = str.toLowerCase();
+        return s === 'english' || s === 'japanese' || s === 'chinese';
+    }
+
+    let finalQuery = raw;
+
+    if (smartTagEnabled && raw && !/[":]/.test(raw)) {
+        function toAdvancedToken(tokenRaw) {
+            const t = tokenRaw.trim();
+            if (!t) return null;
+            if (isLanguage(t)) return `language:"${t.toLowerCase()}"`;
+            if (typeof taxonomyManager !== 'undefined') {
+                const ns = taxonomyManager.getTypeForName(t);
+                if (ns) return `${ns}:"${t}"`;
+            }
+            return `tag:"${t}"`;
+        }
+        function tokensFromGroup(groupContent) {
+            // Prefer explicit separators if provided (comma, pipe, semicolon)
+            const separated = groupContent.split(/[|,;]+/).map(s => s.trim()).filter(Boolean);
+            if (separated.length > 1) {
+                return separated.map(toAdvancedToken).filter(Boolean);
+            }
+            const words = groupContent.trim().split(/\s+/).filter(Boolean);
+            // Heuristic: if words form pairs with repeated anchor (e.g., "mind control mind break")
+            if (words.length >= 4 && words.length % 2 === 0) {
+                const anchor = words[0].toLowerCase();
+                let pairs = true;
+                for (let i = 0; i < words.length; i += 2) {
+                    if (i > 0 && words[i].toLowerCase() !== anchor) { pairs = false; break; }
+                }
+                if (pairs) {
+                    const phrases = [];
+                    for (let i = 0; i < words.length; i += 2) {
+                        phrases.push(`${words[i]} ${words[i+1]}`);
+                    }
+                    return phrases.map(toAdvancedToken).filter(Boolean);
+                }
+            }
+            // Fallback: treat each word as its own token
+            return words.map(toAdvancedToken).filter(Boolean);
+        }
+        const advTokens = [];
+        let i = 0;
+        while (i < raw.length) {
+            if (raw[i] === '(') {
+                let j = i + 1, depth = 1;
+                while (j < raw.length && depth > 0) {
+                    if (raw[j] === '(') depth++;
+                    else if (raw[j] === ')') depth--;
+                    j++;
+                }
+                const content = raw.slice(i + 1, j - 1);
+                advTokens.push(...tokensFromGroup(content));
+                i = j;
+            } else {
+                // accumulate plain segment until '(' and apply phrase dictionary
+                let start = i;
+                while (i < raw.length && raw[i] !== '(') i++;
+                const segment = raw.slice(start, i);
+                const words = segment.trim().split(/\s+/).filter(Boolean);
+                // Build sets from learned data
+                const knownMulti = (await GM.getValue('knownMultiwordTags', [])).map(s => s.toLowerCase());
+                const phraseSet = new Set(knownMulti);
+                const knownArtists = (await GM.getValue('knownArtists', [])).map(s => s.toLowerCase());
+                const artistSet = new Set(knownArtists);
+                let k = 0;
+                while (k < words.length) {
+                    let matched = false;
+                    // prefer longer phrases first
+                    for (let n = Math.min(3, words.length - k); n >= 2; n--) {
+                        const rawPhrase = words.slice(k, k + n).join(' ');
+                        const phrase = rawPhrase.toLowerCase();
+                        if (artistSet.has(phrase)) {
+                            const adv = `artist:"${rawPhrase}"`;
+                            advTokens.push(adv);
+                            k += n;
+                            matched = true;
+                            break;
+                        }
+                        if (phraseSet.has(phrase)) {
+                            const adv = toAdvancedToken(rawPhrase);
+                            if (adv) advTokens.push(adv);
+                            k += n;
+                            matched = true;
+                            break;
+                        }
+                    }
+                    if (!matched) {
+                        const wRaw = words[k];
+                        const w = wRaw.toLowerCase();
+                        let adv;
+                        if (artistSet.has(w)) {
+                            adv = `artist:"${wRaw}"`;
+                        } else {
+                            adv = toAdvancedToken(wRaw);
+                        }
+                        if (adv) advTokens.push(adv);
+                        k++;
+                    }
+                }
+            }
+            while (i < raw.length && /\s/.test(raw[i])) i++;
+        }
+
+        // Deduplicate across auto-advanced and must-add
+        const seen = new Set();
+        const normalized = s => s.toLowerCase();
+        const uniqueAdvTokens = [];
+        for (const adv of advTokens) {
+            const key = normalized(adv);
+            if (!seen.has(key)) { seen.add(key); uniqueAdvTokens.push(adv); }
+        }
+
+        if (mustAddTagsEnabled && mustAddTags.length > 0) {
+            for (const t of mustAddTags) {
+                let adv;
+                const m = t.match(/^([a-z]+):(.*)$/i);
+                if (m) {
+                    const ns = m[1].toLowerCase();
+                    const val = m[2].trim().replace(/^\"(.*)\"$/, '$1');
+                    adv = `${ns}:"${val}"`;
+                } else {
+                    adv = isLanguage(t) ? `language:"${t}"` : `tag:"${t}"`;
+                }
+                const key = normalized(adv);
+                if (!seen.has(key)) { seen.add(key); uniqueAdvTokens.push(adv); }
+            }
+        }
+
+        finalQuery = uniqueAdvTokens.join(' ');
+    } else {
+        // Legacy behavior: merge plain tokens with Must Add Tags
+        let queryArray = raw.split(/\s+/).filter(tag => tag.length > 0).map(tag => tag.toLowerCase());
+        if (mustAddTagsEnabled && mustAddTags.length > 0) {
+            queryArray = [...new Set([...queryArray, ...mustAddTags])];
+        }
+        finalQuery = queryArray.join(' ');
+    }
+
+    window.location.href = `/search/?q=${encodeURIComponent(finalQuery)}`;
 });
 
 
@@ -8748,6 +9043,11 @@ XMLHttpRequest.prototype.open = function(method, url) {
         try {
             const urlObj = new URL(url, window.location.origin);
             let query = urlObj.searchParams.get('q') || '';
+            const isAdvanced = /\w+:"/.test(query);
+            if (isAdvanced) {
+                // Skip Must-Add-Tags injection to avoid breaking advanced queries
+                return originalOpen.apply(xhr, args);
+            }
             let queryArray = query.split(/\s+/).filter(tag => tag.length > 0).map(tag => tag.toLowerCase());
             
             // Fetch mustAddTags asynchronously for XHR as well
@@ -8808,6 +9108,10 @@ class OnlineDataSync {
         this.publicConfig = {
             url: 'https://api.jsonstorage.net/v1/json/d206ce58-9543-48db-a5e4-997cfc745ef3/6629f339-5696-4b2e-b63d-b5d092dc46f6',
             apiKey: '2f9e71c8-be66-4623-a2cc-a6f05e958563'
+        };
+        this.taxonomyConfig = {
+            url: 'https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/nhentai_taxonomy.json',
+            apiKey: ''
         };
     }
 
@@ -9001,6 +9305,140 @@ class OnlineDataSync {
         }
 
         return [];
+    }
+}
+
+// Taxonomy Manager Implementation
+class TaxonomyManager {
+    constructor(syncSystem) {
+        this.syncSystem = syncSystem;
+        this.byType = { artist: new Set(), tag: new Set(), parody: new Set(), group: new Set(), character: new Set() };
+        this.lastLoadedAt = null;
+    }
+
+    normalizeName(name) {
+        return String(name || '').toLowerCase().replace(/-/g, ' ').trim();
+    }
+
+    applyCompressed(base64) {
+        try {
+            const json = LZString.decompressFromBase64(base64);
+            const payload = JSON.parse(json);
+            const byType = { artist: new Set(), tag: new Set(), parody: new Set(), group: new Set(), character: new Set() };
+            if (payload && Array.isArray(payload.items)) {
+                for (const it of payload.items) {
+                    const type = String(it.type || '').toLowerCase();
+                    const name = this.normalizeName(it.name);
+                    if (name && byType[type]) byType[type].add(name);
+                }
+            } else if (payload && payload.byType && typeof payload.byType === 'object') {
+                for (const [type, arr] of Object.entries(payload.byType)) {
+                    const t = String(type || '').toLowerCase();
+                    const names = Array.isArray(arr) ? arr : [];
+                    if (!byType[t]) continue;
+                    for (const n of names) {
+                        const name = this.normalizeName(n);
+                        if (name) byType[t].add(name);
+                    }
+                }
+            }
+            this.byType = byType;
+            this.lastLoadedAt = Date.now();
+        } catch (e) {
+            console.warn('TaxonomyManager: decompress/apply failed', e);
+        }
+    }
+
+    async loadFromStorage() {
+        try {
+            const compressed = await GM.getValue('taxonomyCompressed', null);
+            if (compressed) {
+                this.applyCompressed(compressed);
+                return true;
+            }
+        } catch (e) {
+            console.warn('TaxonomyManager: loadFromStorage failed', e);
+        }
+        return false;
+    }
+
+    async ensureLoaded() {
+        if (this.lastLoadedAt) return true;
+        return await this.loadFromStorage();
+    }
+
+    async fetchIfStale(maxAgeMs = 24 * 60 * 60 * 1000) {
+        try {
+            const lastFetch = await GM.getValue('taxonomyLastFetch', 0);
+            const now = Date.now();
+            if (!lastFetch || (now - lastFetch) > maxAgeMs) {
+                const provider = this.syncSystem.providers.jsonstorage;
+                const config = this.syncSystem.taxonomyConfig || this.syncSystem.publicConfig;
+                const data = await provider.download(config);
+                let compressed = null;
+                let updatedAt = new Date().toISOString();
+
+                // Case 1: JSONStorage-style wrapper
+                if (data && data.taxonomy) {
+                    const tax = data.taxonomy;
+                    if (tax && tax.isCompressed && tax.compressedData) {
+                        compressed = tax.compressedData;
+                        updatedAt = tax.updated_at || updatedAt;
+                    } else if (tax && tax.byType) {
+                        // Convert plain payload to compressed for consistent caching
+                        try {
+                            compressed = LZString.compressToBase64(JSON.stringify(tax));
+                            updatedAt = tax.updated_at || updatedAt;
+                        } catch (e) {}
+                    }
+                }
+                // Case 2: Direct plain byType JSON (GitHub raw)
+                else if (data && data.byType) {
+                    try {
+                        compressed = LZString.compressToBase64(JSON.stringify(data));
+                        updatedAt = data.updated_at || updatedAt;
+                    } catch (e) {}
+                }
+
+                if (compressed) {
+                    await GM.setValue('taxonomyCompressed', compressed);
+                    await GM.setValue('taxonomyUpdatedAt', updatedAt);
+                    await GM.setValue('taxonomyLastFetch', now);
+                    this.applyCompressed(compressed);
+                    // Assimilate known artists from taxonomy
+                    try {
+                        const artistNames = Array.from(this.byType.artist);
+                        if (artistNames.length) {
+                            await addKnownArtists(artistNames);
+                        }
+                    } catch (e) {
+                        console.warn('TaxonomyManager: assimilate known artists failed', e);
+                    }
+                } else {
+                    // Fallback: still try to load any cached data
+                    await this.loadFromStorage();
+                }
+            } else {
+                // Not stale: load from storage
+                await this.loadFromStorage();
+            }
+        } catch (e) {
+            console.warn('TaxonomyManager: fetch failed', e);
+            // Load any cached data to avoid empty sets
+            await this.loadFromStorage();
+        }
+    }
+
+    getTypeForName(name) {
+        const n = this.normalizeName(name);
+        if (!n) return null;
+        // Prefer more specific namespaces first
+        if (this.byType.artist.has(n)) return 'artist';
+        if (this.byType.group.has(n)) return 'group';
+        if (this.byType.parody.has(n)) return 'parody';
+        if (this.byType.character.has(n)) return 'character';
+        if (this.byType.tag.has(n)) return 'tag';
+        return null;
     }
 }
 
@@ -9336,6 +9774,7 @@ class AutoSyncManager {
 // Initialize sync system
 const syncSystem = new OnlineDataSync();
 const autoSyncManager = new AutoSyncManager(syncSystem);
+const taxonomyManager = new TaxonomyManager(syncSystem);
 
 // Helper function to save data and trigger autosync
 async function setValueWithAutoSync(key, value) {
@@ -11199,6 +11638,8 @@ class AdvancedSearchSystem {
         if (pathParts.length < 3) return;
 
         const artistName = decodeURIComponent(pathParts[2]);
+        // Learn artist name when visiting artist page
+        try { addKnownArtists([artistName]); } catch (_) {}
         const searchUrl = this.buildTagSearchUrl('artist', artistName);
 
         this.addSearchButton('English + This Artist', searchUrl, 'Search for English galleries by this artist');
