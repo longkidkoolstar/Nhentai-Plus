@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      9.7.3
+// @version      9.7.4
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -22,7 +22,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "9.7.3";
+const CURRENT_VERSION = "9.7.4";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -10093,31 +10093,77 @@ class MarkAsReadSystem {
      * Check for 'justRead' key in localStorage, apply, and remove it.
      */
     async checkAndApplyJustRead() {
-        const justReadData = localStorage.getItem('justRead');
-        if (justReadData) {
+        const parseGalleries = (raw) => {
             try {
-                const galleries = JSON.parse(justReadData);
-                if (Array.isArray(galleries)) {
-                    let markedCount = 0;
-                    for (const gallery of galleries) {
-                        if (gallery && gallery.id && !this.readGalleries.has(gallery.id)) {
-                            this.readGalleries.add(gallery.id);
-                            await this.cacheGalleryData(gallery.id, gallery.title, gallery.coverImageUrl);
-                            markedCount++;
-                        }
-                    }
-                    if (markedCount > 0) {
-                        await this.saveReadGalleries();
-                        this.applyReadStatus(); // Re-apply styles to reflect new reads
-                        this.showAutoMarkNotification(markedCount);
-                    }
+                const data = JSON.parse(raw);
+                return Array.isArray(data) ? data : null;
+            } catch (err) {
+                console.error('Error parsing justRead data from localStorage:', err);
+                return null;
+            }
+        };
+
+        const isPlaceholderMeta = (g) => {
+            if (!g) return true;
+            const cover = String(g.coverImageUrl || '');
+            const language = String(g.language || '');
+            const title = String(g.title || '');
+            return cover.startsWith('data:image/svg') && language === 'Unknown' && title === 'Unknown';
+        };
+
+        const justReadData = localStorage.getItem('justRead');
+        if (!justReadData) return;
+
+        let galleries = parseGalleries(justReadData);
+        if (!galleries) {
+            // Invalid JSON; clean up to avoid repeated errors
+            localStorage.removeItem('justRead');
+            return;
+        }
+
+        // If any gallery has placeholder metadata, wait for external script to populate
+        if (galleries.some(isPlaceholderMeta)) {
+            // Inform the user we're fetching missing metadata
+            this.showMarkNotification('Fetching metadata to mark as read...', 'info');
+
+            const intervalMs = 2000; // check every 2 seconds
+            // Keep checking until metadata is populated; do not delete justRead early
+            while (true) {
+                await new Promise(r => setTimeout(r, intervalMs));
+                const updatedRaw = localStorage.getItem('justRead');
+                if (!updatedRaw) {
+                    // External script removed it; stop here
+                    return;
                 }
-            } catch (error) {
-                console.error('Error parsing justRead data from localStorage:', error);
-            } finally {
-                localStorage.removeItem('justRead'); // Always remove after processing
+                const updated = parseGalleries(updatedRaw);
+                if (!updated) {
+                    // If parsing fails, keep waiting
+                    continue;
+                }
+                if (updated.every(g => !isPlaceholderMeta(g))) {
+                    galleries = updated;
+                    break;
+                }
             }
         }
+
+        // Process and mark as read
+        let markedCount = 0;
+        for (const gallery of galleries) {
+            if (gallery && gallery.id && !this.readGalleries.has(gallery.id)) {
+                this.readGalleries.add(gallery.id);
+                await this.cacheGalleryData(gallery.id, gallery.title, gallery.coverImageUrl);
+                markedCount++;
+            }
+        }
+        if (markedCount > 0) {
+            await this.saveReadGalleries();
+            this.applyReadStatus(); // Re-apply styles to reflect new reads
+            this.showAutoMarkNotification(markedCount);
+        }
+
+        // Remove once processed successfully
+        localStorage.removeItem('justRead');
     }
 
     /**
@@ -10598,7 +10644,9 @@ class MarkAsReadSystem {
      */
     showMarkNotification(message, type = 'success') {
         const notification = document.createElement('div');
-        const backgroundColor = type === 'error' ? 'rgba(244, 67, 54, 0.9)' : 'rgba(46, 125, 50, 0.9)';
+        const backgroundColor = type === 'error'
+            ? 'rgba(244, 67, 54, 0.9)'
+            : (type === 'info' ? 'rgba(33, 150, 243, 0.9)' : 'rgba(46, 125, 50, 0.9)');
 
         notification.style.cssText = `
             position: fixed;
@@ -10626,7 +10674,7 @@ class MarkAsReadSystem {
             notification.style.transform = 'translateX(100px)';
             notification.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
             setTimeout(() => notification.remove(), 300);
-        }, type === 'error' ? 4000 : 2000);
+        }, type === 'error' ? 4000 : (type === 'info' ? 3000 : 2000));
     }
 
     /**

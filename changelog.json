@@ -1,4 +1,13 @@
 {
+  "9.7.4": {
+    "date": "2025-10-25",
+    "changes": [
+      "feat(mark-as-read): defer marking when placeholder metadata present",
+      "feat(mark-as-read): poll justRead every 2 seconds until metadata is fetched",
+      "feat(ui): show info notification while fetching metadata for read marking",
+      "chore(version): bump userscript version to 9.7.4"
+    ]
+  },
   "9.7.3": {
     "date": "2025-10-24",
     "changes": [
