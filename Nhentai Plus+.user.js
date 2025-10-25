@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      9.7.1
+// @version      9.7.2
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -22,7 +22,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "9.7.1";
+const CURRENT_VERSION = "9.7.2";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -8857,11 +8857,10 @@ setTimeout(async function() {
      // Set up background processing regardless of current page
      setupBackgroundProcessing();
 
-    // Bootstrap learned multiword tags from any stored data
-    bootstrapKnownMultiwordTagsFromStorage();
+    // Removed: bootstrapKnownMultiwordTagsFromStorage(); (Smart Tag now relies on GitHub taxonomy)
 
     // Fetch taxonomy daily and assimilate known artists
-    if (typeof taxonomyManager !== 'undefined') {
+    if (typeof taxonomyManager !== 'undefined' && !taxonomyManager.isMobile) {
       taxonomyManager.fetchIfStale().catch(e => console.warn('Taxonomy fetch failed', e));
     }
 
@@ -8880,104 +8879,15 @@ setTimeout(async function() {
 const originalOpen = XMLHttpRequest.prototype.open;
 
 async function addKnownMultiwordTags(tagsArray) {
-  try {
-    const norm = t => t.trim().toLowerCase().replace(/-/g, ' ');
-    const incoming = (tagsArray || []).map(norm).filter(t => t && /\s/.test(t));
-    let known = await GM.getValue('knownMultiwordTags', []);
-    const set = new Set(known);
-    let changed = false;
-    for (const t of incoming) {
-      if (!set.has(t)) { set.add(t); changed = true; }
-    }
-    if (changed) {
-      const updated = Array.from(set);
-      if (updated.length > 2000) updated.splice(0, updated.length - 2000);
-      await GM.setValue('knownMultiwordTags', updated);
-    }
-  } catch (e) {
-    console.error('SmartTag: failed to update known multiword tags', e);
-  }
+  // No-op: Smart Tag relies solely on GitHub taxonomy
 }
 
 async function addKnownArtists(items) {
-  try {
-    const names = [];
-    for (const it of (items || [])) {
-      if (!it) continue;
-      if (typeof it === 'string') {
-        const s = it.trim();
-        if (s) names.push(s);
-      } else if (typeof it === 'object') {
-        const type = (it.type || it.ns || it.namespace || '').toLowerCase();
-        const href = (it.href || it.url || it.link || '');
-        if (type === 'artist' || (typeof href === 'string' && href.includes('/artist/'))) {
-          const name = (it.name || it.text || it.value || '').trim();
-          if (name) names.push(name);
-        }
-      }
-    }
-    if (names.length === 0) return;
-    const norm = s => s.toLowerCase().replace(/-/g, ' ').trim();
-    const incoming = names.map(norm).filter(Boolean);
-    let known = await GM.getValue('knownArtists', []);
-    const set = new Set(known);
-    let changed = false;
-    for (const n of incoming) {
-      if (!set.has(n)) { set.add(n); changed = true; }
-    }
-    if (changed) {
-      const updated = Array.from(set);
-      if (updated.length > 2000) updated.splice(0, updated.length - 2000);
-      await GM.setValue('knownArtists', updated);
-    }
-  } catch (e) {
-    console.warn('SmartTag: failed to update known artists', e);
-  }
+  // No-op: Smart Tag relies solely on GitHub taxonomy
 }
 
 async function bootstrapKnownMultiwordTagsFromStorage() {
-  try {
-    let keys = [];
-    if (typeof GM.listValues === 'function') {
-      keys = await GM.listValues();
-    } else if (typeof GM_listValues === 'function') {
-      try { keys = GM_listValues(); } catch (_) { keys = []; }
-    }
-    const batches = [];
-    const artistBatches = [];
-    for (const key of keys) {
-      if (key.startsWith('tags_')) {
-        const arr = await GM.getValue(key, null);
-        if (Array.isArray(arr)) batches.push(arr);
-      } else if (key.startsWith('manga_')) {
-        const obj = await GM.getValue(key, null);
-        if (obj && Array.isArray(obj.tags)) {
-          batches.push(obj.tags);
-          const artistNames = obj.tags
-            .filter(t => typeof t === 'string' && /^artist:"/.test(t))
-            .map(t => t.replace(/^artist:"(.*)"$/, '$1'));
-          if (artistNames.length) artistBatches.push(artistNames);
-        }
-      } else if (key === 'mustAddTags') {
-        const arr = await GM.getValue(key, []);
-        if (Array.isArray(arr)) {
-          batches.push(arr);
-          const artistNames = arr
-            .filter(s => typeof s === 'string' && /^artist:/.test(s))
-            .map(s => s.replace(/^artist:"?([^"]+)"?$/, '$1').trim());
-          if (artistNames.length) artistBatches.push(artistNames);
-        }
-      }
-    }
-    for (const list of batches) {
-      await addKnownMultiwordTags(list);
-    }
-    for (const artists of artistBatches) {
-      await addKnownArtists(artists);
-    }
-  } catch (e) {
-    console.warn('SmartTag: bootstrap from storage failed', e);
-  }
+  // No-op: legacy GM tag bootstrap removed
 }
 
 // Handle form submissions
@@ -9128,7 +9038,7 @@ document.querySelector('form.search').addEventListener('submit', async function(
                 const overrides = await GM.getValue('smartTagOverrides', {});
                 const ovType = overrides[norm];
                 if (ovType) return `${ovType}:"${t}"`;
-                const types = taxonomyManager.getTypesForName(t) || [];
+                const types = await taxonomyManager.getTypesForNameAsync(t);
                 if (types.length === 1) return `${types[0]}:"${t}"`;
                 if (types.length > 1) {
                     const chosen = await promptForAmbiguity(t, types);
@@ -9174,9 +9084,8 @@ document.querySelector('form.search').addEventListener('submit', async function(
             for (const wRaw of words) {
                 const w = wRaw.toLowerCase();
                 let adv;
-                const knownArtists = (await GM.getValue('knownArtists', [])).map(s => s.toLowerCase());
-                const artistSet = new Set(knownArtists);
-                if (artistSet.has(w)) {
+                const isArtist = (typeof taxonomyManager !== 'undefined') ? await taxonomyManager.isArtistName(wRaw) : false;
+                if (isArtist) {
                     adv = `artist:"${wRaw}"`;
                 } else {
                     adv = await toAdvancedToken(wRaw);
@@ -9205,26 +9114,24 @@ document.querySelector('form.search').addEventListener('submit', async function(
                 while (i < raw.length && raw[i] !== '(') i++;
                 const segment = raw.slice(start, i);
                 const words = segment.trim().split(/\s+/).filter(Boolean);
-                // Build sets from learned data
-                const knownMulti = (await GM.getValue('knownMultiwordTags', [])).map(s => s.toLowerCase());
-                const phraseSet = new Set(knownMulti);
-                const knownArtists = (await GM.getValue('knownArtists', [])).map(s => s.toLowerCase());
-                const artistSet = new Set(knownArtists);
+                // Use GitHub taxonomy exclusively
+                const tm = (typeof taxonomyManager !== 'undefined') ? taxonomyManager : null;
                 let k = 0;
                 while (k < words.length) {
                     let matched = false;
                     // prefer longer phrases first
                     for (let n = Math.min(3, words.length - k); n >= 2; n--) {
                         const rawPhrase = words.slice(k, k + n).join(' ');
-                        const phrase = rawPhrase.toLowerCase();
-                        if (artistSet.has(phrase)) {
-                            const adv = `artist:"${rawPhrase}"`;
-                            advTokens.push(adv);
+                        const normPhrase = rawPhrase.toLowerCase().replace(/-/g,' ').trim();
+                        const isArtistPhrase = tm ? await tm.isArtistName(rawPhrase) : false;
+                        if (isArtistPhrase) {
+                            advTokens.push(`artist:"${rawPhrase}"`);
                             k += n;
                             matched = true;
                             break;
                         }
-                        if (phraseSet.has(phrase)) {
+                        const types = tm ? await tm.getTypesForNameAsync(rawPhrase) : [];
+                        if (types && types.length > 0) {
                             const adv = await toAdvancedToken(rawPhrase);
                             if (adv) advTokens.push(adv);
                             k += n;
@@ -9234,9 +9141,9 @@ document.querySelector('form.search').addEventListener('submit', async function(
                     }
                     if (!matched) {
                         const wRaw = words[k];
-                        const w = wRaw.toLowerCase();
+                        const isArtist = tm ? await tm.isArtistName(wRaw) : false;
                         let adv;
-                        if (artistSet.has(w)) {
+                        if (isArtist) {
                             adv = `artist:"${wRaw}"`;
                         } else {
                             adv = await toAdvancedToken(wRaw);
@@ -9570,6 +9477,11 @@ class TaxonomyManager {
         this.syncSystem = syncSystem;
         this.byType = { artist: new Set(), tag: new Set(), parody: new Set(), group: new Set(), character: new Set() };
         this.lastLoadedAt = null;
+        this.isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        // Mobile on-demand cache (short-lived, avoids holding full taxonomy long-term)
+        this.mobileByTypeCache = null; // { artist: string[], group: string[], parody: string[], character: string[], tag: string[] }
+        this.mobileByTypeCacheAt = 0;
+        this.mobileByTypeCacheTTL = 60000; // 60s TTL to minimize memory footprint
     }
 
     normalizeName(name) {
@@ -9619,6 +9531,7 @@ class TaxonomyManager {
     }
 
     async ensureLoaded() {
+        if (this.isMobile) return true;
         if (this.lastLoadedAt) return true;
         await this.fetchIfStale();
         return !!this.lastLoadedAt;
@@ -9660,6 +9573,62 @@ class TaxonomyManager {
     }
             /* removed old caching logic for taxonomy; now fetches directly from GitHub and applies in-memory */
 
+    async getTypesForNameAsync(name) {
+        const n = this.normalizeName(name);
+        if (!n) return [];
+        if (!this.isMobile) {
+            return this.getTypesForName(name);
+        }
+        try {
+            const provider = this.syncSystem.providers.jsonstorage;
+            const config = this.syncSystem.taxonomyConfig || this.syncSystem.publicConfig;
+            let byTypeObj = null;
+            const now = Date.now();
+            // Use short-lived cache if fresh
+            if (this.mobileByTypeCache && (now - this.mobileByTypeCacheAt) < this.mobileByTypeCacheTTL) {
+                byTypeObj = this.mobileByTypeCache;
+            } else {
+                const data = await provider.download(config);
+                if (data && typeof data === 'object') {
+                    if (data.byType && typeof data.byType === 'object') {
+                        byTypeObj = data.byType;
+                    } else if (data.taxonomy && typeof data.taxonomy === 'object') {
+                        const tax = data.taxonomy;
+                        if (tax.isCompressed && tax.compressedData) {
+                            try {
+                                const json = LZString.decompressFromBase64(tax.compressedData);
+                                const payload = JSON.parse(json);
+                                if (payload && payload.byType && typeof payload.byType === 'object') {
+                                    byTypeObj = payload.byType;
+                                }
+                            } catch (e) {
+                                console.warn('TaxonomyManager: decompress taxonomy failed', e);
+                            }
+                        } else if (tax.byType && typeof tax.byType === 'object') {
+                            byTypeObj = tax.byType;
+                        }
+                    }
+                }
+                // Store short-lived cache to reduce repeated downloads within a minute
+                if (byTypeObj) {
+                    this.mobileByTypeCache = byTypeObj;
+                    this.mobileByTypeCacheAt = now;
+                }
+            }
+            if (!byTypeObj) return [];
+            const types = [];
+            const test = (arr) => Array.isArray(arr) && arr.some(s => this.normalizeName(s) === n);
+            if (test(byTypeObj.artist)) types.push('artist');
+            if (test(byTypeObj.group)) types.push('group');
+            if (test(byTypeObj.parody)) types.push('parody');
+            if (test(byTypeObj.character)) types.push('character');
+            if (test(byTypeObj.tag)) types.push('tag');
+            return types;
+        } catch (_) {
+            return [];
+        }
+    }
+
     getTypesForName(name) {
         const n = this.normalizeName(name);
         if (!n) return [];
@@ -9672,6 +9641,16 @@ class TaxonomyManager {
         return types;
     }
 
+    async getTypeForNameAsync(name) {
+        const types = await this.getTypesForNameAsync(name);
+        if (types.includes('artist')) return 'artist';
+        if (types.includes('group')) return 'group';
+        if (types.includes('parody')) return 'parody';
+        if (types.includes('character')) return 'character';
+        if (types.includes('tag')) return 'tag';
+        return null;
+    }
+
     getTypeForName(name) {
         const n = this.normalizeName(name);
         if (!n) return null;
@@ -9682,6 +9661,11 @@ class TaxonomyManager {
         if (this.byType.character.has(n)) return 'character';
         if (this.byType.tag.has(n)) return 'tag';
         return null;
+    }
+
+    async isArtistName(name) {
+        const type = await this.getTypeForNameAsync(name);
+        return type === 'artist';
     }
 }
 

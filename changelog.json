@@ -1,4 +1,14 @@
 {
+  "9.7.2": {
+    "date": "2025-10-24",
+    "changes": [
+      "perf(mobile): disable taxonomy prefetch and preload on mobile devices",
+      "feat(taxonomy): async on-demand lookups for smart tags on mobile",
+      "perf(taxonomy): short-lived mobile cache (60s TTL) to reduce repeated downloads",
+      "fix(smart-tags): replace direct artist checks with async helper",
+      "chore(version): bump userscript version to 9.7.2"
+    ]
+  },
   "9.7.1": {
     "date": "2025-10-24",
     "changes": [
