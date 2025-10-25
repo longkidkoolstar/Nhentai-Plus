@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      9.7.2
+// @version      9.7.2.1
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -22,7 +22,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "9.7.2";
+const CURRENT_VERSION = "9.7.2.1";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -9167,14 +9167,17 @@ document.querySelector('form.search').addEventListener('submit', async function(
 
         if (mustAddTagsEnabled && mustAddTags.length > 0) {
             for (const t of mustAddTags) {
+                const traw = String(t || '').trim();
+                if (!traw) continue; // skip empty/whitespace-only must-add entries
                 let adv;
-                const m = t.match(/^([a-z]+):(.*)$/i);
+                const m = traw.match(/^([a-z]+):(.*)$/i);
                 if (m) {
                     const ns = m[1].toLowerCase();
-                    const val = m[2].trim().replace(/^\"(.*)\"$/, '$1');
+                    const val = String(m[2] || '').trim().replace(/^\"(.*)\"$/, '$1').trim();
+                    if (!val) continue; // avoid ns:"" tokens
                     adv = `${ns}:"${val}"`;
                 } else {
-                    adv = isLanguage(t) ? `language:"${t}"` : `tag:"${t}"`;
+                    adv = isLanguage(traw) ? `language:"${traw}"` : `tag:"${traw}"`;
                 }
                 const key = normalized(adv);
                 if (!seen.has(key)) { seen.add(key); uniqueAdvTokens.push(adv); }

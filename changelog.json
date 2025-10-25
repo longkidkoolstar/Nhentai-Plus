@@ -1,4 +1,12 @@
 {
+  "9.7.2.1": {
+    "date": "2025-10-24",
+    "changes": [
+      "fix(search): prevent spaces and empty tokens becoming advanced tags",
+      "fix(must-add): skip empty namespace values to avoid tag:\"\"",
+      "chore(version): bump userscript version to 9.7.2.1"
+    ]
+  },
   "9.7.2": {
     "date": "2025-10-24",
     "changes": [
