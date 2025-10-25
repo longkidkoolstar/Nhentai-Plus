@@ -1,4 +1,13 @@
 {
+  "9.7.3": {
+    "date": "2025-10-24",
+    "changes": [
+      "fix(smart-tags): only format as advanced when taxonomy or language matches",
+      "fix(tokenizer): preserve original tokens when not matched by taxonomy",
+      "feat(title-guard): skip single-word auto-formatting for likely titles (>=5 words or Japanese particles like ga/de/no/ni/wa)",
+      "chore(version): bump userscript version to 9.7.3"
+    ]
+  },
   "9.7.2.1": {
     "date": "2025-10-24",
     "changes": [

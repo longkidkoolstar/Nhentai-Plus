@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      9.7.2.1
+// @version      9.7.3
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -22,7 +22,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "9.7.2.1";
+const CURRENT_VERSION = "9.7.3";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -3341,7 +3341,7 @@ $('div.container').append(settingsHtml);
             const blacklistedTags = await GM.getValue('blacklistedTags', []);
             const mustAddTagsEnabled = await GM.getValue('mustAddTagsEnabled', false);
             const mustAddTags = (await GM.getValue('mustAddTags', [])).map(tag => tag.toLowerCase());
-            const smartTagEnabled = await GM.getValue('smartTagEnabled', true);
+            const smartTagEnabled = await GM.getValue('smartTagEnabled', false);
             const findAltMangaThumbnailEnabled = await GM.getValue('findAltMangaThumbnailEnabled', true);
             const openInNewTabEnabled = await GM.getValue('openInNewTabEnabled', true);
             const mangaBookMarkingButtonEnabled = await GM.getValue('mangaBookMarkingButtonEnabled', true);
@@ -8911,6 +8911,10 @@ document.querySelector('form.search').addEventListener('submit', async function(
     let finalQuery = raw;
 
     if (smartTagEnabled && raw && !/[":]/.test(raw)) {
+        const wordsAll = raw.trim().split(/\s+/).filter(Boolean);
+        const jpParticles = new Set(["ga","de","no","ni","wa","to","e","o","ya","kara","made","shite","suru"]);
+        const hasParticles = wordsAll.some(w => jpParticles.has(w.toLowerCase()));
+        const likelyTitle = wordsAll.length >= 5 || hasParticles;
         async function promptForAmbiguity(name, types) {
             return new Promise(async (resolve) => {
                 const existing = document.getElementById('smarttag-ambiguity-modal');
@@ -9045,7 +9049,7 @@ document.querySelector('form.search').addEventListener('submit', async function(
                     if (chosen) return `${chosen}:"${t}"`;
                 }
             }
-            return `tag:"${t}"`;
+            return null;
         }
         async function tokensFromGroup(groupContent) {
             // Prefer explicit separators if provided (comma, pipe, semicolon)
@@ -9054,7 +9058,7 @@ document.querySelector('form.search').addEventListener('submit', async function(
                 const mapped = [];
                 for (const s of separated) {
                     const adv = await toAdvancedToken(s);
-                    if (adv) mapped.push(adv);
+                    mapped.push(adv || s);
                 }
                 return mapped;
             }
@@ -9082,6 +9086,7 @@ document.querySelector('form.search').addEventListener('submit', async function(
             // Fallback: treat each word as its own token
             const mapped = [];
             for (const wRaw of words) {
+                if (likelyTitle) { mapped.push(wRaw); continue; }
                 const w = wRaw.toLowerCase();
                 let adv;
                 const isArtist = (typeof taxonomyManager !== 'undefined') ? await taxonomyManager.isArtistName(wRaw) : false;
@@ -9090,7 +9095,7 @@ document.querySelector('form.search').addEventListener('submit', async function(
                 } else {
                     adv = await toAdvancedToken(wRaw);
                 }
-                if (adv) mapped.push(adv);
+                mapped.push(adv || wRaw);
             }
             return mapped;
         }
@@ -9133,7 +9138,7 @@ document.querySelector('form.search').addEventListener('submit', async function(
                         const types = tm ? await tm.getTypesForNameAsync(rawPhrase) : [];
                         if (types && types.length > 0) {
                             const adv = await toAdvancedToken(rawPhrase);
-                            if (adv) advTokens.push(adv);
+                            advTokens.push(adv || rawPhrase);
                             k += n;
                             matched = true;
                             break;
@@ -9141,6 +9146,11 @@ document.querySelector('form.search').addEventListener('submit', async function(
                     }
                     if (!matched) {
                         const wRaw = words[k];
+                        if (typeof likelyTitle !== 'undefined' && likelyTitle) {
+                            advTokens.push(wRaw);
+                            k++;
+                            continue;
+                        }
                         const isArtist = tm ? await tm.isArtistName(wRaw) : false;
                         let adv;
                         if (isArtist) {
@@ -9148,7 +9158,7 @@ document.querySelector('form.search').addEventListener('submit', async function(
                         } else {
                             adv = await toAdvancedToken(wRaw);
                         }
-                        if (adv) advTokens.push(adv);
+                        advTokens.push(adv || wRaw);
                         k++;
                     }
                 }
