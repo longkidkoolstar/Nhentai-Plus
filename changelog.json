@@ -1,4 +1,14 @@
 {
+  "9.7.1": {
+    "date": "2025-10-24",
+    "changes": [
+      "fix(perf): stop storing taxonomy in GM storage",
+      "feat(taxonomy): use GitHub raw taxonomy directly",
+      "cleanup(taxonomy): purge old cached taxonomy keys on upgrade",
+      "fix(ui): ambiguity prompt modal styled to match dark theme",
+      "chore(version): bump userscript version to 9.7.1"
+    ]
+  },
   "9.7.0": {
     "date": "2025-10-24",
     "changes": [

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      9.7.0
+// @version      9.7.1
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -22,7 +22,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "9.7.0";
+const CURRENT_VERSION = "9.7.1";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -39,6 +39,15 @@ const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai
                     log.changes.map(line => `• ${line}`).join("\n");
 
         showChangelogPopup(msg);
+      }
+
+      // Purge old taxonomy keys from GM storage on version update
+      try {
+        await GM.deleteValue('taxonomyCompressed');
+        await GM.deleteValue('taxonomyUpdatedAt');
+        await GM.deleteValue('taxonomyLastFetch');
+      } catch (e) {
+        console.warn('Taxonomy: GM purge failed', e);
       }
 
       await GM.setValue("lastSeenVersion", CURRENT_VERSION);
@@ -2893,6 +2902,25 @@ label:hover .tooltip {
                 </div>
 
                 <button type="button" id="resetTagSettings" class="btn-secondary">Reset to Defaults</button>
+
+                <div class="tag-list-section">
+                    <h4>Smart Tag Overrides</h4>
+                    <div id="smart-tag-overrides">
+                        <div id="overrides-list"></div>
+                        <div class="override-add-controls" style="margin-top:10px; display:flex; gap:8px; align-items:center;">
+                            <input type="text" id="override-name-input" placeholder="Enter tag name" style="flex:1; min-width:200px;">
+                            <select id="override-type-select">
+                                <option value="artist">artist</option>
+                                <option value="group">group</option>
+                                <option value="parody">parody</option>
+                                <option value="character">character</option>
+                                <option value="tag">tag</option>
+                            </select>
+                            <button type="button" id="add-override-btn" class="btn-secondary">Add Override</button>
+                        </div>
+                        <p style="font-size:12px; color:#aaa; margin-top:8px;">When a name matches multiple types (e.g., tag vs group), choose a default here. These are used to skip ambiguity prompts.</p>
+                    </div>
+                </div>
             </div>
         </div>
         <label>
@@ -3366,6 +3394,7 @@ $('div.container').append(settingsHtml);
             const blacklistTagsList = await GM.getValue('blacklistTagsList', ['scat', 'guro', 'vore', 'ryona', 'snuff']);
             const warningTagsList = await GM.getValue('warningTagsList', ['ntr', 'netorare', 'cheating', 'ugly bastard', 'mind break']);
             const favoriteTagsList = await GM.getValue('favoriteTagsList', []);
+            const smartTagOverrides = await GM.getValue('smartTagOverrides', {});
 
 
             $('#findSimilarEnabled').prop('checked', findSimilarEnabled);
@@ -3439,6 +3468,9 @@ $('div.container').append(settingsHtml);
             $('#blacklistTags').val(blacklistTagsList.join(', '));
             $('#warningTags').val(warningTagsList.join(', '));
             $('#favoriteTags').val(favoriteTagsList.join(', '));
+            if (typeof renderOverridesList === 'function') {
+                renderOverridesList(smartTagOverrides);
+            }
 
             // Populate sync settings
             $('#publicSyncEnabled').prop('checked', publicSyncEnabled);
@@ -3978,6 +4010,80 @@ $('#findSimilarEnabled').on('change', function() {
                 $('#warningTags').val('ntr, netorare, cheating, ugly bastard, mind break');
                 $('#tagWarningEnabled').prop('checked', true);
             });
+
+            // Smart Tag Overrides management
+            async function getOverrides() {
+                try { return await GM.getValue('smartTagOverrides', {}); } catch (_) { return {}; }
+            }
+            async function setOverrides(obj) {
+                await GM.setValue('smartTagOverrides', obj || {});
+            }
+            function renderOverridesList(overrides) {
+                const container = document.getElementById('overrides-list');
+                if (!container) return;
+                container.innerHTML = '';
+                const entries = Object.entries(overrides || {}).sort((a,b)=>a[0].localeCompare(b[0]));
+                if (entries.length === 0) {
+                    container.innerHTML = '<p style="font-size:12px; color:#888;">No overrides set yet.</p>';
+                    return;
+                }
+                entries.forEach(([name, type]) => {
+                    const row = document.createElement('div');
+                    row.className = 'override-row';
+                    row.style.display = 'flex';
+                    row.style.alignItems = 'center';
+                    row.style.gap = '8px';
+                    row.style.margin = '6px 0';
+
+                    const nameSpan = document.createElement('span');
+                    nameSpan.textContent = name;
+                    nameSpan.style.flex = '1';
+
+                    const sel = document.createElement('select');
+                    ['artist','group','parody','character','tag'].forEach(opt => {
+                        const o = document.createElement('option');
+                        o.value = opt; o.textContent = opt; if (opt === type) o.selected = true; sel.appendChild(o);
+                    });
+                    sel.addEventListener('change', async () => {
+                        const ov = await getOverrides();
+                        ov[name] = sel.value;
+                        await setOverrides(ov);
+                    });
+
+                    const del = document.createElement('button');
+                    del.className = 'btn-secondary action-btn-danger';
+                    del.textContent = 'Remove';
+                    del.addEventListener('click', async () => {
+                        const ov = await getOverrides();
+                        delete ov[name];
+                        await setOverrides(ov);
+                        renderOverridesList(ov);
+                    });
+
+                    row.appendChild(nameSpan);
+                    row.appendChild(sel);
+                    row.appendChild(del);
+                    container.appendChild(row);
+                });
+            }
+
+            const addBtn = document.getElementById('add-override-btn');
+            if (addBtn) {
+                addBtn.addEventListener('click', async () => {
+                    const nameInput = document.getElementById('override-name-input');
+                    const typeSelect = document.getElementById('override-type-select');
+                    const rawName = (nameInput?.value || '').trim();
+                    const type = typeSelect?.value || 'tag';
+                    if (!rawName) return;
+                    // Normalize like taxonomyManager
+                    const name = String(rawName).toLowerCase().replace(/-/g,' ').trim();
+                    const ov = await getOverrides();
+                    ov[name] = type;
+                    await setOverrides(ov);
+                    renderOverridesList(ov);
+                    nameInput.value = '';
+                });
+            }
 
 // Check if openInNewTabEnabled is true, if not, hide the options
 if (openInNewTabEnabled) {
@@ -8895,21 +9001,152 @@ document.querySelector('form.search').addEventListener('submit', async function(
     let finalQuery = raw;
 
     if (smartTagEnabled && raw && !/[":]/.test(raw)) {
-        function toAdvancedToken(tokenRaw) {
+        async function promptForAmbiguity(name, types) {
+            return new Promise(async (resolve) => {
+                const existing = document.getElementById('smarttag-ambiguity-modal');
+                if (existing) existing.remove();
+                const overlay = document.createElement('div');
+                overlay.id = 'smarttag-ambiguity-modal';
+                overlay.style.position = 'fixed';
+                overlay.style.inset = '0';
+                overlay.style.background = 'rgba(0, 0, 0, 0.8)';
+                overlay.style.zIndex = '9999';
+                overlay.style.display = 'flex';
+                overlay.style.alignItems = 'center';
+                overlay.style.justifyContent = 'center';
+
+                const box = document.createElement('div');
+                box.style.background = '#222';
+                box.style.color = '#fff';
+                box.style.border = '1px solid #444';
+                box.style.borderRadius = '6px';
+                box.style.boxShadow = '0 8px 24px rgba(0,0,0,0.45)';
+                box.style.maxWidth = '460px';
+                box.style.width = '92%';
+                box.style.padding = '16px';
+                box.style.fontFamily = 'Segoe UI, system-ui, -apple-system, Roboto, Arial';
+
+                const title = document.createElement('h3');
+                title.textContent = `Choose type for "${name}"`;
+                title.style.margin = '0 0 10px 0';
+                title.style.color = '#fff';
+
+                const desc = document.createElement('p');
+                desc.textContent = 'Multiple taxonomy types match this name. Select preferred type:';
+                desc.style.margin = '0 0 10px 0';
+                desc.style.fontSize = '14px';
+                desc.style.color = '#ccc';
+
+                const select = document.createElement('select');
+                select.style.width = '100%';
+                select.style.margin = '6px 0 10px 0';
+                select.style.padding = '6px 10px';
+                select.style.backgroundColor = '#2b2b2b';
+                select.style.color = '#e6e6e6';
+                select.style.border = '1px solid #3d3d3d';
+                select.style.borderRadius = '4px';
+                const ordered = ['artist','group','parody','character','tag'];
+                const present = ordered.filter(t => types.includes(t));
+                present.forEach(t => {
+                    const opt = document.createElement('option');
+                    opt.value = t; opt.textContent = t; select.appendChild(opt);
+                });
+
+                const rememberWrap = document.createElement('label');
+                rememberWrap.style.display = 'flex';
+                rememberWrap.style.alignItems = 'center';
+                rememberWrap.style.gap = '8px';
+                rememberWrap.style.color = '#ddd';
+                const remember = document.createElement('input');
+                remember.type = 'checkbox';
+                const rememberText = document.createElement('span');
+                rememberText.textContent = `Remember this choice for "${name}"`;
+                rememberText.style.fontSize = '13px';
+                rememberWrap.appendChild(remember);
+                rememberWrap.appendChild(rememberText);
+
+                const actions = document.createElement('div');
+                actions.style.display = 'flex';
+                actions.style.gap = '8px';
+                actions.style.marginTop = '12px';
+                actions.style.justifyContent = 'flex-end';
+
+                const ok = document.createElement('button');
+                ok.textContent = 'Apply';
+                ok.className = 'btn-secondary';
+                ok.style.background = '#444';
+                ok.style.border = '1px solid #666';
+                ok.style.color = '#fff';
+                ok.style.padding = '8px 16px';
+                ok.style.borderRadius = '3px';
+                ok.addEventListener('mouseenter', () => { ok.style.background = '#555'; });
+                ok.addEventListener('mouseleave', () => { ok.style.background = '#444'; });
+                const cancel = document.createElement('button');
+                cancel.textContent = 'Skip';
+                cancel.className = 'btn-secondary';
+                cancel.style.background = '#444';
+                cancel.style.border = '1px solid #666';
+                cancel.style.color = '#fff';
+                cancel.style.padding = '8px 16px';
+                cancel.style.borderRadius = '3px';
+                cancel.addEventListener('mouseenter', () => { cancel.style.background = '#555'; });
+                cancel.addEventListener('mouseleave', () => { cancel.style.background = '#444'; });
+
+                ok.addEventListener('click', async () => {
+                    const chosen = select.value || 'tag';
+                    if (remember.checked) {
+                        const ov = await GM.getValue('smartTagOverrides', {});
+                        const norm = String(name).toLowerCase().replace(/-/g,' ').trim();
+                        ov[norm] = chosen;
+                        await GM.setValue('smartTagOverrides', ov);
+                    }
+                    overlay.remove();
+                    resolve(chosen);
+                });
+                cancel.addEventListener('click', () => { overlay.remove(); resolve(null); });
+                overlay.addEventListener('click', (evt) => { if (evt.target === overlay) { overlay.remove(); resolve(null); } });
+
+                actions.appendChild(cancel);
+                actions.appendChild(ok);
+
+                box.appendChild(title);
+                box.appendChild(desc);
+                box.appendChild(select);
+                box.appendChild(rememberWrap);
+                box.appendChild(actions);
+                overlay.appendChild(box);
+                document.body.appendChild(overlay);
+            });
+        }
+
+        async function toAdvancedToken(tokenRaw) {
             const t = tokenRaw.trim();
             if (!t) return null;
             if (isLanguage(t)) return `language:"${t.toLowerCase()}"`;
+            const norm = t.toLowerCase().replace(/-/g,' ').trim();
             if (typeof taxonomyManager !== 'undefined') {
-                const ns = taxonomyManager.getTypeForName(t);
-                if (ns) return `${ns}:"${t}"`;
+                const overrides = await GM.getValue('smartTagOverrides', {});
+                const ovType = overrides[norm];
+                if (ovType) return `${ovType}:"${t}"`;
+                const types = taxonomyManager.getTypesForName(t) || [];
+                if (types.length === 1) return `${types[0]}:"${t}"`;
+                if (types.length > 1) {
+                    const chosen = await promptForAmbiguity(t, types);
+                    if (chosen) return `${chosen}:"${t}"`;
+                }
             }
             return `tag:"${t}"`;
         }
-        function tokensFromGroup(groupContent) {
+        async function tokensFromGroup(groupContent) {
             // Prefer explicit separators if provided (comma, pipe, semicolon)
             const separated = groupContent.split(/[|,;]+/).map(s => s.trim()).filter(Boolean);
             if (separated.length > 1) {
-                return separated.map(toAdvancedToken).filter(Boolean);
+                const mapped = [];
+                for (const s of separated) {
+                    const adv = await toAdvancedToken(s);
+                    if (adv) mapped.push(adv);
+                }
+                return mapped;
             }
             const words = groupContent.trim().split(/\s+/).filter(Boolean);
             // Heuristic: if words form pairs with repeated anchor (e.g., "mind control mind break")
@@ -8924,11 +9161,29 @@ document.querySelector('form.search').addEventListener('submit', async function(
                     for (let i = 0; i < words.length; i += 2) {
                         phrases.push(`${words[i]} ${words[i+1]}`);
                     }
-                    return phrases.map(toAdvancedToken).filter(Boolean);
+                    const mapped = [];
+                    for (const s of phrases) {
+                        const adv = await toAdvancedToken(s);
+                        if (adv) mapped.push(adv);
+                    }
+                    return mapped;
                 }
             }
             // Fallback: treat each word as its own token
-            return words.map(toAdvancedToken).filter(Boolean);
+            const mapped = [];
+            for (const wRaw of words) {
+                const w = wRaw.toLowerCase();
+                let adv;
+                const knownArtists = (await GM.getValue('knownArtists', [])).map(s => s.toLowerCase());
+                const artistSet = new Set(knownArtists);
+                if (artistSet.has(w)) {
+                    adv = `artist:"${wRaw}"`;
+                } else {
+                    adv = await toAdvancedToken(wRaw);
+                }
+                if (adv) mapped.push(adv);
+            }
+            return mapped;
         }
         const advTokens = [];
         let i = 0;
@@ -8941,7 +9196,8 @@ document.querySelector('form.search').addEventListener('submit', async function(
                     j++;
                 }
                 const content = raw.slice(i + 1, j - 1);
-                advTokens.push(...tokensFromGroup(content));
+                const mapped = await tokensFromGroup(content);
+                advTokens.push(...mapped);
                 i = j;
             } else {
                 // accumulate plain segment until '(' and apply phrase dictionary
@@ -8969,7 +9225,7 @@ document.querySelector('form.search').addEventListener('submit', async function(
                             break;
                         }
                         if (phraseSet.has(phrase)) {
-                            const adv = toAdvancedToken(rawPhrase);
+                            const adv = await toAdvancedToken(rawPhrase);
                             if (adv) advTokens.push(adv);
                             k += n;
                             matched = true;
@@ -8983,7 +9239,7 @@ document.querySelector('form.search').addEventListener('submit', async function(
                         if (artistSet.has(w)) {
                             adv = `artist:"${wRaw}"`;
                         } else {
-                            adv = toAdvancedToken(wRaw);
+                            adv = await toAdvancedToken(wRaw);
                         }
                         if (adv) advTokens.push(adv);
                         k++;
@@ -9364,69 +9620,56 @@ class TaxonomyManager {
 
     async ensureLoaded() {
         if (this.lastLoadedAt) return true;
-        return await this.loadFromStorage();
+        await this.fetchIfStale();
+        return !!this.lastLoadedAt;
     }
 
-    async fetchIfStale(maxAgeMs = 24 * 60 * 60 * 1000) {
+    async fetchIfStale() {
         try {
-            const lastFetch = await GM.getValue('taxonomyLastFetch', 0);
-            const now = Date.now();
-            if (!lastFetch || (now - lastFetch) > maxAgeMs) {
-                const provider = this.syncSystem.providers.jsonstorage;
-                const config = this.syncSystem.taxonomyConfig || this.syncSystem.publicConfig;
-                const data = await provider.download(config);
-                let compressed = null;
-                let updatedAt = new Date().toISOString();
+            const provider = this.syncSystem.providers.jsonstorage;
+            const config = this.syncSystem.taxonomyConfig || this.syncSystem.publicConfig;
+            const data = await provider.download(config);
 
-                // Case 1: JSONStorage-style wrapper
-                if (data && data.taxonomy) {
-                    const tax = data.taxonomy;
-                    if (tax && tax.isCompressed && tax.compressedData) {
-                        compressed = tax.compressedData;
-                        updatedAt = tax.updated_at || updatedAt;
-                    } else if (tax && tax.byType) {
-                        // Convert plain payload to compressed for consistent caching
-                        try {
-                            compressed = LZString.compressToBase64(JSON.stringify(tax));
-                            updatedAt = tax.updated_at || updatedAt;
-                        } catch (e) {}
+            // Accept either top-level byType or taxonomy.byType
+            let byTypeObj = null;
+            if (data && data.byType) {
+                byTypeObj = data.byType;
+            } else if (data && data.taxonomy && data.taxonomy.byType) {
+                byTypeObj = data.taxonomy.byType;
+            }
+
+            if (byTypeObj && typeof byTypeObj === 'object') {
+                const byType = { artist: new Set(), tag: new Set(), parody: new Set(), group: new Set(), character: new Set() };
+                for (const [type, arr] of Object.entries(byTypeObj)) {
+                    const t = String(type || '').toLowerCase();
+                    const names = Array.isArray(arr) ? arr : [];
+                    if (!byType[t]) continue;
+                    for (const n of names) {
+                        const name = this.normalizeName(n);
+                        if (name) byType[t].add(name);
                     }
                 }
-                // Case 2: Direct plain byType JSON (GitHub raw)
-                else if (data && data.byType) {
-                    try {
-                        compressed = LZString.compressToBase64(JSON.stringify(data));
-                        updatedAt = data.updated_at || updatedAt;
-                    } catch (e) {}
-                }
-
-                if (compressed) {
-                    await GM.setValue('taxonomyCompressed', compressed);
-                    await GM.setValue('taxonomyUpdatedAt', updatedAt);
-                    await GM.setValue('taxonomyLastFetch', now);
-                    this.applyCompressed(compressed);
-                    // Assimilate known artists from taxonomy
-                    try {
-                        const artistNames = Array.from(this.byType.artist);
-                        if (artistNames.length) {
-                            await addKnownArtists(artistNames);
-                        }
-                    } catch (e) {
-                        console.warn('TaxonomyManager: assimilate known artists failed', e);
-                    }
-                } else {
-                    // Fallback: still try to load any cached data
-                    await this.loadFromStorage();
-                }
+                this.byType = byType;
+                this.lastLoadedAt = Date.now();
             } else {
-                // Not stale: load from storage
-                await this.loadFromStorage();
+                console.warn('TaxonomyManager: no byType data in fetched payload');
             }
         } catch (e) {
             console.warn('TaxonomyManager: fetch failed', e);
-            // Load any cached data to avoid empty sets
-            await this.loadFromStorage();
         }
+    }
+            /* removed old caching logic for taxonomy; now fetches directly from GitHub and applies in-memory */
+
+    getTypesForName(name) {
+        const n = this.normalizeName(name);
+        if (!n) return [];
+        const types = [];
+        if (this.byType.artist.has(n)) types.push('artist');
+        if (this.byType.group.has(n)) types.push('group');
+        if (this.byType.parody.has(n)) types.push('parody');
+        if (this.byType.character.has(n)) types.push('character');
+        if (this.byType.tag.has(n)) types.push('tag');
+        return types;
     }
 
     getTypeForName(name) {
