@@ -1,4 +1,15 @@
 {
+  "9.8.0": {
+    "date": "2025-10-26",
+    "changes": [
+      "feat(find-alt): bypass Smart Tags in Find Alt button by navigating directly to search URL",
+      "refactor(settings): rename toggle labels to remove leading 'Enable' across settings UI",
+      "refactor(settings): update NFM popup label to 'Offline Favoriting'",
+      "feat(read-manga): add Show More button to load additional items on Read Manga page",
+      "docs(readme): align documentation with new toggle names and phrasing",
+      "chore(version): bump userscript version to 9.8.0"
+    ]
+  },
   "9.7.4": {
     "date": "2025-10-25",
     "changes": [

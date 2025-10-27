@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      9.7.4
+// @version      9.8.0
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -22,7 +22,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "9.7.4";
+const CURRENT_VERSION = "9.8.0";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -527,11 +527,8 @@ async function addFindAltButton() {
         if (searchInput.length > 0) {
             // Update search input value with cleaned title text
             searchInput.val(cleanedTitleText);
-            // Click the search button
-            const searchButton = $('button[type="submit"]');
-            if (searchButton.length) {
-                searchButton.click();
-            }
+            // Bypass Smart Tags: navigate directly to search with raw cleaned title
+            window.location.href = `/search/?q=${encodeURIComponent(cleanedTitleText)}`;
         } else {
             console.log('Search input not found.');
         }
@@ -2821,12 +2818,12 @@ label:hover .tooltip {
     <form id="settingsForm">
     <label>
         <input type="checkbox" id="mustAddTagsEnabled">
-        Enable Must Add Tags <span class="tooltip" data-tooltip="Enable or disable the 'Must Add Tags' feature.">?</span>
+        Must Add Tags <span class="tooltip" data-tooltip="Enable or disable the 'Must Add Tags' feature.">?</span>
     </label>
     <label>Must Add Tags: <input type="text" id="must-add-tags"> <span class="tooltip" data-tooltip="Tags that must be included in search. Separate with commas.">?</span></label>
     <label>
         <input type="checkbox" id="smartTagEnabled">
-        Enable Smart Tag <span class="tooltip" data-tooltip="Automatically wraps plain tag or language input into advanced search syntax (e.g., tag:&quot;...&quot; or language:&quot;...&quot;)">?</span>
+        Smart Tags <span class="tooltip" data-tooltip="Automatically wraps plain tag or language input into advanced search syntax (e.g., tag:&quot;...&quot; or language:&quot;...&quot;)">?</span>
     </label>
 
         <label>
@@ -2849,7 +2846,7 @@ label:hover .tooltip {
             <div id="fade-read-settings-content">
                 <label>
                     <input type="checkbox" id="markAsReadEnabled">
-                    Enable Mark as Read System <span class="tooltip" data-tooltip="Allows marking galleries as read with visual feedback">?</span>
+                    Mark as Read System <span class="tooltip" data-tooltip="Allows marking galleries as read with visual feedback">?</span>
                 </label>
                 <label>
                     <input type="checkbox" id="autoMarkReadEnabled">
@@ -2877,7 +2874,7 @@ label:hover .tooltip {
             <div id="tag-management-settings-content">
                 <label>
                     <input type="checkbox" id="tagWarningEnabled">
-                    Enable Tag Warning System <span class="tooltip" data-tooltip="Shows warning badges for problematic tags">?</span>
+                    Tag Warning System <span class="tooltip" data-tooltip="Shows warning badges for problematic tags">?</span>
                 </label>
 
                 <div class="tag-lists-container">
@@ -2925,16 +2922,16 @@ label:hover .tooltip {
         </div>
         <label>
             <input type="checkbox" id="offlineFavoritingEnabled">
-            Enable Offline Favoriting <span class="tooltip" data-tooltip="Allows favoriting manga even without being logged in.">?</span>
+            Offline Favoriting <span class="tooltip" data-tooltip="Allows favoriting manga even without being logged in.">?</span>
         </label>
          <label>
             <input type="checkbox" id="tooltipsEnabled">
-            Enable Tooltips <span class="tooltip" data-tooltip="Enables or disables tooltips.">?</span>
+            Show Tooltips <span class="tooltip" data-tooltip="Enables or disables tooltips.">?</span>
         </label>
 
         <label>
             <input type="checkbox" id="findSimilarEnabled">
-            Enable Find Similar Button <span class="tooltip" data-tooltip="Finds similar manga based on the current one.">?</span>
+            Find Similar Button <span class="tooltip" data-tooltip="Finds similar manga based on the current one.">?</span>
         </label>
         <div id="find-similar-options" style="display: none;">
             <label>
@@ -2948,11 +2945,11 @@ label:hover .tooltip {
         </div>
         <label>
             <input type="checkbox" id="englishFilterEnabled">
-            Enable English Filter Button <span class="tooltip" data-tooltip="Filters manga to show only English translations.">?</span>
+            English Filter Button <span class="tooltip" data-tooltip="Filters manga to show only English translations.">?</span>
         </label>
         <label>
             <input type="checkbox" id="autoLoginEnabled">
-            Enable Auto Login <span class="tooltip" data-tooltip="Automatically logs in with saved credentials.">?</span>
+            Auto Login <span class="tooltip" data-tooltip="Automatically logs in with saved credentials.">?</span>
         </label>
         <div id="autoLoginCredentials">
             <label>
@@ -2964,15 +2961,15 @@ label:hover .tooltip {
         </div>
         <label>
             <input type="checkbox" id="bookmarkLinkEnabled">
-            Enable Bookmark Link <span class="tooltip" data-tooltip="Adds a link to your bookmark in the manga title.">?</span>
+            Bookmark Link <span class="tooltip" data-tooltip="Adds a link to your bookmark in the manga title.">?</span>
         </label>
         <label>
             <input type="checkbox" id="findAltmangaEnabled">
-            Enable Find Altmanga Button <span class="tooltip" data-tooltip="Finds alternative sources for the manga.">?</span>
+            Find Alt Manga <span class="tooltip" data-tooltip="Finds alternative sources for the manga.">?</span>
         </label>
         <label>
             <input type="checkbox" id="findAltMangaThumbnailEnabled">
-            Enable Find Alt Manga (Thumbnail Version) <span class="tooltip" data-tooltip="Displays alternative manga sources as thumbnails.">?</span>
+            Find Alt Manga (Thumbnail) <span class="tooltip" data-tooltip="Displays alternative manga sources as thumbnails.">?</span>
         </label>
         <div id="find-Alt-Manga-Thumbnail-options" style="display: none;">
             <label>
@@ -2982,7 +2979,7 @@ label:hover .tooltip {
          </div>
         <label>
             <input type="checkbox" id="openInNewTabEnabled">
-            Enable Open in New Tab Button <span class="tooltip" data-tooltip="Opens manga links in a new tab.">?</span>
+            Open in New Tab <span class="tooltip" data-tooltip="Opens links in a new tab.">?</span>
         </label>
                        <div id="open-in-New-Tab-options" style="display: none;">
             <label>
@@ -2996,11 +2993,11 @@ label:hover .tooltip {
          </div>
         <label>
             <input type="checkbox" id="monthFilterEnabled">
-            Enable Month Filter Button <span class="tooltip" data-tooltip="Filters manga by publication month.">?</span>
+            Month Filter <span class="tooltip" data-tooltip="Filters manga by publication month.">?</span>
         </label>
         <label>
             <input type="checkbox" id="mangaBookMarkingButtonEnabled">
-            Enable Manga Bookmarking Button <span class="tooltip" data-tooltip="Allows bookmarking manga for quick access.">?</span>
+            Manga Bookmarking Button <span class="tooltip" data-tooltip="Allows bookmarking manga for quick access.">?</span>
         </label>
         <div id="manga-bookmarking-options" style="display: none;">
             <label>
@@ -3019,7 +3016,7 @@ label:hover .tooltip {
         </div>
         <label>
             <input type="checkbox" id="bookmarksEnabled">
-            Enable Bookmarks Button <span class="tooltip" data-tooltip="Enables the bookmarks feature.">?</span>
+            Bookmarks Button <span class="tooltip" data-tooltip="Enables the bookmarks feature.">?</span>
         </label>
         <div class="bookmark-actions">
             <button type="button" id="exportBookmarks">Export Bookmarks</button>
@@ -3043,11 +3040,11 @@ label:hover .tooltip {
                 <div class="section-header">Feature Pages</div>
                 <label>
                     <input type="checkbox" id="offlineFavoritesPageEnabled">
-                     Enable Offline Favorites Page <span class="tooltip" data-tooltip="Adds a tab to view all your offline favorites.">?</span>
+                     Offline Favorites Page <span class="tooltip" data-tooltip="Adds a tab to view all your offline favorites.">?</span>
                 </label>
                 <label>
                     <input type="checkbox" id="readMangaPageEnabled">
-                     Enable Read Manga Page <span class="tooltip" data-tooltip="Adds a tab to view all your read manga with management options.">?</span>
+                     Read Manga Page <span class="tooltip" data-tooltip="Adds a tab to view all your read manga with management options.">?</span>
                 </label>
                 <div id="read-manga-page-options" style="display: none; margin-left: 20px; margin-bottom: 15px;">
                     <div>
@@ -3059,7 +3056,7 @@ label:hover .tooltip {
                 </div>
                 <label>
                     <input type="checkbox" id="nfmPageEnabled">
-                    Enable NFM (Nhentai Favorite Manager) Page <span class="tooltip" data-tooltip="Enables the Nhentai Favorite Manager page for favorite management.">?</span>
+                    NFM (Nhentai Favorite Manager) Page <span class="tooltip" data-tooltip="Enables the Nhentai Favorite Manager page for favorite management.">?</span>
                 </label>
                 <label>
                     <input type="checkbox" id="replaceRelatedWithBookmarks">
@@ -3067,11 +3064,11 @@ label:hover .tooltip {
                 </label>
                 <label>
                     <input type="checkbox" id="enableRelatedFlipButton">
-                    Enable Related Flip Button <span class="tooltip" data-tooltip="Shows a Flip button to toggle between bookmarked and original related manga. Only works when 'Replace Related Manga with Bookmarks' is enabled.">?</span>
+                    Related Flip Button <span class="tooltip" data-tooltip="Shows a Flip button to toggle between bookmarked and original related manga. Only works when 'Replace Related Manga with Bookmarks' is enabled.">?</span>
                 </label>
                 <label>
                     <input type="checkbox" id="bookmarksPageEnabled">
-                    Enable Bookmarks Page <span class="tooltip" data-tooltip="Enables the dedicated Bookmarks page for managing saved bookmarks.">?</span>
+                    Bookmarks Page <span class="tooltip" data-tooltip="Enables the dedicated Bookmarks page for managing saved bookmarks.">?</span>
                 </label>
             <div id="bookmark-page-options" style="display: none;">
                 <label>
@@ -3087,7 +3084,7 @@ label:hover .tooltip {
                 </label>
                 <label>
                     <input type="checkbox" id="enableRandomButton">
-                    Enable Random Button <span class="tooltip" data-tooltip="Randomly selects a bookmarked manga for reading.">?</span>
+                    Random Button <span class="tooltip" data-tooltip="Randomly selects a bookmarked manga for reading.">?</span>
                 </label>
                 <div id="random-options" style="display: none;">
                     <label>
@@ -3102,7 +3099,7 @@ label:hover .tooltip {
                 </div>
                         <label>
             <input type="checkbox" id="galleryCaptionTooltipsEnabled">
-            Enable Gallery Caption Tooltips <span class="tooltip" data-tooltip="Enables or disables tooltips for gallery captions showing tags.">?</span>
+            Gallery Caption Tooltips <span class="tooltip" data-tooltip="Enables or disables tooltips for gallery captions showing tags.">?</span>
         </label>
             </div>
                 <div class="section-header">Navigation</div>
@@ -3225,7 +3222,7 @@ label:hover .tooltip {
                     <h4>Public Sync (Standard Security)</h4>
                     <label>
                         <input type="checkbox" id="publicSyncEnabled">
-                        Enable Public Sync <span class="tooltip" data-tooltip="Use predefined JSONStorage.net endpoint with standard security">?</span>
+                        Public Sync <span class="tooltip" data-tooltip="Use predefined JSONStorage.net endpoint with standard security">?</span>
                     </label>
                     <div id="public-sync-options" style="margin-left: 20px; display: none;">
                         <p style="font-size: 12px; color: #aaa;">Uses predefined JSONStorage.net API with standard security level.</p>
@@ -3245,7 +3242,7 @@ label:hover .tooltip {
                     <h4>Private Sync (Enhanced Security)</h4>
                     <label>
                         <input type="checkbox" id="privateSyncEnabled">
-                        Enable Private Sync <span class="tooltip" data-tooltip="Use your own JSONStorage.net credentials for enhanced security">?</span>
+                        Private Sync <span class="tooltip" data-tooltip="Use your own JSONStorage.net credentials for enhanced security">?</span>
                     </label>
                     <div id="private-sync-options" style="margin-left: 20px; margin-top: 10px; display: none;">
                         <label>
@@ -3272,7 +3269,7 @@ label:hover .tooltip {
                     <h4>Sync Options</h4>
                     <label>
                         <input type="checkbox" id="autoSyncEnabled">
-                        Enable Auto Sync <span class="tooltip" data-tooltip="Automatically sync data when changes are made">?</span>
+                        Auto Sync <span class="tooltip" data-tooltip="Automatically sync data when changes are made">?</span>
                     </label>
                     <label>
                         Sync Interval (minutes): <input type="number" id="syncInterval" min="5" max="1440" value="30">
@@ -7732,7 +7729,7 @@ async function createSettingsMenu() {
                 <div style="margin-bottom: 1rem;">
                     <label>
                         <input type="checkbox" id="nfm-offline-favoriting" ${offlineFavoritingEnabled ? 'checked' : ''}>
-                        Enable offline favoriting
+                        Offline Favoriting
                     </label>
                 </div>
                 <div style="margin-bottom: 1rem;">
@@ -12210,6 +12207,8 @@ if (document.readyState === 'loading') {
 class ReadMangaPageSystem {
     constructor() {
         this.pageUrl = '/read-manga/';
+        this.currentDisplayLimit = null;
+        this.showMoreStep = 50;
         this.init();
     }
 
@@ -12306,13 +12305,16 @@ class ReadMangaPageSystem {
             return;
         }
 
+        // Determine current display limit (supports Show More increment)
+        const baseLimit = this.currentDisplayLimit ?? await GM.getValue('maxReadMangaDisplay', 100);
+
         // Fetch gallery data for read galleries
-        const galleryData = await this.fetchGalleryData(readGalleries);
+        const galleryData = await this.fetchGalleryData(readGalleries, baseLimit);
         
         // Apply sorting based on current selection
         const sortedData = await this.sortGalleryData(galleryData);
         
-        await this.renderGalleryGrid(sortedData);
+        await this.renderGalleryGrid(sortedData, readGalleries.length);
     }
 
     /**
@@ -12341,19 +12343,19 @@ class ReadMangaPageSystem {
     /**
      * Fetch gallery data for read galleries
      */
-    async fetchGalleryData(galleryIds) {
+    async fetchGalleryData(galleryIds, limit) {
         const galleryData = [];
 
         // Try to get cached data from localStorage first
         const cachedData = await GM.getValue('readGalleriesCache', {});
         
-        // Get the user-configured limit (default to 100 if not set)
-        const maxReadMangaDisplay = await GM.getValue('maxReadMangaDisplay', 100);
+        // Get the user-configured limit or provided limit
+        const baseLimit = typeof limit === 'number' ? limit : await GM.getValue('maxReadMangaDisplay', 100);
 
         // Reverse the array to get the most recent reads first, then slice
         const recentGalleryIds = galleryIds.slice().reverse();
 
-        for (const galleryId of recentGalleryIds.slice(0, maxReadMangaDisplay)) { // Use configurable limit
+        for (const galleryId of recentGalleryIds.slice(0, baseLimit)) { // Use configurable/incremental limit
             let galleryInfo = cachedData[galleryId];
 
             if (!galleryInfo) {
@@ -12506,11 +12508,14 @@ class ReadMangaPageSystem {
     /**
      * Render gallery grid for read manga
      */
-    async renderGalleryGrid(galleryData) {
+    async renderGalleryGrid(galleryData, totalAvailable) {
         const totalCount = galleryData.length;
+        const showMoreButtonHtml = totalCount < totalAvailable
+            ? `<button id="show-more-read" class="btn btn-primary" style="margin-left: 10px;"><i class="fas fa-plus"></i> Show More</button>`
+            : '';
         const content = `
             <div class="container" style="min-height: 100vh; padding-bottom: 50px;">
-                <h1>Read Manga <span class="nobold">(${totalCount})</span></h1>
+                <h1>Read Manga <span class="nobold">(${totalAvailable})</span></h1>
 
                 <div class="read-manga-controls" style="margin: 20px 0; padding: 15px; background: rgba(0,0,0,0.1); border-radius: 5px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
@@ -12538,7 +12543,10 @@ class ReadMangaPageSystem {
                 </div>
 
                 <div class="pagination-info" style="text-align: center; margin: 30px 0; color: #666;">
-                    Showing ${totalCount} read manga
+                    Showing ${totalCount} of ${totalAvailable} read manga
+                </div>
+                <div class="read-manga-actions" style="text-align: center; margin: 20px 0 40px;">
+                    ${showMoreButtonHtml}
                 </div>
             </div>
         `;
@@ -12672,6 +12680,16 @@ class ReadMangaPageSystem {
                 // Save the selected sort order
                 await GM.setValue('readMangaSortOrder', sortSelect.value);
                 // Re-render the page with new sorting
+                this.renderReadMangaPage();
+            });
+        }
+
+        // Show More functionality
+        const showMoreBtn = document.getElementById('show-more-read');
+        if (showMoreBtn) {
+            showMoreBtn.addEventListener('click', async () => {
+                const base = this.currentDisplayLimit ?? await GM.getValue('maxReadMangaDisplay', 100);
+                this.currentDisplayLimit = base + this.showMoreStep;
                 this.renderReadMangaPage();
             });
         }
