@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      9.8.0
+// @version      9.9.0
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -22,7 +22,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "9.8.0";
+const CURRENT_VERSION = "9.9.0";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -2456,6 +2456,32 @@ const settingsHtml = `
         background: #555;
     }
 
+    /* Minimal link-style button for compact actions */
+    .link-button {
+        background: transparent;
+        border: none;
+        color: #8ecae6;
+        padding: 0;
+        margin-left: 8px;
+        font-size: 12px;
+        text-decoration: underline;
+        cursor: pointer;
+    }
+    .link-button:hover { color: #a8d8f0; }
+
+    /* Compact modal for managing hidden manga */
+    .nhp-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 9999; }
+    .nhp-modal-content { width: 420px; max-width: 92vw; max-height: 60vh; overflow: auto; background: #1f1f1f; border: 1px solid #333; border-radius: 8px; padding: 12px; }
+    .nhp-modal-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+    .nhp-modal-header .title { font-weight: 600; font-size: 14px; }
+    .nhp-modal-header .close-btn { background: transparent; border: none; color: #ccc; font-size: 20px; line-height: 1; cursor: pointer; }
+    .nhp-modal-header .close-btn:hover { color: #fff; }
+    .nhp-modal-list .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0; border-bottom: 1px dashed #333; }
+    .nhp-modal-list .row .item-title { flex: 1; font-size: 12px; color: #ddd; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-decoration: underline; }
+    .nhp-modal-list .row .item-id { font-size: 11px; color: #888; margin-left: 6px; }
+    .nhp-modal-list .row .actions button { background: #444; border: 1px solid #555; color: #fff; border-radius: 4px; font-size: 12px; padding: 4px 8px; cursor: pointer; }
+    .nhp-modal-list .row .actions button:hover { background: #555; }
+
     #advanced-settings-content {
         display: none;
         margin-top: 15px;
@@ -2491,6 +2517,7 @@ const settingsHtml = `
     }
 
     .tag-lists-container {
+        display: none;
         margin: 15px 0;
     }
 
@@ -2640,7 +2667,9 @@ const settingsHtml = `
     #page-management h3 {
         display: flex;
         align-items: center;
+        justify-content: center;
         gap: 10px;
+        text-align: center;
     }
 
     .section-header {
@@ -2816,29 +2845,8 @@ label:hover .tooltip {
 <div id="content">
     <h1>Settings</h1>
     <form id="settingsForm">
-    <label>
-        <input type="checkbox" id="mustAddTagsEnabled">
-        Must Add Tags <span class="tooltip" data-tooltip="Enable or disable the 'Must Add Tags' feature.">?</span>
-    </label>
-    <label>Must Add Tags: <input type="text" id="must-add-tags"> <span class="tooltip" data-tooltip="Tags that must be included in search. Separate with commas.">?</span></label>
-    <label>
-        <input type="checkbox" id="smartTagEnabled">
-        Smart Tags <span class="tooltip" data-tooltip="Automatically wraps plain tag or language input into advanced search syntax (e.g., tag:&quot;...&quot; or language:&quot;...&quot;)">?</span>
-    </label>
+    
 
-        <label>
-            Show Non-English:
-            <select id="showNonEnglishSelect">
-                <option value="show">Show</option>
-                <option value="hide">Hide</option>
-                <option value="fade">Fade</option>
-            </select>
-            <span class="tooltip" data-tooltip="Control the visibility of non-English manga.">?</span>
-        </label>
-        <label>
-            <input type="checkbox" id="showPageNumbersEnabled">
-            Show Page Numbers <span class="tooltip" data-tooltip="Displays the page count for each manga thumbnail.">?</span>
-        </label>
 
         <!-- Fade & Read Settings Section -->
         <div id="fade-read-settings">
@@ -2852,6 +2860,7 @@ label:hover .tooltip {
                     <input type="checkbox" id="autoMarkReadEnabled">
                     Auto-mark as Read on Last Page <span class="tooltip" data-tooltip="Automatically marks galleries as read when reaching the last page">?</span>
                 </label>
+                
                 <div>
                     <label for="nonEnglishOpacity">Non-English Galleries Opacity:</label>
                     <input type="range" id="nonEnglishOpacity" min="0.1" max="1.0" step="0.1" value="0.2">
@@ -2877,28 +2886,80 @@ label:hover .tooltip {
                     Tag Warning System <span class="tooltip" data-tooltip="Shows warning badges for problematic tags">?</span>
                 </label>
 
-                <div class="tag-lists-container">
-                    <div class="tag-list-section">
-                        <h4>Blacklist Tags (Red Badges)</h4>
-                        <textarea id="blacklistTags" placeholder="Enter tags separated by commas (e.g., scat, guro, vore)" rows="3"></textarea>
-                        <span class="tooltip" data-tooltip="Tags that will show red warning badges. Separate with commas.">?</span>
-                    </div>
+                <button type="button" id="toggleTagLists" class="link-button" style="margin-left:0;">Manage tags</button>
 
-                    <div class="tag-list-section">
-                        <h4>Warning Tags (Orange Badges)</h4>
-                        <textarea id="warningTags" placeholder="Enter tags separated by commas (e.g., ntr, cheating, netorare)" rows="3"></textarea>
-                        <span class="tooltip" data-tooltip="Tags that will show orange warning badges. Separate with commas.">?</span>
-                    </div>
+                <!-- Hide/Blacklist System moved under Tag Management -->
+                <label>
+                    <input type="checkbox" id="hideBlacklistEnabled">
+                    Hide/Blacklist System <span class="tooltip" data-tooltip="Hide manga you are not interested in from listings and searches">?</span>
+                </label>
+                <label>
+                    <input type="checkbox" id="autoHideBlacklistedTagsEnabled">
+                    Auto-hide manga with blacklisted tags <span class="tooltip" data-tooltip="Automatically hides galleries on listing pages if any blacklisted tag is detected">?</span>
+                </label>
 
-                    <div class="tag-list-section">
-                        <h4>Favorite Tags</h4>
-                        <textarea id="favoriteTags" placeholder="Enter favorite tags separated by commas" rows="3" readonly></textarea>
-                        <span class="tooltip" data-tooltip="Your favorite tags (managed by starring tags in gallery view). Shows blue badges.">?</span>
-                        <button type="button" id="clearFavoriteTags" class="btn-secondary">Clear All Favorites</button>
-                    </div>
+                <div style="margin-top:8px;">
+                    <button type="button" id="clearHiddenManga" class="btn-secondary">Clear All Hidden Manga</button>
+                    <button type="button" id="manageHiddenManga" class="link-button">Manage hidden manga <span id="hiddenMangaCount"></span></button>
                 </div>
 
-                <button type="button" id="resetTagSettings" class="btn-secondary">Reset to Defaults</button>
+                <!-- Search & Smart Tag Controls moved into Tag Management -->
+                <div class="tag-list-section">
+                    <label>
+                        <input type="checkbox" id="mustAddTagsEnabled">
+                        Must Add Tags <span class="tooltip" data-tooltip="Enable or disable the 'Must Add Tags' feature.">?</span>
+                    </label>
+                    <label>Must Add Tags: <input type="text" id="must-add-tags"> <span class="tooltip" data-tooltip="Tags that must be included in search. Separate with commas.">?</span></label>
+                    <label>
+                        <input type="checkbox" id="smartTagEnabled">
+                        Smart Tags <span class="tooltip" data-tooltip="Automatically wraps plain tag or language input into advanced search syntax (e.g., tag:&quot;...&quot; or language:&quot;...&quot;)">?</span>
+                    </label>
+                </div>
+
+                <div class="tag-list-section">
+                    <label>
+                        Show Non-English:
+                        <select id="showNonEnglishSelect">
+                            <option value="show">Show</option>
+                            <option value="hide">Hide</option>
+                            <option value="fade">Fade</option>
+                        </select>
+                        <span class="tooltip" data-tooltip="Control the visibility of non-English manga.">?</span>
+                    </label>
+                </div>
+
+                <!-- Tag Management Modal (module) -->
+                <div id="tagManagementModal" class="nhp-modal">
+                    <div class="nhp-modal-content">
+                        <div class="nhp-modal-header">
+                            <span class="title">Manage Tags</span>
+                            <button type="button" id="closeTagManagementModal" class="close-btn">&times;</button>
+                        </div>
+                        <div class="nhp-modal-list" style="padding:4px 0;">
+                            <div class="tag-list-section">
+                                <h4>Blacklist Tags (Red Badges)</h4>
+                                <textarea id="blacklistTags" placeholder="Enter tags separated by commas (e.g., scat, guro, vore)" rows="3"></textarea>
+                                <span class="tooltip" data-tooltip="Tags that will show red warning badges. Separate with commas.">?</span>
+                            </div>
+
+                            <div class="tag-list-section">
+                                <h4>Warning Tags (Orange Badges)</h4>
+                                <textarea id="warningTags" placeholder="Enter tags separated by commas (e.g., ntr, cheating, netorare)" rows="3"></textarea>
+                                <span class="tooltip" data-tooltip="Tags that will show orange warning badges. Separate with commas.">?</span>
+                            </div>
+
+                            <div class="tag-list-section">
+                                <h4>Favorite Tags</h4>
+                                <textarea id="favoriteTags" placeholder="Enter favorite tags separated by commas" rows="3" readonly></textarea>
+                                <span class="tooltip" data-tooltip="Your favorite tags (managed by starring tags in gallery view). Shows blue badges.">?</span>
+                                <button type="button" id="clearFavoriteTags" class="btn-secondary">Clear All Favorites</button>
+                            </div>
+                        </div>
+                        <div class="nhp-modal-actions" style="margin-top:10px; display:flex; gap:8px;">
+                            <button type="button" id="resetTagSettings" class="btn-secondary">Reset to Defaults</button>
+                        </div>
+                    </div>
+                </div>
 
                 <div class="tag-list-section">
                     <h4>Smart Tag Overrides</h4>
@@ -2920,6 +2981,21 @@ label:hover .tooltip {
                 </div>
             </div>
         </div>
+
+        <!-- Hidden Manga Management Modal (moved under Tag Management) -->
+        <div id="hiddenMangaModal" class="nhp-modal">
+            <div class="nhp-modal-content">
+                <div class="nhp-modal-header">
+                    <span class="title">Hidden Manga</span>
+                    <button type="button" id="closeHiddenMangaModal" class="close-btn">&times;</button>
+                </div>
+                <div id="hiddenMangaList" class="nhp-modal-list"></div>
+            </div>
+        </div>
+         <label>
+            <input type="checkbox" id="showPageNumbersEnabled">
+            Show Page Numbers <span class="tooltip" data-tooltip="Displays the page count for each manga thumbnail.">?</span>
+        </label>
         <label>
             <input type="checkbox" id="offlineFavoritingEnabled">
             Offline Favoriting <span class="tooltip" data-tooltip="Allows favoriting manga even without being logged in.">?</span>
@@ -3383,6 +3459,8 @@ $('div.container').append(settingsHtml);
             // New Fade & Read settings
             const markAsReadEnabled = await GM.getValue('markAsReadEnabled', true);
             const autoMarkReadEnabled = await GM.getValue('autoMarkReadEnabled', true);
+            const hideBlacklistEnabled = await GM.getValue('hideBlacklistEnabled', true);
+            const autoHideBlacklistedTagsEnabled = await GM.getValue('autoHideBlacklistedTagsEnabled', false);
             const nonEnglishOpacity = await GM.getValue('nonEnglishOpacity', 0.2);
             const readGalleriesOpacity = await GM.getValue('readGalleriesOpacity', 0.6);
 
@@ -3455,6 +3533,8 @@ $('div.container').append(settingsHtml);
             // Populate new Fade & Read settings
             $('#markAsReadEnabled').prop('checked', markAsReadEnabled);
             $('#autoMarkReadEnabled').prop('checked', autoMarkReadEnabled);
+            $('#hideBlacklistEnabled').prop('checked', hideBlacklistEnabled);
+            $('#autoHideBlacklistedTagsEnabled').prop('checked', autoHideBlacklistedTagsEnabled);
             $('#nonEnglishOpacity').val(nonEnglishOpacity);
             $('#nonEnglishOpacityValue').text(nonEnglishOpacity);
             $('#readGalleriesOpacity').val(readGalleriesOpacity);
@@ -3987,12 +4067,183 @@ $('#findSimilarEnabled').on('change', function() {
                 $('#readGalleriesOpacityValue').text('0.6');
                 $('#markAsReadEnabled').prop('checked', true);
                 $('#autoMarkReadEnabled').prop('checked', true);
+                $('#hideBlacklistEnabled').prop('checked', true);
+                $('#autoHideBlacklistedTagsEnabled').prop('checked', false);
             });
+
+            // Clear hidden manga list
+            $('#clearHiddenManga').on('click', async function() {
+                if (confirm('Clear all hidden/blacklisted manga?')) {
+                    await GM.setValue('hiddenGalleries', []);
+                    await GM.setValue('hiddenGalleryTitles', {});
+                    try {
+                        if (typeof hideBlacklistSystem !== 'undefined' && hideBlacklistSystem) {
+                            hideBlacklistSystem.hiddenGalleries = new Set();
+                            hideBlacklistSystem.applyHiddenFilter && hideBlacklistSystem.applyHiddenFilter();
+                        }
+                    } catch (_) { /* ignore */ }
+                    if (typeof updateHiddenCount === 'function') updateHiddenCount();
+                    alert('Hidden manga list cleared.');
+                }
+            });
+
+            // Manage hidden manga (compact modal)
+            async function updateHiddenCount() {
+                try {
+                    const ids = await GM.getValue('hiddenGalleries', []);
+                    const count = Array.isArray(ids) ? ids.length : 0;
+                    $('#hiddenMangaCount').text(count ? `(${count})` : '');
+                } catch (_) {
+                    $('#hiddenMangaCount').text('');
+                }
+            }
+
+            function cleanPrettyTitle(raw) {
+                let t = String(raw || '');
+                // Remove any parenthetical or bracketed qualifiers
+                t = t.replace(/\([^)]*\)/g, '').replace(/\[[^\]]*\]/g, '');
+                // Collapse whitespace
+                t = t.replace(/\s+/g, ' ').trim();
+                return t;
+            }
+
+            async function fetchGalleryPrettyTitle(id) {
+                try {
+                    const url = `${location.origin}/g/${id}/`;
+                    const res = await fetch(url, { credentials: 'include' });
+                    if (!res || !res.ok) return null;
+                    const html = await res.text();
+                    const doc = new DOMParser().parseFromString(html, 'text/html');
+                    const prettyEl = doc.querySelector('h1.title .pretty');
+                    if (!prettyEl) return null;
+                    const cleaned = cleanPrettyTitle(prettyEl.textContent || '');
+                    return cleaned || null;
+                } catch (_) {
+                    return null;
+                }
+            }
+
+            function renderHiddenRows(entries, titlesMap) {
+                const listEl = document.getElementById('hiddenMangaList');
+                if (!listEl) return;
+                listEl.innerHTML = '';
+                if (!entries || entries.length === 0) {
+                    listEl.innerHTML = '<p style="font-size:12px;color:#888;">No hidden manga.</p>';
+                    return;
+                }
+                entries.forEach(({ id, title }) => {
+                    const row = document.createElement('div');
+                    row.className = 'row';
+                    const nameLink = document.createElement('a');
+                    nameLink.className = 'item-title';
+                    nameLink.href = `/g/${id}/`;
+                    nameLink.target = '_blank';
+                    nameLink.rel = 'noopener noreferrer';
+                    nameLink.textContent = (title && String(title).trim()) ? String(title).trim() : 'Loading…';
+                    const idSpan = document.createElement('span');
+                    idSpan.className = 'item-id';
+                    idSpan.textContent = `ID: ${id}`;
+                    const actions = document.createElement('div');
+                    actions.className = 'actions';
+                    const btn = document.createElement('button');
+                    btn.className = 'unhide-item';
+                    btn.setAttribute('data-id', String(id));
+                    btn.textContent = 'Unhide';
+                    actions.appendChild(btn);
+                    row.appendChild(nameLink);
+                    row.appendChild(idSpan);
+                    row.appendChild(actions);
+                    listEl.appendChild(row);
+
+                    // Fetch and fill pretty title
+                    (async () => {
+                        const fetched = await fetchGalleryPrettyTitle(id);
+                        const finalTitle = (fetched && fetched.trim())
+                            ? fetched.trim()
+                            : ((title && String(title).trim()) ? String(title).trim() : String(id));
+                        nameLink.textContent = finalTitle;
+                        // Persist fetched title to storage map for future
+                        try {
+                            if (titlesMap) {
+                                titlesMap[String(id)] = finalTitle;
+                                await GM.setValue('hiddenGalleryTitles', titlesMap);
+                            }
+                        } catch (_) { /* ignore */ }
+                    })();
+                });
+            }
+
+            $('#manageHiddenManga').on('click', async function() {
+                try {
+                    const ids = await GM.getValue('hiddenGalleries', []);
+                    const titlesMap = await GM.getValue('hiddenGalleryTitles', {});
+                    const entries = (Array.isArray(ids) ? ids : []).map(id => ({ id: String(id), title: titlesMap && titlesMap[String(id)] }));
+                    renderHiddenRows(entries, titlesMap);
+                } catch (_) {
+                    renderHiddenRows([], {});
+                }
+                $('#hiddenMangaModal').css('display', 'flex');
+            });
+
+            $('#closeHiddenMangaModal').on('click', function() {
+                $('#hiddenMangaModal').hide();
+            });
+
+            $('#hiddenMangaModal').on('click', function(e) {
+                if (e.target && e.target.id === 'hiddenMangaModal') {
+                    $('#hiddenMangaModal').hide();
+                }
+            });
+
+            // Delegate unhide actions inside modal
+            $('#hiddenMangaList').on('click', '.unhide-item', async function() {
+                const id = String($(this).data('id'));
+                try {
+                    if (typeof hideBlacklistSystem !== 'undefined' && hideBlacklistSystem && typeof hideBlacklistSystem.unhideGallery === 'function') {
+                        await hideBlacklistSystem.unhideGallery(id);
+                        hideBlacklistSystem.applyHiddenFilter && hideBlacklistSystem.applyHiddenFilter();
+                    } else {
+                        let ids = await GM.getValue('hiddenGalleries', []);
+                        ids = (Array.isArray(ids) ? ids : []).filter(x => String(x) !== id);
+                        await GM.setValue('hiddenGalleries', ids);
+                    }
+                    let titlesMap = await GM.getValue('hiddenGalleryTitles', {});
+                    if (titlesMap && titlesMap[id]) {
+                        delete titlesMap[id];
+                        await GM.setValue('hiddenGalleryTitles', titlesMap);
+                    }
+                } catch (_) { /* ignore */ }
+                // Update UI
+                $(this).closest('.row').remove();
+                if ($('#hiddenMangaList .row').length === 0) {
+                    $('#hiddenMangaList').html('<p style="font-size:12px;color:#888;">No hidden manga.</p>');
+                }
+                updateHiddenCount();
+            });
+
+            // Initialize count indicator
+            updateHiddenCount();
 
             // Event handlers for new Tag Management settings
             $('#tag-management-settings h3').on('click', function() {
                 $('#tag-management-settings-content').toggle();
                 $(this).toggleClass('expanded');
+            });
+
+            // Open Tag Management modal
+            $('#toggleTagLists').on('click', function() {
+                $('#tagManagementModal').css('display', 'flex');
+            });
+
+            // Close Tag Management modal
+            $('#closeTagManagementModal').on('click', function() {
+                $('#tagManagementModal').hide();
+            });
+
+            $('#tagManagementModal').on('click', function(e) {
+                if (e.target && e.target.id === 'tagManagementModal') {
+                    $('#tagManagementModal').hide();
+                }
             });
 
             $('#clearFavoriteTags').on('click', async function() {
@@ -4177,6 +4428,8 @@ $('#openInNewTabEnabled').change(function() {
             // Collect new Fade & Read settings
             const markAsReadEnabled = $('#markAsReadEnabled').prop('checked');
             const autoMarkReadEnabled = $('#autoMarkReadEnabled').prop('checked');
+            const hideBlacklistEnabled = $('#hideBlacklistEnabled').prop('checked');
+            const autoHideBlacklistedTagsEnabled = $('#autoHideBlacklistedTagsEnabled').prop('checked');
             const nonEnglishOpacity = parseFloat($('#nonEnglishOpacity').val());
             const readGalleriesOpacity = parseFloat($('#readGalleriesOpacity').val());
 
@@ -4250,6 +4503,8 @@ $('#openInNewTabEnabled').change(function() {
             // Save new Fade & Read settings
             await GM.setValue('markAsReadEnabled', markAsReadEnabled);
             await GM.setValue('autoMarkReadEnabled', autoMarkReadEnabled);
+            await GM.setValue('hideBlacklistEnabled', hideBlacklistEnabled);
+            await GM.setValue('autoHideBlacklistedTagsEnabled', autoHideBlacklistedTagsEnabled);
             await GM.setValue('nonEnglishOpacity', nonEnglishOpacity);
             await GM.setValue('readGalleriesOpacity', readGalleriesOpacity);
 
@@ -9342,7 +9597,9 @@ class OnlineDataSync {
              'lastSyncDownload', 'bookmarksPageEnabled', 'replaceRelatedWithBookmarks', 
              'enableRelatedFlipButton', 'twitterButtonEnabled', 'enableRandomButton', 
              'randomOpenType', 'profileButtonEnabled', 'infoButtonEnabled', 'logoutButtonEnabled', 
-             'bookmarkLinkEnabled', 'findSimilarType', 'bookmarkedMangas' 
+             'bookmarkLinkEnabled', 'findSimilarType', 'bookmarkedMangas',
+             // New Hide/Blacklist feature
+             'hideBlacklistEnabled', 'hiddenGalleries'
          ];
 
         for (const key of syncableKeys) {
@@ -10842,6 +11099,408 @@ class MarkAsReadSystem {
     }
 }
 
+//------------------------  **Hide/Blacklist System**  ------------------
+
+class HideBlacklistSystem {
+    constructor() {
+        this.hiddenGalleries = new Set();
+        this.hiddenTitles = new Map();
+        this.settings = {
+            enabled: true
+        };
+        this.init();
+    }
+
+    async init() {
+        await this.loadSettings();
+        await this.loadHiddenGalleries();
+        await this.loadHiddenGalleryTitles();
+        if (this.settings.enabled) {
+            this.addCSS();
+            this.applyZipOffsetFlag();
+            this.applyHiddenFilter();
+            this.addHideButtons();
+            this.addGalleryPageHideButton();
+            this.setupDynamicObserver();
+        }
+    }
+
+    async loadSettings() {
+        this.settings.enabled = await GM.getValue('hideBlacklistEnabled', true);
+        this.settings.autoHideByTags = await GM.getValue('autoHideBlacklistedTagsEnabled', false);
+        // Load blacklist tags to support auto-hide by tags
+        const bl = await GM.getValue('blacklistTagsList', ['scat', 'guro', 'vore', 'ryona', 'snuff']);
+        this.settings.blacklistTags = Array.isArray(bl) ? bl.map(t => String(t).toLowerCase().trim()) : [];
+    }
+
+    async loadHiddenGalleries() {
+        try {
+            const list = await GM.getValue('hiddenGalleries', []);
+            this.hiddenGalleries = new Set(Array.isArray(list) ? list : []);
+        } catch (e) {
+            console.error('Error loading hidden galleries:', e);
+            this.hiddenGalleries = new Set();
+        }
+    }
+
+    async saveHiddenGalleries() {
+        try {
+            await GM.setValue('hiddenGalleries', Array.from(this.hiddenGalleries));
+        } catch (e) {
+            console.error('Error saving hidden galleries:', e);
+        }
+    }
+
+    async loadHiddenGalleryTitles() {
+        try {
+            const obj = await GM.getValue('hiddenGalleryTitles', {});
+            const entries = Object.entries(obj || {});
+            this.hiddenTitles = new Map(entries);
+        } catch (e) {
+            console.error('Error loading hidden gallery titles:', e);
+            this.hiddenTitles = new Map();
+        }
+    }
+
+    async saveHiddenGalleryTitles() {
+        try {
+            const obj = {};
+            this.hiddenTitles.forEach((title, id) => { obj[id] = title; });
+            await GM.setValue('hiddenGalleryTitles', obj);
+        } catch (e) {
+            console.error('Error saving hidden gallery titles:', e);
+        }
+    }
+
+    extractGalleryId(url) {
+        if (!url) return null;
+        const match = url.match(/\/g\/(\d+)\//);
+        return match ? match[1] : null;
+    }
+
+    isHidden(id) {
+        return this.hiddenGalleries.has(id);
+    }
+
+    /**
+     * Extract tags for a gallery using available DOM hints.
+     * If TagWarningSystem is available, reuse its extractor.
+     */
+    extractGalleryTags(gallery) {
+        try {
+            if (typeof tagWarningSystem !== 'undefined' && tagWarningSystem && typeof tagWarningSystem.extractGalleryTags === 'function') {
+                const tags = tagWarningSystem.extractGalleryTags(gallery) || [];
+                return Array.isArray(tags) ? tags.map(t => String(t).toLowerCase().trim()) : [];
+            }
+        } catch (_) { /* ignore */ }
+
+        const tags = [];
+        // Method 2: From tag elements (if available)
+        const tagElements = gallery.querySelectorAll('.tag .name');
+        tagElements.forEach(tagElement => {
+            const tagName = (tagElement.textContent || '').trim().toLowerCase();
+            if (tagName) tags.push(tagName);
+        });
+
+        // Method 3: From title/caption text
+        if (tags.length === 0) {
+            const caption = gallery.querySelector('.caption');
+            if (caption) {
+                const title = (caption.textContent || '').toLowerCase();
+                (this.settings.blacklistTags || []).forEach(tag => {
+                    if (tag && title.includes(tag)) tags.push(tag);
+                });
+            }
+        }
+        return tags;
+    }
+
+    galleryHasBlacklistedTags(gallery) {
+        const tags = this.extractGalleryTags(gallery);
+        if (!tags || !tags.length) return false;
+        const set = new Set((this.settings.blacklistTags || []).map(t => String(t).toLowerCase().trim()));
+        return tags.some(t => set.has(String(t).toLowerCase().trim()));
+    }
+
+    async hideGallery(id, title) {
+        if (!id) return;
+        this.hiddenGalleries.add(id);
+        if (title && String(title).trim()) {
+            try {
+                this.hiddenTitles.set(id, String(title).trim());
+                await this.saveHiddenGalleryTitles();
+            } catch (_) { /* ignore */ }
+        }
+        await this.saveHiddenGalleries();
+        this.updateGalleryVisibility(id);
+    }
+
+    async unhideGallery(id) {
+        if (!id) return;
+        this.hiddenGalleries.delete(id);
+        try {
+            if (this.hiddenTitles.has(id)) {
+                this.hiddenTitles.delete(id);
+                await this.saveHiddenGalleryTitles();
+            }
+        } catch (_) { /* ignore */ }
+        await this.saveHiddenGalleries();
+        this.updateGalleryVisibility(id);
+    }
+
+    async toggleHidden(id, title) {
+        if (this.isHidden(id)) {
+            await this.unhideGallery(id);
+        } else {
+            await this.hideGallery(id, title);
+        }
+    }
+
+    addCSS() {
+        const css = `
+            .hide-manga-btn {
+                position: absolute;
+                top: 5px;
+                left: 5px;
+                width: 24px;
+                height: 24px;
+                background: rgba(0, 0, 0, 0.7);
+                border: none;
+                border-radius: 50%;
+                color: #fff;
+                cursor: pointer;
+                font-size: 12px;
+                z-index: 10;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: all 0.3s ease;
+            }
+
+            .hide-manga-btn:hover {
+                background: rgba(0, 0, 0, 0.9);
+                transform: scale(1.1);
+            }
+
+            .hide-manga-btn.hidden {
+                background: rgba(183, 28, 28, 0.85);
+                color: #fff;
+            }
+
+            .gallery.hidden-by-blacklist {
+                display: none !important;
+            }
+
+            /* Offset when a top download-zip bar is present */
+            body.nhp-zip-offset .hide-manga-btn {
+                top: 40px;
+            }
+
+            .btn-nhi-hide {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                padding: 10px 16px;
+                border-radius: 6px;
+                text-decoration: none;
+                font-weight: 500;
+                transition: all 0.3s ease;
+                border: 1px solid transparent;
+                cursor: pointer;
+                user-select: none;
+            }
+
+            .btn-nhi-hide:hover {
+                text-decoration: none;
+                transform: translateY(-1px);
+                box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            }
+
+            .btn-nhi-hide.btn-danger {
+                background: linear-gradient(135deg, #b71c1c 0%, #8e0000 100%);
+                color: white;
+            }
+        `;
+        GM.addStyle(css);
+    }
+
+    addHideButtons() {
+        if (window.location.pathname === '/read-manga/' ||
+            window.location.hash === '#read-manga' ||
+            document.body.classList.contains('read-manga-active') ||
+            document.querySelector('.read-manga-page')) {
+            return;
+        }
+
+        const galleries = document.querySelectorAll('.gallery');
+        galleries.forEach(gallery => {
+            if (gallery.classList.contains('read-manga-gallery')) return;
+            if (gallery.querySelector('.hide-manga-btn')) return;
+
+            const coverLink = gallery.querySelector('.cover');
+            if (!coverLink) return;
+            const id = this.extractGalleryId(coverLink.getAttribute('href'));
+            if (!id) return;
+
+            // Capture title for storage when hiding from listings
+            const captionEl = gallery.querySelector('.caption');
+            const titleText = captionEl ? (captionEl.textContent || '').trim() : '';
+
+            const btn = document.createElement('button');
+            btn.className = 'hide-manga-btn';
+            const hidden = this.isHidden(id);
+            btn.title = hidden ? 'Unhide' : 'Hide';
+            btn.textContent = hidden ? '✕' : '–';
+            if (hidden) btn.classList.add('hidden');
+
+            btn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                await this.toggleHidden(id, titleText);
+            });
+
+            gallery.appendChild(btn);
+        });
+
+        this.applyHiddenFilter();
+    }
+
+    applyHiddenFilter() {
+        if (document.querySelector('.read-manga-page')) return;
+        const galleries = document.querySelectorAll('.gallery');
+        galleries.forEach(gallery => {
+            const coverLink = gallery.querySelector('.cover');
+            if (!coverLink) return;
+            const id = this.extractGalleryId(coverLink.getAttribute('href'));
+            if (!id) return;
+            const manualHidden = this.isHidden(id);
+            const autoHidden = this.settings.autoHideByTags && this.galleryHasBlacklistedTags(gallery);
+            const hidden = (manualHidden || autoHidden) && this.settings.enabled;
+            gallery.classList.toggle('hidden-by-blacklist', hidden);
+            const btn = gallery.querySelector('.hide-manga-btn');
+            if (btn) {
+                btn.classList.toggle('hidden', hidden);
+                btn.title = hidden ? 'Unhide' : 'Hide';
+                btn.textContent = hidden ? '✕' : '–';
+            }
+        });
+    }
+
+    updateGalleryVisibility(galleryId) {
+        const galleries = document.querySelectorAll('.gallery');
+        galleries.forEach(gallery => {
+            const coverLink = gallery.querySelector('.cover');
+            if (!coverLink) return;
+            const id = this.extractGalleryId(coverLink.getAttribute('href'));
+            if (id !== galleryId) return;
+            const hidden = this.isHidden(id) && this.settings.enabled;
+            gallery.classList.toggle('hidden-by-blacklist', hidden);
+            const btn = gallery.querySelector('.hide-manga-btn');
+            if (btn) {
+                btn.classList.toggle('hidden', hidden);
+                btn.title = hidden ? 'Unhide' : 'Hide';
+                btn.textContent = hidden ? '✕' : '–';
+            }
+        });
+    }
+
+    addGalleryPageHideButton() {
+        const match = window.location.pathname.match(/\/g\/(\d+)\//);
+        if (!match) return;
+        const id = match[1];
+        const container = document.querySelector('.buttons');
+        if (!container) return;
+        if (document.getElementById('nhi-hide-button')) return;
+
+        const hidden = this.isHidden(id);
+        const html = `
+            <a href="#" id="nhi-hide-button" class="btn ${hidden ? 'btn-danger' : 'btn-secondary'} btn-enabled tooltip btn-nhi-hide">
+                <i class="fas fa-ban"></i>
+                <span>${hidden ? 'Unhide' : 'Hide/Blacklist'}</span>
+                <div class="top">${hidden ? 'Show this manga again' : 'Hide this manga across listings'}<i></i></div>
+            </a>
+        `;
+        const wrap = document.createElement('div');
+        wrap.innerHTML = html;
+        const btn = wrap.firstElementChild;
+        btn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const span = btn.querySelector('span');
+            const original = span ? span.textContent : '';
+            if (span) span.textContent = 'Processing...';
+            btn.style.opacity = '0.7';
+            try {
+                const titleText = this.getCurrentGalleryTitle() || '';
+                await this.toggleHidden(id, titleText);
+                const newHidden = this.isHidden(id);
+                if (span) span.textContent = newHidden ? 'Unhide' : 'Hide/Blacklist';
+                if (btn.querySelector('.top')) {
+                    btn.querySelector('.top').innerHTML = `${newHidden ? 'Show this manga again' : 'Hide this manga across listings'}<i></i>`;
+                }
+                btn.classList.toggle('btn-danger', newHidden);
+                btn.classList.toggle('btn-secondary', !newHidden);
+            } catch (_) {
+                if (span) span.textContent = original;
+            } finally {
+                btn.style.opacity = '1';
+            }
+        });
+        container.appendChild(btn);
+        this.updateGalleryVisibility(id);
+    }
+
+    getCurrentGalleryTitle() {
+        try {
+            // nhentai gallery page often has #info h1 or .title
+            const h1 = document.querySelector('#info h1');
+            if (h1 && h1.textContent) return h1.textContent.trim();
+            const titleEl = document.querySelector('.title') || document.querySelector('#info .title');
+            if (titleEl && titleEl.textContent) return titleEl.textContent.trim();
+            if (document.title) return document.title.replace(/\s*-\s*nhentai.*/i, '').trim();
+        } catch (_) { /* ignore */ }
+        return '';
+    }
+
+    setupDynamicObserver() {
+        const observer = new MutationObserver((mutations) => {
+            let hasNewGalleries = false;
+            for (const mutation of mutations) {
+                mutation.addedNodes.forEach((node) => {
+                    if (node.nodeType !== Node.ELEMENT_NODE) return;
+                    if (node.classList && node.classList.contains('gallery')) {
+                        hasNewGalleries = true;
+                    } else if (node.querySelectorAll) {
+                        const galleries = node.querySelectorAll('.gallery');
+                        if (galleries && galleries.length) {
+                            hasNewGalleries = true;
+                        }
+                    }
+                });
+            }
+            if (hasNewGalleries) {
+                this.addHideButtons();
+            }
+            this.applyZipOffsetFlag();
+        });
+
+        observer.observe(document.body, { childList: true, subtree: true });
+    }
+
+    applyZipOffsetFlag() {
+        try {
+            const zipBtn = document.querySelector('#content > div.container.index-container.index-popular > div:nth-child(2) > button.btn.btn-secondary.nhentai-helper-btn.download-zip-btn');
+            if (zipBtn) {
+                document.body.classList.add('nhp-zip-offset');
+            } else {
+                document.body.classList.remove('nhp-zip-offset');
+            }
+        } catch (e) {
+            // ignore
+        }
+    }
+}
+
 // Initialize Mark as Read System
 let markAsReadSystem;
 
@@ -10857,6 +11516,22 @@ if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initMarkAsReadSystem);
 } else {
     initMarkAsReadSystem();
+}
+
+// Initialize Hide/Blacklist System
+let hideBlacklistSystem;
+
+async function initHideBlacklistSystem() {
+    const enabled = await GM.getValue('hideBlacklistEnabled', true);
+    if (enabled) {
+        hideBlacklistSystem = new HideBlacklistSystem();
+    }
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initHideBlacklistSystem);
+} else {
+    initHideBlacklistSystem();
 }
 
 //------------------------  **Enhanced Opacity/Fade System**  ------------------

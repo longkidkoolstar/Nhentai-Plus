@@ -1,4 +1,15 @@
 {
+  "9.9.0": {
+    "date": "2025-10-30",
+    "changes": [
+      "feat(blacklist-galleries): add Blacklisting galleries which hides them from user view",
+      "feat(ui): relocate Tag Management reset button inside Manage Tags modal",
+      "feat(ui): move Must Add Tags, Smart Tags, and Show Non-English controls into Tag Management section",
+      "feat(ui): center page management header text for improved visual alignment",
+      "refactor(settings): consolidate tag-related settings under unified Tag Management section",
+      "chore(version): bump userscript version to 9.9.0"
+    ]
+  },
   "9.8.0": {
     "date": "2025-10-26",
     "changes": [
