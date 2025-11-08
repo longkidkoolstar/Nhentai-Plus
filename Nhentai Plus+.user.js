@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      9.9.0
+// @version      10.0.0
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -22,7 +22,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "9.9.0";
+const CURRENT_VERSION = "10.0.0";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -2876,7 +2876,8 @@ label:hover .tooltip {
                 <button type="button" id="resetFadeSettings" class="btn-secondary">Reset to Defaults</button>
             </div>
         </div>
-
+        
+        
         <!-- Tag Management Settings Section -->
         <div id="tag-management-settings">
             <h3 class="expand-icon">Tag Management <span class="tooltip" data-tooltip="Configure tag warnings, blacklists, and favorites">?</span></h3>
@@ -3075,6 +3076,7 @@ label:hover .tooltip {
             <input type="checkbox" id="mangaBookMarkingButtonEnabled">
             Manga Bookmarking Button <span class="tooltip" data-tooltip="Allows bookmarking manga for quick access.">?</span>
         </label>
+        
         <div id="manga-bookmarking-options" style="display: none;">
             <label>
                 <input type="radio" id="manga-bookmarking-cover" name="manga-bookmarking-type" value="cover">
@@ -3361,6 +3363,35 @@ label:hover .tooltip {
             </div>
         </div>
 
+        <!-- Share & Inbox Section (moved below Online Data Sync) -->
+        <label>
+            <input type="checkbox" id="shareButtonEnabled">
+            Share Button <span class="tooltip" data-tooltip="Adds a Share button to send a gallery to a recipient UUID.">?</span>
+        </label>
+        <!-- Inbox Settings Section -->
+        <div id="inbox-settings">
+            <h3 class="expand-icon">Inbox <span class="tooltip" data-tooltip="Configure inbox polling and viewing">?</span></h3>
+            <div id="inbox-settings-content">
+                <label>
+                    <input type="checkbox" id="receiveSharesEnabled">
+                    Enable Inbox polling <span class="tooltip" data-tooltip="Periodically check and save messages to the Inbox">?</span>
+                </label>
+                <label>
+                    <input type="checkbox" id="receivePopupsEnabled">
+                    Show popup on new messages <span class="tooltip" data-tooltip="Display a popup when new messages arrive">?</span>
+                </label>
+                <label>
+                    Poll Interval (minutes): <input type="number" id="inboxPollIntervalMin" min="1" max="1440" step="1" value="5">
+                    <span class="tooltip" data-tooltip="How often to check the inbox (1–1440 minutes)">?</span>
+                </label>
+                <div style="margin-top:8px;">
+                    <button type="button" id="checkInboxNow" class="btn-secondary">Check Inbox Now</button>
+                    <button type="button" id="clearInbox" class="btn-secondary" style="margin-left:8px;">Clear Inbox</button>
+                </div>
+                <div id="inbox-list" style="margin-top:10px;"></div>
+            </div>
+        </div>
+
         <!-- Advanced Storage Section -->
         <div id="advanced-settings">
             <h3 class="expand-icon">Advanced Storage Management <span class="tooltip" data-tooltip="View and modify all data stored in GM.getValue">?</span></h3>
@@ -3418,6 +3449,15 @@ $('div.container').append(settingsHtml);
             const findAltMangaThumbnailEnabled = await GM.getValue('findAltMangaThumbnailEnabled', true);
             const openInNewTabEnabled = await GM.getValue('openInNewTabEnabled', true);
             const mangaBookMarkingButtonEnabled = await GM.getValue('mangaBookMarkingButtonEnabled', true);
+            const shareButtonEnabled = await GM.getValue('shareButtonEnabled', true);
+            const receiveSharesEnabled = await GM.getValue('receiveSharesEnabled', true);
+            const receivePopupsEnabled = await GM.getValue('receivePopupsEnabled', true);
+            let inboxPollIntervalMin = await GM.getValue('inboxPollIntervalMin', null);
+            if (inboxPollIntervalMin === null) {
+                const legacySec = await GM.getValue('inboxPollIntervalSec', null);
+                inboxPollIntervalMin = legacySec != null ? Math.max(1, Math.round(Number(legacySec) / 60)) : 5;
+                await GM.setValue('inboxPollIntervalMin', inboxPollIntervalMin);
+            }
             const mangaBookMarkingType = await GM.getValue('mangaBookMarkingType', 'cover');
             const bookmarkArrangementType = await GM.getValue('bookmarkArrangementType', 'default');
             const monthFilterEnabled = await GM.getValue('monthFilterEnabled', true);
@@ -3501,6 +3541,10 @@ $('div.container').append(settingsHtml);
             $('#findAltMangaThumbnailEnabled').prop('checked', findAltMangaThumbnailEnabled);
             $('#openInNewTabEnabled').prop('checked', openInNewTabEnabled);
             $('#mangaBookMarkingButtonEnabled').prop('checked', mangaBookMarkingButtonEnabled);
+            $('#shareButtonEnabled').prop('checked', shareButtonEnabled);
+            $('#receiveSharesEnabled').prop('checked', receiveSharesEnabled);
+            $('#receivePopupsEnabled').prop('checked', receivePopupsEnabled);
+            $('#inboxPollIntervalMin').val(inboxPollIntervalMin);
             $('#monthFilterEnabled').prop('checked', monthFilterEnabled);
             $('#tooltipsEnabled').prop('checked', tooltipsEnabled);
             $('#galleryCaptionTooltipsEnabled').prop('checked', galleryCaptionTooltipsEnabled);
@@ -3550,6 +3594,66 @@ $('div.container').append(settingsHtml);
             }
 
             // Populate sync settings
+
+            // Inbox settings expand/collapse
+            const inboxSettingsExpanded = await GM.getValue('inboxSettingsExpanded', false);
+            $('#inbox-settings-content').toggle(inboxSettingsExpanded);
+            $('#inbox-settings h3').toggleClass('expanded', inboxSettingsExpanded);
+            $('#inbox-settings h3').click(async function() {
+                const isExpanded = $('#inbox-settings-content').is(':visible');
+                $('#inbox-settings-content').slideToggle();
+                await GM.setValue('inboxSettingsExpanded', !isExpanded);
+            });
+
+            // Render existing inbox messages
+            await renderInboxList();
+
+            // Manual Inbox check
+            $('#checkInboxNow').on('click', async function() {
+                try {
+                    const showPopups = $('#receivePopupsEnabled').prop('checked');
+                    const messages = await fetchInboxOnce(true);
+                    if (messages && messages.length) {
+                        await appendToInbox(messages);
+                        await renderInboxList();
+                        if (showPopups) {
+                            for (const msg of messages) {
+                                const galleryUrl = msg?.url || (msg?.id ? `https://nhentai.net/g/${msg.id}/` : '');
+                                const content = `
+                                    <div style="text-align:left">
+                                      <div style="font-weight:600;margin-bottom:6px;">A gallery was shared with you</div>
+                                      <div style="font-size:12px;color:#666;margin-bottom:6px;">From UUID: ${msg?.fromUUID || 'Unknown'}</div>
+                                    </div>
+                                `;
+                                showPopup(content, {
+                                    buttons: [
+                                        { text: 'Open', callback: () => {
+                                            if (!galleryUrl) return;
+                                            const popup = window.open(galleryUrl, '_blank');
+                                            if (!popup) window.location.href = galleryUrl;
+                                        } },
+                                        { text: 'Dismiss', callback: () => {} }
+                                    ],
+                                    timeout: 0
+                                });
+                            }
+                        }
+                    } else {
+                        showPopup('Inbox is up to date.', { timeout: 2000 });
+                    }
+                    // Update last poll timestamp to prevent immediate auto-poll after manual check
+                    await GM.setValue('lastInboxPollTS', Date.now());
+                } catch (err) {
+                    showPopup(`Inbox check failed: ${err?.message || err}`, { timeout: 3000 });
+                }
+            });
+
+            // Clear Inbox button
+            $('#clearInbox').on('click', async function() {
+                await GM.setValue('inboxMessages', []);
+                await renderInboxList();
+                showPopup('Inbox cleared.', { timeout: 1500 });
+            });
             $('#publicSyncEnabled').prop('checked', publicSyncEnabled);
             $('#privateSyncEnabled').prop('checked', privateSyncEnabled);
             $('#privateStorageUrl').val(privateStorageUrl);
@@ -4398,6 +4502,10 @@ $('#openInNewTabEnabled').change(function() {
             const findAltMangaThumbnailEnabled = $('#findAltMangaThumbnailEnabled').prop('checked');
             const openInNewTabEnabled = $('#openInNewTabEnabled').prop('checked');
             const mangaBookMarkingButtonEnabled = $('#mangaBookMarkingButtonEnabled').prop('checked');
+            const shareButtonEnabled = $('#shareButtonEnabled').prop('checked');
+            const receiveSharesEnabled = $('#receiveSharesEnabled').prop('checked');
+            const receivePopupsEnabled = $('#receivePopupsEnabled').prop('checked');
+            const inboxPollIntervalMin = parseInt($('#inboxPollIntervalMin').val(), 10) || 5;
             const mangaBookMarkingType = $('input[name="manga-bookmarking-type"]:checked').val();
             const bookmarkArrangementType = $('#bookmark-arrangement-type').val();
             const monthFilterEnabled = $('#monthFilterEnabled').prop('checked');
@@ -4475,6 +4583,10 @@ $('#openInNewTabEnabled').change(function() {
             await GM.setValue('findAltMangaThumbnailEnabled', findAltMangaThumbnailEnabled);
             await GM.setValue('openInNewTabEnabled', openInNewTabEnabled);
             await GM.setValue('mangaBookMarkingButtonEnabled', mangaBookMarkingButtonEnabled);
+            await GM.setValue('shareButtonEnabled', shareButtonEnabled);
+            await GM.setValue('receiveSharesEnabled', receiveSharesEnabled);
+            await GM.setValue('receivePopupsEnabled', receivePopupsEnabled);
+            await GM.setValue('inboxPollIntervalMin', inboxPollIntervalMin);
             await GM.setValue('mangaBookMarkingType', mangaBookMarkingType);
             await GM.setValue('bookmarkArrangementType', bookmarkArrangementType);
             await GM.setValue('monthFilterEnabled', monthFilterEnabled);
@@ -6574,6 +6686,255 @@ mangaBookmarking();
 
 
 //---------------------------**Month Filter**------------------------------------
+//----------------------------**Share Gallery Button**---------------------------------
+async function addShareButton() {
+    try {
+        const shareEnabled = await GM.getValue('shareButtonEnabled', true);
+        if (!shareEnabled) return;
+
+        // Only add on gallery page where the download button exists
+        const downloadButton = document.getElementById('download');
+        if (!downloadButton) return;
+
+        // Avoid duplicating the button
+        if (document.getElementById('share-gallery-button')) return;
+
+        const shareHtml = `
+            <a class="btn btn-primary btn-enabled tooltip share-gallery" id="share-gallery-button">
+                <i class="fas fa-share-alt"></i>
+                <span>Share</span>
+                <div class="top">Share to recipient by UUID<i></i></div>
+            </a>
+        `;
+
+        // Prefer inserting after Bookmark if present, else after Download
+        const $bookmarkBtn = $('#bookmark-button');
+        if ($bookmarkBtn.length) {
+            $bookmarkBtn.after(shareHtml);
+        } else {
+            $(downloadButton).after(shareHtml);
+        }
+
+        const shareBtn = document.getElementById('share-gallery-button');
+        if (!shareBtn) return;
+
+        shareBtn.addEventListener('click', async function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const currentUrl = window.location.href;
+            const idMatch = currentUrl.match(/\/g\/(\d+)/);
+            const galleryId = idMatch ? idMatch[1] : null;
+
+            // Build popup to collect recipient UUID
+            const content = `
+                <div style="text-align:left">
+                  <div style="font-weight:600;margin-bottom:6px;">Send this gallery to a recipient UUID</div>
+            <input type="text" id="nhp-share-recipient" placeholder="Recipient ID" style="width:100%;padding:8px;border:1px solid #999;border-radius:6px;">
+                  <div style="font-size:12px;color:#666;margin-top:6px;">The recipient must have Receive Shares enabled.</div>
+                </div>
+            `;
+
+            const btnEl = this;
+            showPopup(content, {
+                buttons: [
+                    {
+                        text: 'Send',
+                        callback: async () => {
+            const toUUID = (document.getElementById('nhp-share-recipient')?.value || '').trim();
+            if (!toUUID) { showPopup('Please enter a recipient ID.', { timeout: 2500 }); return; }
+            // Accept short alphanumeric IDs (like KKSTR) and typical UUIDs; 3–64 chars
+            if (!/^[A-Za-z0-9_-]{3,64}$/.test(toUUID)) {
+              showPopup('ID must be letters/numbers (3–64 chars).', { timeout: 3000 });
+              return;
+            }
+
+                            // Disable while processing
+                            btnEl.classList.remove('btn-enabled');
+                            btnEl.classList.add('btn-disabled');
+
+                            try {
+                                let fromUUID = '';
+                                try { fromUUID = await syncSystem.getUserUUID(); } catch (_) {}
+                                const payload = { toUUID, id: galleryId, url: currentUrl, fromUUID };
+                                const res = await fetch('https://nhentai-share.babykoolstar.workers.dev/send', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify(payload)
+                                });
+                                if (!res.ok) throw new Error(`Send failed (${res.status})`);
+                                const data = await res.json();
+                                if (data && data.status === 'ok') {
+                                    showPopup('Gallery shared successfully!', { timeout: 3000 });
+                                } else {
+                                    showPopup('Share request sent, but unexpected response.', { timeout: 3000 });
+                                }
+                            } catch (err) {
+                                showPopup(`Failed to send share: ${err.message}`, { timeout: 4000 });
+                            } finally {
+                                btnEl.classList.remove('btn-disabled');
+                                btnEl.classList.add('btn-enabled');
+                            }
+                        }
+                    },
+                    { text: 'Cancel', callback: () => {} }
+                ],
+                timeout: 0
+            });
+        });
+    } catch (error) {
+        console.error('Error adding Share button:', error);
+    }
+}
+
+// Initialize Share button on page load
+addShareButton();
+//----------------------------**Share Gallery Button**---------------------------------
+
+//----------------------------**Share Inbox Poller**---------------------------------
+async function startShareInboxPoller() {
+    try {
+        const receiveEnabled = await GM.getValue('receiveSharesEnabled', true);
+        if (!receiveEnabled) return;
+
+        const userUUID = await syncSystem.getUserUUID();
+        if (!userUUID) return;
+
+        // Poll interval is stored in minutes (migrate from legacy seconds if needed)
+        const legacySec = await GM.getValue('inboxPollIntervalSec', null);
+        const pollIntervalMin = await GM.getValue('inboxPollIntervalMin', legacySec != null ? Math.max(1, Math.round(Number(legacySec) / 60)) : 5);
+        const showPopups = await GM.getValue('receivePopupsEnabled', true);
+
+        const pollOnce = async () => {
+            try {
+                const messages = await fetchInboxOnce(true);
+                if (Array.isArray(messages) && messages.length) {
+                    await appendToInbox(messages);
+                    // If settings page is open, refresh the list
+                    await renderInboxList();
+                    if (showPopups) {
+                        for (const msg of messages) {
+                            const galleryUrl = msg?.url || (msg?.id ? `https://nhentai.net/g/${msg.id}/` : '');
+                            const content = `
+                                <div style="text-align:left">
+                                  <div style="font-weight:600;margin-bottom:6px;">A gallery was shared with you</div>
+                                  <div style="font-size:12px;color:#666;margin-bottom:6px;">From UUID: ${msg?.fromUUID || 'Unknown'}</div>
+                                </div>
+                            `;
+                            showPopup(content, {
+                                buttons: [
+                                    { text: 'Open', callback: () => {
+                                        if (!galleryUrl) return;
+                                        const popup = window.open(galleryUrl, '_blank');
+                                        if (!popup) window.location.href = galleryUrl;
+                                    } },
+                                    { text: 'Dismiss', callback: () => {} }
+                                ],
+                                timeout: 0
+                            });
+                        }
+                    }
+                }
+            } catch (_) { /* ignore */ }
+        };
+
+        // Interval-only polling (no immediate poll on page load) with last-poll gating
+        const intervalMs = Math.max(60000, (parseInt(pollIntervalMin, 10) || 5) * 60 * 1000);
+        setInterval(async () => {
+            try {
+                const lastTs = await GM.getValue('lastInboxPollTS', 0);
+                const now = Date.now();
+                if (now - lastTs < intervalMs) {
+                    return; // Skip if not enough time has passed since last poll
+                }
+                await pollOnce();
+                await GM.setValue('lastInboxPollTS', Date.now());
+            } catch (_) {}
+        }, intervalMs);
+    } catch (e) {
+        console.error('Share inbox poller error:', e);
+    }
+}
+//----------------------------**Share Inbox Poller**---------------------------------
+
+// Helper: fetch inbox messages once, optionally draining
+async function fetchInboxOnce(drain = true) {
+    try {
+        const userUUID = await syncSystem.getUserUUID();
+        if (!userUUID) return [];
+        const url = `https://nhentai-share.babykoolstar.workers.dev/inbox?uuid=${encodeURIComponent(userUUID)}&drain=${drain ? 'true' : 'false'}`;
+        const res = await fetch(url, { method: 'GET' });
+        if (!res.ok) return [];
+        const messages = await res.json();
+        return Array.isArray(messages) ? messages : [];
+    } catch (_) {
+        return [];
+    }
+}
+
+// Helper: append messages to local Inbox storage
+async function appendToInbox(newMessages) {
+    try {
+        const existing = await GM.getValue('inboxMessages', []);
+        const combined = existing.concat(newMessages.map(m => ({
+            toUUID: m.toUUID,
+            fromUUID: m.fromUUID,
+            id: m.id,
+            url: m.url,
+            ts: m.ts || Date.now()
+        })));
+        await GM.setValue('inboxMessages', combined);
+    } catch (_) {}
+}
+
+// Render Inbox list in settings
+async function renderInboxList() {
+    const container = $('#inbox-list');
+    if (!container.length) return;
+    const msgs = await GM.getValue('inboxMessages', []);
+    if (!Array.isArray(msgs) || msgs.length === 0) {
+        container.html('<div style="font-size:12px;color:#999;">Inbox is empty</div>');
+        return;
+    }
+    let html = '<ul id="inbox-items" style="list-style:none;padding:0;margin:0">';
+    msgs.forEach((m, i) => {
+        const time = new Date(m.ts || Date.now()).toLocaleString();
+        const title = m.id ? `Gallery #${m.id}` : 'Shared item';
+        const url = m.url || (m.id ? `https://nhentai.net/g/${m.id}/` : '');
+        html += `
+            <li class="inbox-item" data-index="${i}" style="padding:8px;border:1px solid #333;border-radius:4px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;">
+              <div style="text-align:left;">
+                <div style="font-weight:600;">${title}</div>
+                <div style="font-size:12px;color:#ccc;">From: ${m.fromUUID || 'Unknown'} • ${time}</div>
+              </div>
+              <div>
+                ${url ? '<button class="inbox-open btn-secondary" style="margin-right:6px;">Open</button>' : ''}
+                <button class="inbox-delete btn-secondary">Delete</button>
+              </div>
+            </li>`;
+    });
+    html += '</ul>';
+    container.html(html);
+
+    // Attach handlers
+    container.find('.inbox-open').off('click').on('click', async function() {
+        const index = $(this).closest('.inbox-item').data('index');
+        const msgs = await GM.getValue('inboxMessages', []);
+        const m = msgs[index];
+        const url = m?.url || (m?.id ? `https://nhentai.net/g/${m.id}/` : '');
+        if (url) {
+            const popup = window.open(url, '_blank');
+            if (!popup) window.location.href = url;
+        }
+    });
+    container.find('.inbox-delete').off('click').on('click', async function() {
+        const index = $(this).closest('.inbox-item').data('index');
+        let msgs = await GM.getValue('inboxMessages', []);
+        msgs.splice(index, 1);
+        await GM.setValue('inboxMessages', msgs);
+        await renderInboxList();
+    });
+}
 
 async function addMonthFilter() {
     const monthFilterEnabled = await GM.getValue('monthFilterEnabled', true);
@@ -9599,7 +9960,9 @@ class OnlineDataSync {
              'randomOpenType', 'profileButtonEnabled', 'infoButtonEnabled', 'logoutButtonEnabled', 
              'bookmarkLinkEnabled', 'findSimilarType', 'bookmarkedMangas',
              // New Hide/Blacklist feature
-             'hideBlacklistEnabled', 'hiddenGalleries'
+             'hideBlacklistEnabled', 'hiddenGalleries',
+             // Inbox & Share settings
+             'shareButtonEnabled', 'receiveSharesEnabled', 'receivePopupsEnabled', 'inboxPollIntervalMin', 'inboxMessages'
          ];
 
         for (const key of syncableKeys) {
@@ -10275,6 +10638,9 @@ async function setValueWithAutoSync(key, value) {
     await GM.setValue(key, value);
     await autoSyncManager.triggerDataChangeSync(key);
 }
+
+// Kick off inbox polling for received shares (if enabled)
+startShareInboxPoller();
 
 //------------------------  **Mark as Read System**  ------------------
 

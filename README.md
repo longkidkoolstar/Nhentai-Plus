@@ -4,7 +4,7 @@
 
 [**Namespace**: github.com/longkidkoolstar](https://github.com/longkidkoolstar)  
 
-**Version**: 9.0.0
+**Version**: 10.0.0
 
 **Description**: Enhances the functionality of the Nhentai website.  
 
@@ -34,8 +34,11 @@
 - **Read Manga Page** *(New in v9.0!)*: Dedicated page to view and manage all read manga with responsive grid layout.
 - **Auto-Mark on Last Page** *(New in v9.0!)*: Automatically marks galleries as read when reaching the final page.
 - **Enhanced Opacity System** *(New in v9.0!)*: Configurable fade levels for read galleries and non-English content.
-- **Gallery Data Caching** *(New in v9.0!)*: Automatic caching of cover images, titles, and metadata for read manga.
-- **Online Data Sync** *(New in v8.0!)*: Comprehensive cloud synchronization system for bookmarks, favorites, and settings across devices.
+ - **Gallery Data Caching** *(New in v9.0!)*: Automatic caching of cover images, titles, and metadata for read manga.
+ - **Share System** *(New in v10.0!)*: Share galleries between users via a cloud-powered Inbox with minute-based polling and optional popups.
+ - **Share Gallery Button** *(New in v10.0!)*: One-click button on gallery pages to send a share to a specific UUID.
+ - **Inbox** *(New in v10.0!)*: View received shares in a cloud Inbox; configure polling interval (minutes), popups, and clear/manage messages in settings.
+ - **Online Data Sync** *(New in v8.0!)*: Comprehensive cloud synchronization system for bookmarks, favorites, settings, and share/inbox data across devices.
 - **Public Sync** *(New in v8.0!)*: Use predefined JSONStorage.net API with standard security for easy data syncing.
 - **Private Sync** *(New in v8.0!)*: Use your own JSONStorage.net credentials for enhanced security and private data storage.
 - **UUID System** *(New in v8.0!)*: Unique 5-character identifier for each user with edit and regeneration capabilities.
@@ -96,6 +99,7 @@
     - **Auto-Save**: Private storage credentials are automatically saved and persist across sessions.
     - **Cross-Device Sync**: Access your bookmarks, favorites, and settings from any device.
     - **Version Tracking**: Each sync includes userscript version information for compatibility.
+    - **Share & Inbox Sync**: Share settings (`shareButtonEnabled`, receive/popup toggles), polling minutes, and Inbox messages are included in cloud sync.
 
 ---  
 
@@ -109,7 +113,16 @@
 
 **Note**: If the script isn't executing (e.g., for older devices), try using stable: [Ver. 7.5](https://greasyfork.org/en/scripts/498553-nhentai-plus?version=1562827)
 
-#### Version 9.0.0 *(Latest)*
+#### Version 10.0.0 *(Latest)*
+
+- **🆕 MAJOR**: **Share System** — Gallery sharing between users with a cloud Inbox.
+- **🔘 NEW**: **Share Gallery Button** — Send a gallery to any UUID directly from gallery pages.
+- **📥 NEW**: **Inbox** — Minute-based polling, optional popups on new messages, and a manageable message list.
+- **🔄 NEW**: **Sync Integration** — Share/Inbox settings and messages included in cloud sync (public or private).
+- **⚙️ REFACTOR**: **Settings** — Inbox moved under Online Data Sync; polling gated to avoid checks on every page.
+- **📦 CHORE**: **Version** — Userscript version bumped to 10.0.0.
+
+#### Version 9.0.0
 
 - **🆕 MAJOR**: **Mark as Read System** - Complete reading tracking system with visual feedback and one-click mark/unmark buttons.
 - **📖 NEW**: **Read Manga Page** - Dedicated page to view and manage all read manga with responsive grid layout.

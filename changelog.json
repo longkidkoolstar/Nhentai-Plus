@@ -1,4 +1,15 @@
 {
+  "10.0.0": {
+    "date": "2025-11-08",
+    "changes": [
+      "🆕 MAJOR: Share System — gallery sharing and cloud inbox",
+      "feat(share-button): add Share button on gallery pages to send shares",
+      "feat(inbox): add Inbox with polling in minutes and message list",
+      "feat(sync): include share/inbox settings and messages in cloud sync",
+      "refactor(inbox): move Inbox under Online Data Sync and gate polls",
+      "chore(version): bump userscript version to 10.0.0"
+    ]
+  },
   "9.9.0": {
     "date": "2025-10-30",
     "changes": [
