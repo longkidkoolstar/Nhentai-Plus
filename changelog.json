@@ -1,4 +1,13 @@
 {
+  "10.1.0": {
+    "date": "2025-11-09",
+    "changes": [
+      "feat(share): enforce exactly 5-character alphanumeric UUIDs in Share UI",
+      "feat(share): verify recipient existence in JSONStorage public cloud before sending",
+      "feat(worker): enforce 5-character alphanumeric UUIDs on /send and /inbox, uppercase normalization",
+      "chore(version): bump userscript version to 10.1.0"
+    ]
+  },
   "10.0.0": {
     "date": "2025-11-08",
     "changes": [

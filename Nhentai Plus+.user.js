@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      10.0.0
+// @version      10.1.0
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -22,7 +22,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "10.0.0";
+const CURRENT_VERSION = "10.1.0";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -6741,13 +6741,27 @@ async function addShareButton() {
                     {
                         text: 'Send',
                         callback: async () => {
-            const toUUID = (document.getElementById('nhp-share-recipient')?.value || '').trim();
+            let toUUID = (document.getElementById('nhp-share-recipient')?.value || '').trim().toUpperCase();
             if (!toUUID) { showPopup('Please enter a recipient ID.', { timeout: 2500 }); return; }
-            // Accept short alphanumeric IDs (like KKSTR) and typical UUIDs; 3–64 chars
-            if (!/^[A-Za-z0-9_-]{3,64}$/.test(toUUID)) {
-              showPopup('ID must be letters/numbers (3–64 chars).', { timeout: 3000 });
+            // Only accept exactly 5 alphanumeric characters (UUID format used by this script)
+            if (!/^[A-Z0-9]{5}$/.test(toUUID)) {
+              showPopup('Recipient ID must be exactly 5 letters/numbers.', { timeout: 3000 });
               return;
             }
+
+                            // Verify recipient exists in JSONStorage public cloud
+                            let recipientExists = false;
+                            try {
+                                const users = await syncSystem.getAvailableUsers('jsonstorage', syncSystem.publicConfig);
+                                recipientExists = Array.isArray(users) && users.some(u => String(u.uuid).toUpperCase() === toUUID);
+                            } catch (e) {
+                                showPopup('Could not verify recipient in cloud. Please try again.', { timeout: 4000 });
+                                return;
+                            }
+                            if (!recipientExists) {
+                                showPopup('Recipient ID not found in cloud sync. Ask them to enable sync once.', { timeout: 5000 });
+                                return;
+                            }
 
                             // Disable while processing
                             btnEl.classList.remove('btn-enabled');

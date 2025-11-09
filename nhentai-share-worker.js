@@ -22,12 +22,15 @@ export default {
       let payload = null;
       try { payload = await request.json(); } catch (_) {}
 
-      const toUUID = (payload && String(payload.toUUID || '').trim()) || '';
+      const toUUIDRaw = (payload && String(payload.toUUID || '').trim()) || '';
+      const toUUID = toUUIDRaw.toUpperCase();
       const id = (payload && payload.id) || '';
       const galleryUrl = (payload && payload.url) || '';
       const fromUUID = (payload && payload.fromUUID) || '';
 
       if (!toUUID) return json({ error: 'Missing toUUID' }, 400);
+      // Enforce 5-character alphanumeric UUIDs
+      if (!/^[A-Z0-9]{5}$/.test(toUUID)) return json({ error: 'Invalid toUUID format (must be 5 alphanumeric)' }, 400);
       if (!id && !galleryUrl) return json({ error: 'Missing gallery id or url' }, 400);
 
       let finalId = id;
@@ -51,9 +54,12 @@ export default {
 
     // GET /inbox?uuid=...&drain=true -> fetch and optionally drain messages
     if (method === 'GET' && path === '/inbox') {
-      const uuid = (url.searchParams.get('uuid') || '').trim();
+      const uuidRaw = (url.searchParams.get('uuid') || '').trim();
+      const uuid = uuidRaw.toUpperCase();
       const drain = (url.searchParams.get('drain') || '').toLowerCase() === 'true';
       if (!uuid) return json({ error: 'Missing uuid' }, 400);
+      // Enforce 5-character alphanumeric UUIDs for inbox retrieval
+      if (!/^[A-Z0-9]{5}$/.test(uuid)) return json({ error: 'Invalid uuid format (must be 5 alphanumeric)' }, 400);
 
       const key = `inbox:${uuid}`;
       const existing = await env.INBOX.get(key);
