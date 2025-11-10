@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      10.1.0
+// @version      10.1.1
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -22,7 +22,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "10.1.0";
+const CURRENT_VERSION = "10.1.1";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -3648,11 +3648,28 @@ $('div.container').append(settingsHtml);
                 }
             });
 
-            // Clear Inbox button
+            // Clear Inbox button with confirmation
             $('#clearInbox').on('click', async function() {
-                await GM.setValue('inboxMessages', []);
-                await renderInboxList();
-                showPopup('Inbox cleared.', { timeout: 1500 });
+                const content = `
+                    <div style="text-align:left">
+                      <div style="font-weight:600;margin-bottom:6px;">Clear Inbox</div>
+                      <div style="font-size:12px;color:#666;">Are you sure you want to clear all inbox messages locally?</div>
+                    </div>
+                `;
+                showPopup(content, {
+                    buttons: [
+                        {
+                            text: 'Clear',
+                            callback: async () => {
+                                await GM.setValue('inboxMessages', []);
+                                await renderInboxList();
+                                showPopup('Inbox cleared.', { timeout: 1500 });
+                            }
+                        },
+                        { text: 'Cancel', callback: () => {} }
+                    ],
+                    timeout: 0
+                });
             });
             $('#publicSyncEnabled').prop('checked', publicSyncEnabled);
             $('#privateSyncEnabled').prop('checked', privateSyncEnabled);
