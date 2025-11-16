@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      10.1.1
+// @version      10.1.2
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -22,7 +22,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "10.1.1";
+const CURRENT_VERSION = "10.1.2";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -6960,10 +6960,28 @@ async function renderInboxList() {
     });
     container.find('.inbox-delete').off('click').on('click', async function() {
         const index = $(this).closest('.inbox-item').data('index');
-        let msgs = await GM.getValue('inboxMessages', []);
-        msgs.splice(index, 1);
-        await GM.setValue('inboxMessages', msgs);
-        await renderInboxList();
+        const content = `
+            <div style="text-align:left">
+              <div style="font-weight:600;margin-bottom:6px;">Delete Message</div>
+              <div style="font-size:12px;color:#666;">Are you sure you want to delete this inbox message?</div>
+            </div>
+        `;
+        showPopup(content, {
+            buttons: [
+                {
+                    text: 'Delete',
+                    callback: async () => {
+                        let msgs = await GM.getValue('inboxMessages', []);
+                        msgs.splice(index, 1);
+                        await GM.setValue('inboxMessages', msgs);
+                        await renderInboxList();
+                        showPopup('Message deleted.', { timeout: 1500 });
+                    }
+                },
+                { text: 'Cancel', callback: () => {} }
+            ],
+            timeout: 0
+        });
     });
 }
 
