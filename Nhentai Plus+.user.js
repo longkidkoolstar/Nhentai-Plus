@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      10.1.3
+// @version      10.1.4
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -22,7 +22,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "10.1.3";
+const CURRENT_VERSION = "10.1.4";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -1722,7 +1722,19 @@ for (const page of bookmarkedPages) {
 
                 // Fetch and store tags
                 let tags = await GM.getValue(`tags_${manga.url}`, null);
-                if (!tags) {
+                // Fallback: use readGalleriesCache by gallery id
+                if (!Array.isArray(tags) || tags.length === 0) {
+                    const idMatch = (manga.url || '').match(/\/g\/(\d+)\//);
+                    if (idMatch && idMatch[1]) {
+                        const cachedData = await GM.getValue('readGalleriesCache', {});
+                        const cachedInfo = cachedData[idMatch[1]];
+                        const cachedTags = cachedInfo && Array.isArray(cachedInfo.tags) ? cachedInfo.tags : [];
+                        if (cachedTags.length > 0) {
+                            tags = cachedTags;
+                        }
+                    }
+                }
+                if (!Array.isArray(tags) || tags.length === 0) {
                     try {
                         const response = await fetch(manga.url);
                         const html = await response.text();
@@ -15542,22 +15554,19 @@ if (window.nhentaiPlusEnhanced) {
 async function addGalleryCaptionTooltips() {
     const galleries = document.querySelectorAll('.gallery');
     const galleryCaptionTooltipsEnabled = await GM.getValue('galleryCaptionTooltipsEnabled', true);
-    
+    const cachedData = await GM.getValue('readGalleriesCache', {});
+
     galleries.forEach(gallery => {
         const caption = gallery.querySelector('.caption');
         if (caption && !caption.hasAttribute('title')) {
-            // Get the title text (remove any extra elements like flags)
             let titleText = caption.textContent.trim();
-
-            // Extract tags from data-tags attribute
-            const dataTags = gallery.getAttribute('data-tags');
             let tagsText = '';
-            if (dataTags) {
-                // Convert tag IDs to readable format if possible
-                tagsText = '\n\nHover for details';
+            const link = gallery.querySelector('a[href*="/g/"]');
+            const match = link && link.getAttribute('href').match(/\/g\/(\d+)\//);
+            const id = match ? match[1] : null;
+            if (id && cachedData && cachedData[id] && Array.isArray(cachedData[id].tags) && cachedData[id].tags.length) {
+                tagsText = `\n\nTags: ${cachedData[id].tags.join(', ')}`;
             }
-
-            // Set the title attribute and tooltip-enabled class
             caption.setAttribute('title', titleText + tagsText);
             if (galleryCaptionTooltipsEnabled) {
                 caption.classList.add('tooltip-enabled');
@@ -15574,29 +15583,43 @@ $(document).ready(function() {
     // Watch for new galleries being added dynamically
     const observer = new MutationObserver(async function(mutations) {
         const galleryCaptionTooltipsEnabled = await GM.getValue('galleryCaptionTooltipsEnabled', true);
-        
+        const cachedData = await GM.getValue('readGalleriesCache', {});
+
         mutations.forEach(function(mutation) {
             if (mutation.type === 'childList') {
                 mutation.addedNodes.forEach(function(node) {
-                    if (node.nodeType === 1) { // Element node
+                    if (node.nodeType === 1) {
                         if (node.classList && node.classList.contains('gallery')) {
                             const caption = node.querySelector('.caption');
                             if (caption && !caption.hasAttribute('title')) {
                                 let titleText = caption.textContent.trim();
-                                caption.setAttribute('title', titleText);
+                                let tagsText = '';
+                                const link = node.querySelector('a[href*="/g/"]');
+                                const match = link && link.getAttribute('href').match(/\/g\/(\d+)\//);
+                                const id = match ? match[1] : null;
+                                if (id && cachedData && cachedData[id] && Array.isArray(cachedData[id].tags) && cachedData[id].tags.length) {
+                                    tagsText = `\n\nTags: ${cachedData[id].tags.join(', ')}`;
+                                }
+                                caption.setAttribute('title', titleText + tagsText);
                                 if (galleryCaptionTooltipsEnabled) {
                                     caption.classList.add('tooltip-enabled');
                                 }
                             }
                         }
-                        // Also check if the added node contains galleries
                         const galleries = node.querySelectorAll && node.querySelectorAll('.gallery');
                         if (galleries) {
                             galleries.forEach(gallery => {
                                 const caption = gallery.querySelector('.caption');
                                 if (caption && !caption.hasAttribute('title')) {
                                     let titleText = caption.textContent.trim();
-                                    caption.setAttribute('title', titleText);
+                                    let tagsText = '';
+                                    const link = gallery.querySelector('a[href*="/g/"]');
+                                    const match = link && link.getAttribute('href').match(/\/g\/(\d+)\//);
+                                    const id = match ? match[1] : null;
+                                    if (id && cachedData && cachedData[id] && Array.isArray(cachedData[id].tags) && cachedData[id].tags.length) {
+                                        tagsText = `\n\nTags: ${cachedData[id].tags.join(', ')}`;
+                                    }
+                                    caption.setAttribute('title', titleText + tagsText);
                                     if (galleryCaptionTooltipsEnabled) {
                                         caption.classList.add('tooltip-enabled');
                                     }

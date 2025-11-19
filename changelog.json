@@ -1,4 +1,12 @@
 {
+  "10.1.4": {
+    "date": "2025-11-19",
+    "changes": [
+      "fix(tooltips): fallback to readGalleriesCache for missing tags in bookmarks",
+      "feat(tooltips): include cached tags in gallery caption tooltips",
+      "chore(version): bump userscript version to 10.1.4"
+    ]
+  },
   "10.1.3": {
     "date": "2025-11-18",
     "changes": [
