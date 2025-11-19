@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      10.1.4
+// @version      10.2.0
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -22,7 +22,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "10.1.4";
+const CURRENT_VERSION = "10.2.0";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -1786,6 +1786,7 @@ for (const page of bookmarkedPages) {
                 updatedListItem.find('.delete-button').click(async function() {
                     const updatedBookmarkedMangas = bookmarkedMangas.filter(m => m.url !== manga.url);
                     await GM.setValue('bookmarkedMangas', updatedBookmarkedMangas);
+                    bookmarkedMangas = updatedBookmarkedMangas;
                     updatedListItem.remove();
 
                     const undoPopup = $(`
@@ -3145,6 +3146,38 @@ label:hover .tooltip {
                     </div>
                 </div>
                 <label>
+                    <input type="checkbox" id="quickNutPageEnabled">
+                     Quick Nut Page <span class="tooltip" data-tooltip="Aggregates galleries from your favorites into one page.">?</span>
+                </label>
+                <div id="quick-nut-page-options" style="display: none; margin-left: 20px; margin-bottom: 15px;">
+                    <div>
+                        <label>
+                            <input type="checkbox" id="quickNutEnglishOnlyEnabled">
+                            Only English
+                        </label>
+                    </div>
+                    <div style="margin-top:8px;">
+                        <label>
+                            <input type="checkbox" id="quickNutSkipReadEnabled">
+                            Skip already read
+                        </label>
+                    </div>
+                    <div style="margin-top:8px;">
+                        <label>
+                            Refresh Mode:
+                            <select id="quickNutRefreshMode">
+                                <option value="daily">Every 24 hours</option>
+                                <option value="per_visit">Every visit</option>
+                                <option value="custom">Custom (minutes)</option>
+                            </select>
+                        </label>
+                    </div>
+                    <div id="quickNutCustomMinutesContainer" style="margin-top:8px;">
+                        <label for="quickNutCustomMinutes">Custom minutes:</label>
+                        <input type="number" id="quickNutCustomMinutes" min="1" max="10080" value="1440">
+                    </div>
+                </div>
+                <label>
                     <input type="checkbox" id="nfmPageEnabled">
                     NFM (Nhentai Favorite Manager) Page <span class="tooltip" data-tooltip="Enables the Nhentai Favorite Manager page for favorite management.">?</span>
                 </label>
@@ -3223,6 +3256,7 @@ label:hover .tooltip {
                         <li data-tab="info" class="tab-item"><i class="fa fa-bars handle"></i> Info</li>
                         <li data-tab="twitter" class="tab-item"><i class="fa fa-bars handle"></i> Twitter</li>
                         <li data-tab="read_manga" class="tab-item"><i class="fa fa-bars handle"></i> Read Manga</li>
+                        <li data-tab="quick_nut" class="tab-item"><i class="fa fa-bars handle"></i> Quick Nut</li>
                         <!-- Offline Favorites tab will be added dynamically if user is not logged in -->
                     </ul>
                     <button type="button" id="resetTabOrder" class="btn-secondary">Reset to Default Order</button>
@@ -3482,6 +3516,11 @@ $('div.container').append(settingsHtml);
             const offlineFavoritesPageEnabled = await GM.getValue('offlineFavoritesPageEnabled', true);
             const readMangaPageEnabled = await GM.getValue('readMangaPageEnabled', true);
             const maxReadMangaDisplay = await GM.getValue('maxReadMangaDisplay', 100);
+            const quickNutPageEnabled = await GM.getValue('quickNutPageEnabled', true);
+            const quickNutEnglishOnlyEnabled = await GM.getValue('quickNutEnglishOnlyEnabled', true);
+            const quickNutSkipReadEnabled = await GM.getValue('quickNutSkipReadEnabled', true);
+            const quickNutRefreshMode = await GM.getValue('quickNutRefreshMode', 'daily');
+            const quickNutCustomMinutes = await GM.getValue('quickNutCustomMinutes', 1440);
             const nfmPageEnabled = await GM.getValue('nfmPageEnabled', true);
 
             // Online Data Sync settings
@@ -3570,6 +3609,13 @@ $('div.container').append(settingsHtml);
             $('#max-read-manga-display-slider').val(maxReadMangaDisplay);
             $('#max-read-manga-display-value').text(maxReadMangaDisplay);
             $('#read-manga-page-options').toggle(readMangaPageEnabled);
+            $('#quickNutPageEnabled').prop('checked', quickNutPageEnabled);
+            $('#quick-nut-page-options').toggle(quickNutPageEnabled);
+            $('#quickNutEnglishOnlyEnabled').prop('checked', quickNutEnglishOnlyEnabled);
+            $('#quickNutSkipReadEnabled').prop('checked', quickNutSkipReadEnabled);
+            $('#quickNutRefreshMode').val(quickNutRefreshMode);
+            $('#quickNutCustomMinutes').val(quickNutCustomMinutes);
+            $('#quickNutCustomMinutesContainer').toggle(quickNutRefreshMode === 'custom');
             
             $('#nfmPageEnabled').prop('checked', nfmPageEnabled);
             $('#bookmarksPageEnabled').prop('checked', bookmarksPageEnabled);
@@ -4171,6 +4217,15 @@ $('#findSimilarEnabled').on('change', function() {
                 $('#max-read-manga-display-value').text(value);
             });
 
+            $('#quickNutPageEnabled').on('change', function() {
+                $('#quick-nut-page-options').toggle($(this).is(':checked'));
+            });
+
+            $('#quickNutRefreshMode').on('change', function() {
+                const v = $(this).val();
+                $('#quickNutCustomMinutesContainer').toggle(v === 'custom');
+            });
+
             $('#showNonEnglishSelect').on('change', async () => {
                 const showNonEnglish = $('#showNonEnglishSelect').val();
                 await GM.setValue('showNonEnglish', showNonEnglish);
@@ -4547,6 +4602,11 @@ $('#openInNewTabEnabled').change(function() {
             const offlineFavoritesPageEnabled = $('#offlineFavoritesPageEnabled').prop('checked');
             const readMangaPageEnabled = $('#readMangaPageEnabled').prop('checked');
             const maxReadMangaDisplay = parseInt($('#max-read-manga-display-slider').val());
+            const quickNutPageEnabled = $('#quickNutPageEnabled').prop('checked');
+            const quickNutEnglishOnlyEnabled = $('#quickNutEnglishOnlyEnabled').prop('checked');
+            const quickNutSkipReadEnabled = $('#quickNutSkipReadEnabled').prop('checked');
+            const quickNutRefreshMode = $('#quickNutRefreshMode').val();
+            const quickNutCustomMinutes = parseInt($('#quickNutCustomMinutes').val()) || 1440;
             const nfmPageEnabled = $('#nfmPageEnabled').prop('checked');
             const bookmarksPageEnabled = $('#bookmarksPageEnabled').prop('checked');
             const replaceRelatedWithBookmarks = $('#replaceRelatedWithBookmarks').prop('checked');
@@ -4628,6 +4688,11 @@ $('#openInNewTabEnabled').change(function() {
             await GM.setValue('offlineFavoritesPageEnabled', offlineFavoritesPageEnabled);
             await GM.setValue('readMangaPageEnabled', readMangaPageEnabled);
             await GM.setValue('maxReadMangaDisplay', maxReadMangaDisplay);
+            await GM.setValue('quickNutPageEnabled', quickNutPageEnabled);
+            await GM.setValue('quickNutEnglishOnlyEnabled', quickNutEnglishOnlyEnabled);
+            await GM.setValue('quickNutSkipReadEnabled', quickNutSkipReadEnabled);
+            await GM.setValue('quickNutRefreshMode', quickNutRefreshMode);
+            await GM.setValue('quickNutCustomMinutes', quickNutCustomMinutes);
             await GM.setValue('nfmPageEnabled', nfmPageEnabled);
             await GM.setValue('bookmarksPageEnabled', bookmarksPageEnabled);
             await GM.setValue('replaceRelatedWithBookmarks', replaceRelatedWithBookmarks);
@@ -5351,7 +5416,7 @@ function refreshStorageData() {
 
             // Initialize tab order from storage or use default order
             async function initializeTabOrder() {
-                const defaultOrder = ['random', 'tags', 'artists', 'characters', 'parodies', 'groups', 'info', 'twitter', 'bookmarks', 'offline_favorites', 'read_manga', 'continue_reading', 'settings'];
+                const defaultOrder = ['random', 'tags', 'artists', 'characters', 'parodies', 'groups', 'info', 'twitter', 'bookmarks', 'offline_favorites', 'read_manga', 'quick_nut', 'continue_reading', 'settings'];
                 const savedOrder = await GM.getValue('tabOrder');
                 return savedOrder || defaultOrder;
             }
@@ -5388,7 +5453,8 @@ function refreshStorageData() {
                         }
                         // Regular case for internal links
                         return href.includes(`/${tabId}/`) ||
-                               (tabId === 'read_manga' && href.includes('/read-manga/'));
+                               (tabId === 'read_manga' && href.includes('/read-manga/')) ||
+                               (tabId === 'quick_nut' && href.includes('/quick-nut/'));
                     });
 
                     // If found, move it to our temporary container
@@ -5430,7 +5496,8 @@ function refreshStorageData() {
                         }
                         // Regular case for internal links
                         return href.includes(`/${tabId}/`) ||
-                               (tabId === 'read_manga' && href.includes('/read-manga/'));
+                               (tabId === 'read_manga' && href.includes('/read-manga/')) ||
+                               (tabId === 'quick_nut' && href.includes('/quick-nut/'));
                     });
 
                     if (desktopItem) {
@@ -5700,6 +5767,26 @@ function refreshStorageData() {
                             });
                         });
                     }
+
+                    const quickNutItem = Array.from(menu.querySelectorAll('li')).find(li => {
+                        const link = li.querySelector('a');
+                        return link && link.getAttribute('href').includes('/quick-nut/');
+                    });
+
+                    if (quickNutItem && !tabList.querySelector('[data-tab="quick_nut"]')) {
+                        const quickNutTabItem = document.createElement('li');
+                        quickNutTabItem.className = 'tab-item';
+                        quickNutTabItem.dataset.tab = 'quick_nut';
+                        quickNutTabItem.innerHTML = '<i class="fa fa-bars handle"></i> Quick Nut';
+                        tabList.appendChild(quickNutTabItem);
+
+                        initializeTabOrder().then(tabOrder => {
+                            tabOrder.forEach(tabId => {
+                                const item = tabList.querySelector(`[data-tab="${tabId}"]`);
+                                if (item) tabList.appendChild(item);
+                            });
+                        });
+                    }
                 }
 
                 // Check for dynamic items initially and then every second
@@ -5749,7 +5836,7 @@ function refreshStorageData() {
 
                 // Reset button handler
                 document.getElementById('resetTabOrder').addEventListener('click', async function() {
-                    const defaultOrder = ['random', 'tags', 'artists', 'characters', 'parodies', 'groups', 'info', 'twitter', 'bookmarks', 'offline_favorites', 'continue_reading', 'settings'];
+                    const defaultOrder = ['random', 'tags', 'artists', 'characters', 'parodies', 'groups', 'info', 'twitter', 'bookmarks', 'offline_favorites', 'read_manga', 'quick_nut', 'continue_reading', 'settings'];
                     await GM.setValue('tabOrder', defaultOrder);
 
                     showPopup('Tab order reset!', {timeout: 1000});
@@ -5799,6 +5886,14 @@ function refreshStorageData() {
                         // Special case for Offline Favorites
                         if (href.includes('/favorite/')) {
                             currentTabOrder.push('offline_favorites');
+                            continue;
+                        }
+                        if (href.includes('/read-manga/')) {
+                            currentTabOrder.push('read_manga');
+                            continue;
+                        }
+                        if (href.includes('/quick-nut/')) {
+                            currentTabOrder.push('quick_nut');
                             continue;
                         }
                         // Extract the tab ID from the href for internal links
@@ -10023,8 +10118,9 @@ class OnlineDataSync {
              // New Hide/Blacklist feature
              'hideBlacklistEnabled', 'hiddenGalleries',
              // Inbox & Share settings
-             'shareButtonEnabled', 'receiveSharesEnabled', 'receivePopupsEnabled', 'inboxPollIntervalMin', 'inboxMessages'
-         ];
+            'shareButtonEnabled', 'receiveSharesEnabled', 'receivePopupsEnabled', 'inboxPollIntervalMin', 'inboxMessages',
+            'favoriteTagsList'
+        ];
 
         for (const key of syncableKeys) {
             if (allKeys.includes(key)) {
@@ -10357,6 +10453,15 @@ class TaxonomyManager {
     async isArtistName(name) {
         const type = await this.getTypeForNameAsync(name);
         return type === 'artist';
+    }
+
+    unload() {
+        try {
+            this.byType = { artist: new Set(), tag: new Set(), parody: new Set(), group: new Set(), character: new Set() };
+            this.lastLoadedAt = null;
+            this.mobileByTypeCache = null;
+            this.mobileByTypeCacheAt = 0;
+        } catch (_) {}
     }
 }
 
@@ -12414,6 +12519,7 @@ class LanguageDetectionSystem {
         };
 
         if (flagUrls[language]) {
+            gallery.setAttribute('data-language-flagged', '1');
             const flag = document.createElement('img');
             flag.className = 'language-flag overlayFlag';
             flag.src = flagUrls[language];
@@ -13919,6 +14025,22 @@ class ReadMangaPageSystem {
                 pointer-events: none;
             }
 
+            .read-manga-gallery[data-language-flagged="1"]::before {
+                display: none !important;
+            }
+
+            .read-manga-gallery[data-language-flagged="1"] .caption::before,
+            .read-manga-gallery[data-language-flagged="1"] .read-manga-caption::before {
+                content: none !important;
+                display: none !important;
+                background: none !important;
+            }
+            .read-manga-gallery[data-language-flagged="1"] .language-flag::before,
+            .read-manga-gallery[data-language-flagged="1"] .overlayFlag::before {
+                content: none !important;
+                display: none !important;
+            }
+
             .read-manga-gallery:hover::before {
                 opacity: 1;
             }
@@ -14407,7 +14529,7 @@ async function initReadMangaPageSystem() {
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initReadMangaPageSystem);
 } else {
-    initReadMangaPageSystem();
+initReadMangaPageSystem();
 }
 
 //------------------------  **Read Manga Page System**  ------------------
@@ -14418,6 +14540,337 @@ if (document.readyState === 'loading') {
  * Enhanced CSS Styling System
  * Provides comprehensive styling for all new UI elements
  */
+let quickNutPageSystem;
+
+class QuickNutPageSystem {
+    constructor() {
+        this.pageUrl = '/quick-nut/';
+        this.maxPerFavorite = 20;
+        this.thumbCacheKey = 'quickNutThumbCache';
+        this.seenIdsKey = 'quickNutSeenIds';
+        this.targetTotal = 60;
+        this.maxPagesPerFavorite = 5;
+        this.fallbackFillEnabled = true;
+        this.init();
+    }
+    async init() {
+        await this.addNavigationLink();
+        this.handlePageRouting();
+    }
+    async addNavigationLink() {
+        const enabled = await GM.getValue('quickNutPageEnabled', true);
+        if (!enabled) return;
+        if (document.querySelector('a[href="/quick-nut/"]')) return;
+        const btnHtml = `
+          <li>
+            <a href="/quick-nut/">
+              <i class="fas fa-bolt"></i> Quick Nut
+            </a>
+          </li>
+        `;
+        const btn = $(btnHtml);
+        const dropdownMenu = $('ul.dropdown-menu');
+        dropdownMenu.append(btn);
+        const menu = $('ul.menu.left');
+        menu.append(btn);
+        btn.find('a').on('click', (e) => {
+            e.preventDefault();
+            this.navigateToQuickNutPage();
+        });
+        setTimeout(() => { if (typeof updateMenuOrder === 'function') updateMenuOrder(); }, 100);
+    }
+    async fetchWithRetry(url, options = {}, retries = 1, delay = 10000) {
+        const res = await fetch(url, options);
+        if (res && res.status === 429 && retries > 0) {
+            await new Promise(r => setTimeout(r, delay));
+            return this.fetchWithRetry(url, options, retries - 1, delay);
+        }
+        return res;
+    }
+    handlePageRouting() {
+        if (window.location.pathname === this.pageUrl || window.location.hash === '#quick-nut') {
+            this.renderQuickNutPage();
+        }
+    }
+    navigateToQuickNutPage() {
+        history.pushState({}, 'Quick Nut - nhentai', this.pageUrl);
+        this.renderQuickNutPage();
+    }
+    async renderQuickNutPage() {
+        const englishOnly = await GM.getValue('quickNutEnglishOnlyEnabled', true);
+        const refreshMode = await GM.getValue('quickNutRefreshMode', 'daily');
+        const customMinutes = await GM.getValue('quickNutCustomMinutes', 1440);
+        const cache = await GM.getValue('quickNutCache', { builtAt: 0, items: [] });
+        const shouldRebuild = this.shouldRebuild(refreshMode, customMinutes, cache && cache.builtAt ? cache.builtAt : 0);
+        let items = Array.isArray(cache && cache.items) ? cache.items : [];
+        const seen = await GM.getValue(this.seenIdsKey, []);
+        const avoidSet = new Set(Array.isArray(seen) ? seen : []);
+        const skipRead = await GM.getValue('quickNutSkipReadEnabled', true);
+        const readList = await GM.getValue('readGalleries', []);
+        const readSet = new Set(Array.isArray(readList) ? readList : []);
+        console.log('[QuickNut] render start', { englishOnly, refreshMode, customMinutes, lastBuiltAt: cache && cache.builtAt, cachedCount: Array.isArray(cache && cache.items) ? cache.items.length : 0, shouldRebuild, avoidCount: avoidSet.size, skipRead, readCount: readSet.size });
+        if (shouldRebuild || items.length === 0) {
+            items = await this.buildAggregatedItems(englishOnly, avoidSet, 1, readSet, !!skipRead);
+            await GM.setValue('quickNutCache', { builtAt: Date.now(), items });
+            try { if (typeof taxonomyManager !== 'undefined' && typeof taxonomyManager.unload === 'function') taxonomyManager.unload(); } catch (_) {}
+        } else {
+            const filtered = items.filter(it => !avoidSet.has(it.id) && !(skipRead && readSet.has(it.id)));
+            console.log('[QuickNut] render filter cached', { before: items.length, after: filtered.length });
+            if (filtered.length === 0 || filtered.length < this.targetTotal) {
+                items = await this.buildAggregatedItems(englishOnly, avoidSet, 1, readSet, !!skipRead);
+                await GM.setValue('quickNutCache', { builtAt: Date.now(), items });
+                try { if (typeof taxonomyManager !== 'undefined' && typeof taxonomyManager.unload === 'function') taxonomyManager.unload(); } catch (_) {}
+            } else {
+                items = filtered;
+            }
+        }
+        console.log('[QuickNut] render items', items.length);
+        this.replacePageContent(this.buildPageContent(items));
+        this.attachHandlers();
+        if (window.readMangaPageSystem && typeof window.readMangaPageSystem.addReadMangaPageCSS === 'function') {
+            window.readMangaPageSystem.addReadMangaPageCSS();
+        }
+        try { await this.addSeenIds(items.map(it => it.id)); } catch (_) {}
+    }
+    shouldRebuild(mode, minutes, lastTS) {
+        const now = Date.now();
+        if (mode === 'per_visit') return true;
+        if (mode === 'custom') {
+            const ms = Math.max(60000, (parseInt(minutes) || 60) * 60000);
+            return (now - lastTS) > ms;
+        }
+        return (now - lastTS) > 24 * 60 * 60 * 1000;
+    }
+    async buildAggregatedItems(englishOnly, avoidIdsSet = null, startPage = 1, readIdsSet = null, skipReadEnabled = false) {
+        const favorites = await GM.getValue('favoriteTagsList', []);
+        const favs = Array.isArray(favorites) ? favorites.map(s => String(s).trim()).filter(Boolean) : [];
+        const itemsById = new Map();
+        const avoidedBucket = [];
+        let skippedReadCount = 0;
+        console.log('[QuickNut] build start', { englishOnly, favoritesCount: favs.length, avoidCount: avoidIdsSet ? avoidIdsSet.size : 0, readCount: readIdsSet ? readIdsSet.size : 0, skipReadEnabled, startPage, maxPagesPerFavorite: this.maxPagesPerFavorite, targetTotal: this.targetTotal });
+        try { if (typeof taxonomyManager !== 'undefined') await taxonomyManager.ensureLoaded(); } catch (_) {}
+        for (const name of favs) {
+            let types = [];
+            try { types = (typeof taxonomyManager !== 'undefined') ? await taxonomyManager.getTypesForNameAsync(name) : []; } catch (_) { types = []; }
+            const allowed = Array.isArray(types) ? types.filter(t => ['artist','group','parody','character','tag'].includes(t)) : [];
+            console.log('[QuickNut] classify', { name, types: allowed });
+            if (!allowed.length) { console.log('[QuickNut] skip unsupported types', { name }); continue; }
+            const cleanValue = String(name).replace(/["']/g, '').trim();
+            for (const type of allowed) {
+                for (let page = startPage; page <= this.maxPagesPerFavorite; page++) {
+                    const effectiveTarget = this.targetTotal + skippedReadCount;
+                    if (itemsById.size >= effectiveTarget) break;
+                    const query = `${type}:"${cleanValue}"${englishOnly ? ' language:"english"' : ''}`;
+                    const url = `https://nhentai.net/search/?q=${encodeURIComponent(query)}${page && page > 1 ? `&page=${page}` : ''}`;
+                    console.log('[QuickNut] fetch search', { url, page, name, type });
+                    try {
+                        const res = await this.fetchWithRetry(url, { credentials: 'include' }, 1, 10000);
+                        if (!res || !res.ok) { console.log('[QuickNut] search failed', { url, ok: res && res.ok, status: res && res.status }); continue; }
+                        const html = await res.text();
+                        const doc = new DOMParser().parseFromString(html, 'text/html');
+                        const galleries = Array.from(doc.querySelectorAll('.gallery'));
+                        console.log('[QuickNut] search results', { name, type, page, count: galleries.length });
+                        for (let i = 0; i < galleries.length && i < this.maxPerFavorite; i++) {
+                            const effectiveTargetInner = this.targetTotal + skippedReadCount;
+                            if (itemsById.size >= effectiveTargetInner) break;
+                            const g = galleries[i];
+                            const link = g.querySelector('a[href*="/g/"]');
+                            const img = g.querySelector('img');
+                            const caption = g.querySelector('.caption');
+                            if (!link) continue;
+                            const m = link.getAttribute('href').match(/\/g\/(\d+)\//);
+                            const id = m ? m[1] : null;
+                            if (!id) { console.log('[QuickNut] skip no-id gallery'); continue; }
+                            if (itemsById.has(id)) { console.log('[QuickNut] skip duplicate id', { id }); continue; }
+                            const thumb = await this.getThumbForGallery(id, img);
+                            const title = caption ? caption.textContent.trim() : `Gallery ${id}`;
+                            const item = { id, title, thumbnail: thumb || null, url: `/g/${id}/` };
+                            if (skipReadEnabled && readIdsSet && readIdsSet.has(id)) {
+                                skippedReadCount++;
+                                console.log('[QuickNut] skip read id', { id, skippedReadCount });
+                                continue;
+                            }
+                            if (avoidIdsSet && avoidIdsSet.has(id)) {
+                                avoidedBucket.push(item);
+                                console.log('[QuickNut] bucket avoid id', { id });
+                                continue;
+                            }
+                            itemsById.set(id, item);
+                            console.log('[QuickNut] add item', { id, page, type, hasThumb: !!thumb });
+                        }
+                    } catch (e) { console.log('[QuickNut] fetch error', e); }
+                }
+            }
+        }
+        if (itemsById.size === 0 && avoidedBucket.length && this.fallbackFillEnabled) {
+            console.log('[QuickNut] fallback fill from avoided bucket', { count: avoidedBucket.length });
+            for (let i = 0; i < avoidedBucket.length && itemsById.size < Math.min(this.targetTotal, 30); i++) {
+                const it = avoidedBucket[i];
+                if (!itemsById.has(it.id)) itemsById.set(it.id, it);
+            }
+        }
+        const built = Array.from(itemsById.values());
+        console.log('[QuickNut] build done', { total: built.length, skippedReadCount });
+        return built;
+    }
+    async getThumbForGallery(id, imgEl) {
+        const candidate = this.getThumbFromSearchImg(imgEl);
+        console.log('[QuickNut] thumb candidate', { id, candidate, isPlaceholder: this.isPlaceholderSrc(candidate) });
+        if (candidate && !this.isPlaceholderSrc(candidate)) return candidate;
+        const cached = await this.getCachedThumbUrl(id);
+        console.log('[QuickNut] thumb cached?', { id, cached: !!cached });
+        if (cached) return cached;
+        const firstPage = await this.fetchFirstPageImageUrl(id);
+        console.log('[QuickNut] thumb firstPage?', { id, firstPage: !!firstPage });
+        if (firstPage) {
+            await this.saveThumbCache(id, firstPage);
+            return firstPage;
+        }
+        const finalUrl = candidate || null;
+        console.log('[QuickNut] thumb final', { id, url: finalUrl });
+        return finalUrl;
+    }
+    getThumbFromSearchImg(imgEl) {
+        if (!imgEl) return null;
+        const dataSrc = imgEl.getAttribute('data-src');
+        if (dataSrc && !this.isPlaceholderSrc(dataSrc)) return dataSrc;
+        const src = imgEl.getAttribute('src');
+        if (src && !this.isPlaceholderSrc(src)) return src;
+        return null;
+    }
+    isPlaceholderSrc(url) {
+        return !url || url.startsWith('data:image/gif;base64');
+    }
+    async fetchFirstPageImageUrl(id) {
+        try {
+            const firstPageUrl = `https://nhentai.net/g/${id}/1/`;
+            console.log('[QuickNut] fetch first page', { id, url: firstPageUrl });
+            const res = await this.fetchWithRetry(firstPageUrl, { credentials: 'include' }, 1, 10000);
+            if (!res || !res.ok) { console.log('[QuickNut] first page failed', { id, ok: res && res.ok, status: res && res.status }); return null; }
+            const html = await res.text();
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            const img = doc.querySelector('#image-container img');
+            const src = img && img.getAttribute('src') ? img.getAttribute('src') : null;
+            console.log('[QuickNut] first page img', { id, src });
+            return src;
+        } catch (_) {
+            return null;
+        }
+    }
+    async getCachedThumbUrl(id) {
+        try {
+            const cache = await GM.getValue(this.thumbCacheKey, {});
+            return cache && cache[id] ? cache[id].url : null;
+        } catch (_) { return null; }
+    }
+    async saveThumbCache(id, url) {
+        try {
+            const cache = await GM.getValue(this.thumbCacheKey, {});
+            cache[id] = { url, ts: Date.now() };
+            await GM.setValue(this.thumbCacheKey, cache);
+            console.log('[QuickNut] thumb cached', { id, url });
+        } catch (_) {}
+    }
+    async clearThumbCache() {
+        await GM.setValue(this.thumbCacheKey, {});
+        console.log('[QuickNut] thumb cache cleared');
+    }
+    buildPageContent(items) {
+        const content = `
+            <div class="container" style="min-height: 100vh; padding-bottom: 50px;">
+                <div class="read-manga-controls" style="display:flex; gap:8px; align-items:center; justify-content:flex-end; margin-top:10px;">
+                    <button id="quick-nut-refresh" class="btn btn-secondary">Refresh</button>
+                </div>
+                <h1>Quick Nut <span class="nobold">(${items.length})</span></h1>
+                <div class="gallery-grid read-manga-gallery-grid">
+                    ${items.map(g => this.createGalleryCard(g)).join('')}
+                </div>
+            </div>
+        `;
+        return content;
+    }
+    createGalleryCard(gallery) {
+        const thumbnailHtml = gallery.thumbnail ? `<img src="${gallery.thumbnail}" alt="${gallery.title}" loading="lazy" style="width: 100%; height: 300px; object-fit: cover; display: block;" onload="const placeholder = this.nextElementSibling; placeholder.style.display='none'; Array.from(placeholder.children).forEach(child => child.style.display='none');" onerror="this.style.display='none'; const placeholder = this.nextElementSibling; placeholder.style.display='flex'; Array.from(placeholder.children).forEach(child => child.style.display='block');">` : '';
+        const noImageHtml = `
+            <div class="no-image-placeholder" style="display: ${gallery.thumbnail ? 'none !important' : 'flex'}; width: 100%; height: 300px; background: linear-gradient(135deg, #333 0%, #555 100%); align-items: center; justify-content: center; flex-direction: column; color: #999;">
+                <i class="fas fa-book" style="font-size: 48px; margin-bottom: 10px; opacity: 0.5; display: ${gallery.thumbnail ? 'none !important' : 'block'};"></i>
+                <span style="font-size: 14px; font-weight: 500; display: ${gallery.thumbnail ? 'none !important' : 'block'};">Gallery ${gallery.id}</span>
+                <span style="font-size: 12px; opacity: 0.7; display: ${gallery.thumbnail ? 'none !important' : 'block'};">No Preview Available</span>
+            </div>
+        `;
+        return `
+            <div class="gallery read-gallery read-manga-gallery" data-gallery-id="${gallery.id}" style="position: relative; border-radius: 3px; overflow: visible; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4); transition: all 0.3s ease; background: #252525; height: auto; min-height: 350px; padding-bottom: 50px;">
+                <a href="${gallery.url}" class="cover" style="position: relative; display: block; height: 300px; overflow: hidden; border-radius: 3px 3px 0 0;">
+                    ${thumbnailHtml}
+                    ${noImageHtml}
+                </a>
+                <div class="caption read-manga-caption" style="padding: 8px 10px; background: #1e1e1e; color: white; font-size: 12px; line-height: 1.3; min-height: 40px; max-height: 50px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; position: absolute; bottom: 0; left: 0; right: 0; border-radius: 0 0 3px 3px;">${gallery.title}</div>
+            </div>
+        `;
+    }
+    replacePageContent(content) {
+        const mainContent = document.querySelector('#content') || document.body;
+        const wrappedContent = `<div class="read-manga-page">${content}</div>`;
+        mainContent.innerHTML = wrappedContent;
+        document.title = 'Quick Nut - nhentai';
+        document.body.classList.add('read-manga-active');
+    }
+    attachHandlers() {
+        const btn = document.getElementById('quick-nut-refresh');
+        if (btn) {
+            btn.addEventListener('click', async () => {
+                const currentIds = Array.from(document.querySelectorAll('.read-manga-gallery[data-gallery-id]')).map(el => el.getAttribute('data-gallery-id'));
+                console.log('[QuickNut] refresh clicked', { currentCount: currentIds.length });
+                await this.addSeenIds(currentIds);
+                await this.refreshAvoidingSeen();
+            });
+        }
+    }
+    async addSeenIds(ids) {
+        try {
+            const list = await GM.getValue(this.seenIdsKey, []);
+            const set = new Set(Array.isArray(list) ? list : []);
+            for (const id of ids) set.add(id);
+            const limited = Array.from(set).slice(-1000);
+            await GM.setValue(this.seenIdsKey, limited);
+            console.log('[QuickNut] addSeenIds', { addCount: ids.length, before: Array.isArray(list) ? list.length : 0, after: limited.length });
+        } catch (_) {}
+    }
+    async refreshAvoidingSeen() {
+        try {
+            const englishOnly = await GM.getValue('quickNutEnglishOnlyEnabled', true);
+            const seen = await GM.getValue(this.seenIdsKey, []);
+            const avoidSet = new Set(Array.isArray(seen) ? seen : []);
+            const skipRead = await GM.getValue('quickNutSkipReadEnabled', true);
+            const readList = await GM.getValue('readGalleries', []);
+            const readSet = new Set(Array.isArray(readList) ? readList : []);
+            console.log('[QuickNut] refreshAvoidingSeen', { englishOnly, avoidCount: avoidSet.size });
+            await GM.setValue('quickNutCache', { builtAt: 0, items: [] });
+            await this.clearThumbCache();
+            const items = await this.buildAggregatedItems(englishOnly, avoidSet, 2, readSet, !!skipRead);
+            await GM.setValue('quickNutCache', { builtAt: Date.now(), items });
+            try { if (typeof taxonomyManager !== 'undefined' && typeof taxonomyManager.unload === 'function') taxonomyManager.unload(); } catch (_) {}
+            this.replacePageContent(this.buildPageContent(items));
+            this.attachHandlers();
+            if (window.readMangaPageSystem && typeof window.readMangaPageSystem.addReadMangaPageCSS === 'function') {
+                window.readMangaPageSystem.addReadMangaPageCSS();
+            }
+            console.log('[QuickNut] refresh built', { count: items.length });
+        } catch (e) {}
+    }
+}
+
+async function initQuickNutPageSystem() {
+    quickNutPageSystem = new QuickNutPageSystem();
+    window.quickNutPageSystem = quickNutPageSystem;
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initQuickNutPageSystem);
+} else {
+    initQuickNutPageSystem();
+}
+
 function addEnhancedCSS() {
     const css = `
         /* Global Enhancements */

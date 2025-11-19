@@ -1,4 +1,14 @@
 {
+  "10.2.0": {
+    "date": "2025-11-19",
+    "changes": [
+      "feat: add quick nut page for aggregating favorite galleries",
+      "Implement new Quick Nut page that aggregates galleries from favorites",
+      "Add settings for English-only, skip read, and refresh modes",
+      "Include thumbnail caching and seen gallery tracking",
+      "Update version to 10.2.0"
+    ]
+  },
   "10.1.4": {
     "date": "2025-11-19",
     "changes": [
