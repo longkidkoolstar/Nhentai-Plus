@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      10.2.0
+// @version      10.2.1
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -22,7 +22,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "10.2.0";
+const CURRENT_VERSION = "10.2.1";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -14616,13 +14616,7 @@ class QuickNutPageSystem {
         } else {
             const filtered = items.filter(it => !avoidSet.has(it.id) && !(skipRead && readSet.has(it.id)));
             console.log('[QuickNut] render filter cached', { before: items.length, after: filtered.length });
-            if (filtered.length === 0 || filtered.length < this.targetTotal) {
-                items = await this.buildAggregatedItems(englishOnly, avoidSet, 1, readSet, !!skipRead);
-                await GM.setValue('quickNutCache', { builtAt: Date.now(), items });
-                try { if (typeof taxonomyManager !== 'undefined' && typeof taxonomyManager.unload === 'function') taxonomyManager.unload(); } catch (_) {}
-            } else {
-                items = filtered;
-            }
+            items = filtered;
         }
         console.log('[QuickNut] render items', items.length);
         this.replacePageContent(this.buildPageContent(items));

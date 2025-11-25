@@ -1,4 +1,12 @@
 {
+  "10.2.1": {
+    "date": "2025-11-24",
+    "changes": [
+      "fix(quick-nut): respect refresh mode; stop per-visit rebuild when cached filtered list is below target",
+      "fix(quick-nut): only rebuild when schedule elapses or cache is empty",
+      "chore(version): bump userscript version to 10.2.1"
+    ]
+  },
   "10.2.0": {
     "date": "2025-11-19",
     "changes": [
