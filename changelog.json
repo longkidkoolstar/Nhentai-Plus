@@ -1,4 +1,16 @@
 {
+  "10.3.0": {
+    "date": "2025-12-13",
+    "changes": [
+      "feat(ui): complete overhaul of Settings page with modern, tabbed interface",
+      "feat(ui): add sidebar navigation and categorized settings tabs",
+      "feat(settings): add 'Classic Layout' toggle to revert to single-page view",
+      "feat(storage): improve Storage Explorer with collapsible header and edit popup",
+      "feat(ui): responsive design for settings on mobile devices",
+      "refactor(css): implement CSS variables for consistent theming",
+      "chore(version): bump userscript version to 10.3.0"
+    ]
+  },
   "10.2.1": {
     "date": "2025-11-24",
     "changes": [

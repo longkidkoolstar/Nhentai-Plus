@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      10.2.1
+// @version      10.3.0
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -22,7 +22,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "10.2.1";
+const CURRENT_VERSION = "10.3.0";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -2265,1208 +2265,1122 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
 // Add settings form and random hentai preferences
 const settingsHtml = `
 <style>
-    #content {
-        padding: 20px;
-        background: #1a1a1a;
-        color: #fff;
-        border-radius: 5px;
+    /* Modern Settings UI */
+    :root {
+        --nh-bg: #1f1f1f;
+        --nh-bg-dark: #111;
+        --nh-bg-light: #2a2a2a;
+        --nh-accent: #ed2553;
+        --nh-text: #f1f1f1;
+        --nh-text-muted: #aaa;
+        --nh-border: #333;
     }
 
-    #settingsForm {
+    #content {
+        background: transparent !important;
+        padding: 0 !important;
+        border: none !important;
+        max-width: 1200px;
+        margin: 20px auto;
+    }
+
+    .settings-wrapper {
+        display: flex;
+        background: var(--nh-bg);
+        border-radius: 8px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        border: 1px solid var(--nh-border);
+        min-height: 600px;
+        overflow: hidden;
+    }
+
+    /* Sidebar */
+    .settings-sidebar {
+        width: 250px;
+        background: var(--nh-bg-light);
+        border-right: 1px solid var(--nh-border);
         display: flex;
         flex-direction: column;
-        gap: 10px;
-    }
-    .tooltip {
-        display: inline-block;
-        position: relative;
-        cursor: pointer;
-        font-size: 14px;
-        background: #444;
-        color: #fff;
-        border-radius: 50%;
-        width: 18px;
-        height: 18px;
-        text-align: center;
-        line-height: 18px;
-        font-weight: bold;
+        flex-shrink: 0;
     }
 
-    .tooltip:hover::after {
-        content: attr(data-tooltip);
-        position: absolute;
-        left: 50%;
-        bottom: 100%;
-        transform: translateX(-50%);
-        background: #666;
-        color: #fff;
-        padding: 5px;
-        border-radius: 3px;
-        white-space: nowrap;
-        font-size: 12px;
+    .settings-header {
+        padding: 20px;
+        background: rgba(0,0,0,0.2);
+        border-bottom: 1px solid var(--nh-border);
     }
-    #settingsForm label {
+
+    .settings-header h2 {
+        margin: 0;
+        font-size: 18px;
+        color: var(--nh-accent);
         display: flex;
         align-items: center;
         gap: 10px;
     }
 
-    #settingsForm input[type="text"],
-    #settingsForm input[type="password"],
-    #settingsForm input[type="number"] {
-        width: calc(100% - 12px); /* Adjust for padding and borders */
-        padding: 5px;
-        border-radius: 3px;
-        border: 1px solid #333;
-        background: #333;
-        color: #fff;
-    }
-
-    #settingsForm button {
-        padding: 10px;
-        background: #2a2a2a;
-        border: 1px solid #333;
-        border-radius: 3px;
-        color: #fff;
-        cursor: pointer;
-    }
-
-    #settingsForm button:hover {
-        background: #333;
-    }
-
-    #autoLoginCredentials {
-        display: block;
-        margin-top: 10px;
-    }
-
-    #random-settings {
-        margin-top: 20px;
-    }
-
-    #random-settings label {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-
-    #random-settings input[type="text"],
-    #random-settings input[type="number"] {
-        width: calc(100% - 12px); /* Adjust for padding and borders */
-        padding: 5px;
-        border-radius: 3px;
-        border: 1px solid #333;
-        background: #333;
-        color: #fff;
-        margin-bottom: 10px; /* Add spacing between fields */
-    }
-
-    /* Bookmark Import/Export Buttons */
-    .bookmark-actions {
-        display: flex;
-        gap: 10px;
-        margin-top: 10px;
-    }
-
-    .bookmark-actions button {
-        padding: 10px;
-        background-color: #007bff;
-        border: none;
-        color: white;
-        cursor: pointer;
-    }
-
-    .bookmark-actions button:hover {
-        background-color: #0056b3;
-    }
-
-    #importBookmarksFile {
-        display: none;
-    }
-
-    /* Advanced Settings Section */
-    #advanced-settings {
-        margin-top: 30px;
-        border-top: 1px solid #333;
-        padding-top: 20px;
-    }
-
-    #advanced-settings h3 {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        cursor: pointer;
-    }
-
-    /* Tab Arrangement Styles */
-    .sortable-list {
+    .settings-nav {
         list-style: none;
         padding: 0;
-        margin: 10px 0;
-        touch-action: pan-y;
+        margin: 0;
+        overflow-y: auto;
     }
 
-    .tab-item {
+    .nav-item {
+        padding: 15px 20px;
+        cursor: pointer;
+        color: var(--nh-text-muted);
+        transition: all 0.2s;
+        border-left: 3px solid transparent;
         display: flex;
         align-items: center;
-        padding: 10px;
-        margin: 5px 0;
-        background: #2a2a2a;
-        border: 1px solid #333;
-        border-radius: 3px;
-        user-select: none;
-        transition: background 0.2s, transform 0.2s;
-        touch-action: none;
+        gap: 12px;
+        font-size: 14px;
     }
 
-    .handle {
-        cursor: grab;
-        margin-right: 8px;
-        touch-action: none;
+    .nav-item:hover {
+        background: rgba(255,255,255,0.05);
+        color: var(--nh-text);
     }
 
-    .tab-item.sortable-ghost {
-        opacity: 0.5;
+    .nav-item.active {
+        background: rgba(237, 37, 83, 0.1);
+        border-left-color: var(--nh-accent);
+        color: var(--nh-text);
+        font-weight: 600;
     }
 
-    .tab-item.sortable-drag,
-    .tab-item.dragging {
-        cursor: grabbing !important;
-        background: #333;
-        transform: scale(1.02);
-        z-index: 1000;
+    .nav-item i { width: 20px; text-align: center; }
+
+    /* Content */
+    .settings-main {
+        flex: 1;
+        padding: 30px;
+        overflow-y: auto;
+        max-height: 85vh;
     }
 
-    .tab-item:hover {
-        background: #333;
-    }
-
-    .tab-item .handle:hover {
-        opacity: 0.8;
-    }
-    }
-
-    .tab-item:hover {
-        background: #333;
-    }
-
-    .tab-item .handle {
-        margin-right: 10px;
-        color: #666;
-    }
-
-    .btn-secondary {
-        background: #444;
-        color: #fff;
-        border: none;
-        padding: 8px 15px;
-        border-radius: 3px;
-        cursor: pointer;
-        margin-top: 10px;
-    }
-
-    .btn-secondary:hover {
-        background: #555;
-    }
-
-    /* Minimal link-style button for compact actions */
-    .link-button {
-        background: transparent;
-        border: none;
-        color: #8ecae6;
-        padding: 0;
-        margin-left: 8px;
-        font-size: 12px;
-        text-decoration: underline;
-        cursor: pointer;
-    }
-    .link-button:hover { color: #a8d8f0; }
-
-    /* Compact modal for managing hidden manga */
-    .nhp-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 9999; }
-    .nhp-modal-content { width: 420px; max-width: 92vw; max-height: 60vh; overflow: auto; background: #1f1f1f; border: 1px solid #333; border-radius: 8px; padding: 12px; }
-    .nhp-modal-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
-    .nhp-modal-header .title { font-weight: 600; font-size: 14px; }
-    .nhp-modal-header .close-btn { background: transparent; border: none; color: #ccc; font-size: 20px; line-height: 1; cursor: pointer; }
-    .nhp-modal-header .close-btn:hover { color: #fff; }
-    .nhp-modal-list .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 0; border-bottom: 1px dashed #333; }
-    .nhp-modal-list .row .item-title { flex: 1; font-size: 12px; color: #ddd; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-decoration: underline; }
-    .nhp-modal-list .row .item-id { font-size: 11px; color: #888; margin-left: 6px; }
-    .nhp-modal-list .row .actions button { background: #444; border: 1px solid #555; color: #fff; border-radius: 4px; font-size: 12px; padding: 4px 8px; cursor: pointer; }
-    .nhp-modal-list .row .actions button:hover { background: #555; }
-
-    #advanced-settings-content {
+    .tab-content {
         display: none;
-        margin-top: 15px;
+        animation: fadeIn 0.3s ease;
     }
 
-    /* Fade & Read Settings */
-    #fade-read-settings {
-        margin-top: 20px;
-        border-top: 1px solid #333;
-        padding-top: 20px;
+    .tab-content.active { display: block; }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
     }
 
-    #fade-read-settings-content {
-        display: none;
-        margin-top: 15px;
+    .section-title {
+        font-size: 24px;
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid var(--nh-border);
+        color: var(--nh-text);
     }
 
-    #fade-read-settings-content input[type="range"] {
-        width: 200px;
-        margin: 0 10px;
+    /* Cards & Groups */
+    .setting-card {
+        background: rgba(255,255,255,0.02);
+        border: 1px solid var(--nh-border);
+        border-radius: 6px;
+        padding: 20px;
+        margin-bottom: 20px;
     }
 
-    /* Tag Management Settings */
-    #tag-management-settings {
-        margin-top: 20px;
-        border-top: 1px solid #333;
-        padding-top: 20px;
-    }
-
-    #tag-management-settings-content {
-        display: none;
-        margin-top: 15px;
-    }
-
-    .tag-lists-container {
-        display: none;
-        margin: 15px 0;
-    }
-
-    .tag-list-section {
+    .setting-card h3 {
+        margin-top: 0;
+        font-size: 16px;
+        color: var(--nh-accent);
         margin-bottom: 15px;
     }
 
-    .tag-list-section h4 {
-        color: #e63946;
-        margin-bottom: 5px;
-        font-size: 14px;
-    }
-
-    .tag-list-section textarea {
-        width: calc(100% - 12px);
-        padding: 8px;
-        border-radius: 3px;
-        border: 1px solid #333;
-        background: #2a2a2a;
-        color: #fff;
-        font-family: inherit;
-        resize: vertical;
-        min-height: 60px;
-    }
-
-    .btn-secondary {
-        padding: 8px 16px;
-        background: #444;
-        border: 1px solid #555;
-        border-radius: 3px;
-        color: #fff;
-        cursor: pointer;
-        margin-top: 10px;
-        margin-right: 10px;
-    }
-
-    .btn-secondary:hover {
-        background: #555;
-    }
-
-    #storage-data {
-        width: 100%;
-        height: 200px;
-        background: #333;
-        color: #fff;
-        border: 1px solid #444;
-        padding: 10px;
-        font-family: monospace;
-        margin-bottom: 10px;
-        white-space: pre;
-        overflow: auto;
-    }
-
-    .storage-key-item {
+    .setting-row {
         display: flex;
+        justify-content: space-between;
         align-items: center;
-        margin-bottom: 5px;
-        background: #2a2a2a;
-        padding: 5px;
-        border-radius: 3px;
+        padding: 12px 0;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
     }
 
-    .storage-key {
-        flex: 1;
-        padding: 5px;
-        overflow: hidden;
-        text-overflow: ellipsis;
+    .setting-row:last-child { border-bottom: none; }
+
+    .setting-info { flex: 1; padding-right: 20px; }
+    .setting-label { font-weight: 500; display: block; margin-bottom: 4px; }
+    .setting-desc { font-size: 12px; color: var(--nh-text-muted); }
+
+    /* Form Elements */
+    input[type="text"], input[type="password"], input[type="number"], select, textarea {
+        background: var(--nh-bg-dark);
+        border: 1px solid var(--nh-border);
+        color: var(--nh-text);
+        padding: 8px 12px;
+        border-radius: 4px;
+        width: 100%;
+        box-sizing: border-box;
+    }
+    
+    input[type="text"]:focus, input[type="password"]:focus {
+        border-color: var(--nh-accent);
+        outline: none;
     }
 
-    .storage-actions {
-        display: flex;
-        gap: 5px;
+    /* Toggle Switch */
+    .toggle-switch {
+        position: relative;
+        display: inline-block;
+        width: 46px;
+        height: 24px;
     }
-
-    .storage-actions button {
-        background: #444;
-        border: none;
-        color: white;
-        padding: 3px 8px;
-        border-radius: 2px;
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider {
+        position: absolute;
         cursor: pointer;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background-color: #444;
+        transition: .3s;
+        border-radius: 24px;
+    }
+    .toggle-slider:before {
+        position: absolute;
+        content: "";
+        height: 18px;
+        width: 18px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: .3s;
+        border-radius: 50%;
+    }
+    input:checked + .toggle-slider { background-color: var(--nh-accent); }
+    input:checked + .toggle-slider:before { transform: translateX(22px); }
+
+    /* Buttons */
+    .btn {
+        padding: 8px 16px;
+        border-radius: 4px;
+        border: none;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.2s;
+    }
+    .btn-primary { background: var(--nh-accent); color: white; }
+    .btn-primary:hover { background: #c91841; }
+    .btn-secondary { background: #444; color: white; }
+    .btn-secondary:hover { background: #555; }
+    
+    .save-bar {
+        position: sticky;
+        bottom: 0;
+        background: var(--nh-bg-light);
+        padding: 15px 30px;
+        border-top: 1px solid var(--nh-border);
+        display: flex;
+        justify-content: flex-end;
+        z-index: 100;
     }
 
-    .storage-actions button:hover {
-        background: #555;
+    /* Specific overrides from original CSS */
+    .nhp-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: none; align-items: center; justify-content: center; z-index: 9999; }
+    .nhp-modal-content { background: var(--nh-bg); border: 1px solid var(--nh-border); border-radius: 8px; padding: 20px; width: 500px; max-width: 90%; max-height: 80vh; overflow-y: auto; }
+    .nhp-modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+        .settings-wrapper { flex-direction: column; }
+        .settings-sidebar { width: 100%; height: auto; border-right: none; border-bottom: 1px solid var(--nh-border); }
+        .settings-nav { display: flex; overflow-x: auto; padding: 10px; }
+        .nav-item { white-space: nowrap; padding: 10px; border-left: none; border-bottom: 2px solid transparent; }
+        .nav-item.active { border-left: none; border-bottom-color: var(--nh-accent); }
     }
 
-    .action-btn-danger {
-        background: #d9534f !important;
+    /* Classic Layout Mode */
+    .settings-wrapper.classic-mode .settings-sidebar { display: none; }
+    .settings-wrapper.classic-mode { display: block; }
+    .settings-wrapper.classic-mode .tab-content { display: block !important; margin-bottom: 30px; animation: none; }
+    .settings-wrapper.classic-mode .settings-main { max-height: none; overflow: visible; }
+    .settings-wrapper.classic-mode .section-title { 
+        position: sticky; 
+        top: 0; 
+        background: var(--nh-bg); 
+        padding-top: 10px; 
+        z-index: 10;
+        border-bottom: 2px solid var(--nh-accent);
     }
 
-    .action-btn-danger:hover {
-        background: #c9302c !important;
-    }
+    /* Keeping original utility classes */
+    .tooltip { display: inline-block; margin-left: 5px; color: var(--nh-text-muted); cursor: help; }
+    .tooltip:hover { color: var(--nh-text); }
+    
+    /* Fix for specific sections */
+    #advanced-settings-content, #online-sync-settings-content { padding-top: 10px; }
+    .sortable-list { list-style: none; padding: 0; }
+    .tab-item { background: var(--nh-bg-light); padding: 10px; margin-bottom: 5px; border-radius: 4px; display: flex; align-items: center; gap: 10px; cursor: grab; }
 
+    /* Edit Value Modal */
     #edit-value-modal {
         display: none;
         position: fixed;
-        top: 0;
+        z-index: 10000;
         left: 0;
+        top: 0;
         width: 100%;
         height: 100%;
-        background: rgba(0, 0, 0, 0.8);
-        z-index: 999;
+        overflow: auto;
+        background-color: rgba(0,0,0,0.8);
+        backdrop-filter: blur(5px);
     }
 
     #edit-value-content {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: #222;
-        padding: 20px;
-        border-radius: 5px;
+        background-color: var(--nh-bg);
+        margin: 10% auto;
+        padding: 25px;
+        border: 1px solid var(--nh-border);
         width: 80%;
         max-width: 600px;
+        border-radius: 8px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        animation: fadeIn 0.3s;
     }
 
     #edit-value-textarea {
         width: 100%;
-        height: 200px;
-        background: #333;
-        color: #fff;
-        border: 1px solid #444;
+        height: 300px;
+        margin-bottom: 20px;
+        background-color: var(--nh-bg-dark);
+        color: var(--nh-text);
+        border: 1px solid var(--nh-border);
         padding: 10px;
         font-family: monospace;
-        margin-bottom: 15px;
+        resize: vertical;
     }
 
     .modal-buttons {
         display: flex;
-        gap: 10px;
         justify-content: flex-end;
-    }
-
-    /* Page Management Section */
-    #page-management {
-        margin-top: 20px;
-        border-top: 1px solid #333;
-        border-bottom: 1px solid #333;
-        padding-top: 20px;
-        padding-bottom: 30px;
-
-
-    }
-
-    #page-management h3 {
-        display: flex;
-        align-items: center;
-        justify-content: center;
         gap: 10px;
-        text-align: center;
     }
-
-    .section-header {
-        font-weight: bold;
-        margin: 10px 0 5px 0;
-        color: #ccc;
-    }
-
-.expand-icon::after {
- content: "❯"; /* Chevron Right */
- margin-left: 5px;
- font-size: 14px;
- display: inline-block;
- transition: transform 0.2s ease;
-}
-
-.expand-icon.expanded::after {
- content: "❯"; /* Keep the same content */
- transform: rotate(90deg); /* Rotate to mimic Chevron Down */
- font-size: 14px;
-}
-
-/* Style for the Show Non-English dropdown to match NHentai theme */
-#showNonEnglishSelect {
-    /* Basic styling */
-    padding: 6px 10px;
-    margin: 0 5px;
-    min-width: 110px;
-
-    /* Colors */
-    background-color: #2b2b2b;
-    color: #e6e6e6;
-    border: 1px solid #3d3d3d;
-
-    /* Typography */
-    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
-    font-size: 14px;
-    font-weight: 400;
-
-    /* Effects */
-    border-radius: 4px;
-    cursor: pointer;
-    transition: all 0.15s ease;
-}
-
-/* Hover state */
-#showNonEnglishSelect:hover {
-    border-color: #4e4e4e;
-    background-color: #323232;
-}
-
-/* Focus state */
-#showNonEnglishSelect:focus {
-    outline: none;
-    border-color: #616161;
-    box-shadow: 0 0 0 2px rgba(82, 82, 82, 0.35);
-}
-
-/* Dropdown options */
-#showNonEnglishSelect option {
-    padding: 8px 12px;
-    background-color: #2b2b2b;
-    color: #e6e6e6;
-}
-
-/* Tooltip integration */
-label:hover .tooltip {
-    opacity: 1;
-    visibility: visible;
-}
-
-/* Online Data Sync Styles */
-.sync-section {
-    margin: 15px 0;
-    padding: 10px;
-    border: 1px solid #444;
-    border-radius: 5px;
-    background: #2a2a2a;
-}
-
-.sync-section h4 {
-    margin: 0 0 10px 0;
-    color: #fff;
-    font-size: 14px;
-}
-
-.sync-controls {
-    margin: 10px 0;
-    display: flex;
-    gap: 10px;
-    align-items: center;
-}
-
-.sync-controls button {
-    padding: 5px 10px;
-    background: #444;
-    border: 1px solid #666;
-    border-radius: 3px;
-    color: #fff;
-    cursor: pointer;
-    font-size: 12px;
-}
-
-.sync-controls button:hover {
-    background: #555;
-}
-
-.sync-controls button:disabled {
-    background: #333;
-    color: #666;
-    cursor: not-allowed;
-}
-
-.sync-status {
-    font-size: 12px;
-    padding: 2px 6px;
-    border-radius: 3px;
-    margin-left: 10px;
-}
-
-.sync-status.success {
-    background: #2d5a2d;
-    color: #90ee90;
-}
-
-.sync-status.error {
-    background: #5a2d2d;
-    color: #ff6b6b;
-}
-
-.sync-status.loading {
-    background: #5a5a2d;
-    color: #ffeb3b;
-}
-
-.sync-info {
-    margin-top: 5px;
-    font-size: 11px;
-    color: #aaa;
-}
-
-#userUUID {
-    font-family: monospace;
-    letter-spacing: 2px;
-    text-align: center;
-    width: 80px !important;
-}
-
-#edit-uuid, #regenerate-uuid, #browse-users {
-    margin-left: 10px;
-    padding: 2px 8px;
-    font-size: 11px;
-}
-
-#edit-uuid {
-    background: #444;
-    border: 1px solid #666;
-}
-
-#edit-uuid:hover {
-    background: #555;
-}
-
-#uuid-edit-warning {
-    background: rgba(255, 107, 107, 0.1);
-    border: 1px solid #ff6b6b;
-    border-radius: 3px;
-    padding: 8px;
-}
-
 </style>
 
 <div id="content">
-    <h1>Settings</h1>
-    <form id="settingsForm">
-    
-
-
-        <!-- Fade & Read Settings Section -->
-        <div id="fade-read-settings">
-            <h3 class="expand-icon">Fade & Read Settings <span class="tooltip" data-tooltip="Configure opacity settings and mark as read functionality">?</span></h3>
-            <div id="fade-read-settings-content">
-                <label>
-                    <input type="checkbox" id="markAsReadEnabled">
-                    Mark as Read System <span class="tooltip" data-tooltip="Allows marking galleries as read with visual feedback">?</span>
-                </label>
-                <label>
-                    <input type="checkbox" id="autoMarkReadEnabled">
-                    Auto-mark as Read on Last Page <span class="tooltip" data-tooltip="Automatically marks galleries as read when reaching the last page">?</span>
-                </label>
-                
-                <div>
-                    <label for="nonEnglishOpacity">Non-English Galleries Opacity:</label>
-                    <input type="range" id="nonEnglishOpacity" min="0.1" max="1.0" step="0.1" value="0.2">
-                    <span id="nonEnglishOpacityValue">0.2</span>
-                    <span class="tooltip" data-tooltip="Opacity level for non-English galleries (0.1 = very faded, 1.0 = normal)">?</span>
-                </div>
-                <div>
-                    <label for="readGalleriesOpacity">Read Galleries Opacity:</label>
-                    <input type="range" id="readGalleriesOpacity" min="0.1" max="1.0" step="0.1" value="0.6">
-                    <span id="readGalleriesOpacityValue">0.6</span>
-                    <span class="tooltip" data-tooltip="Opacity level for galleries marked as read (0.1 = very faded, 1.0 = normal)">?</span>
-                </div>
-                <button type="button" id="resetFadeSettings" class="btn-secondary">Reset to Defaults</button>
+    <div class="settings-wrapper">
+        <!-- Sidebar -->
+        <div class="settings-sidebar">
+            <div class="settings-header">
+                <h2><i class="fa fa-cog"></i> Settings</h2>
             </div>
+            <ul class="settings-nav">
+                <li class="nav-item active" data-tab="general"><i class="fa fa-sliders-h"></i> General</li>
+                <li class="nav-item" data-tab="reading"><i class="fa fa-book-open"></i> Reading</li>
+                <li class="nav-item" data-tab="tags"><i class="fa fa-tags"></i> Tags</li>
+                <li class="nav-item" data-tab="bookmarks"><i class="fa fa-bookmark"></i> Bookmarks</li>
+                <li class="nav-item" data-tab="sync"><i class="fa fa-cloud"></i> Sync & Data</li>
+                <li class="nav-item" data-tab="social"><i class="fa fa-share-alt"></i> Inbox & Social</li>
+                <li class="nav-item" data-tab="pages"><i class="fa fa-file-alt"></i> Custom Pages</li>
+                <li class="nav-item" data-tab="layout"><i class="fa fa-layer-group"></i> Layout</li>
+            </ul>
         </div>
-        
-        
-        <!-- Tag Management Settings Section -->
-        <div id="tag-management-settings">
-            <h3 class="expand-icon">Tag Management <span class="tooltip" data-tooltip="Configure tag warnings, blacklists, and favorites">?</span></h3>
-            <div id="tag-management-settings-content">
-                <label>
-                    <input type="checkbox" id="tagWarningEnabled">
-                    Tag Warning System <span class="tooltip" data-tooltip="Shows warning badges for problematic tags">?</span>
-                </label>
 
-                <button type="button" id="toggleTagLists" class="link-button" style="margin-left:0;">Manage tags</button>
-
-                <!-- Hide/Blacklist System moved under Tag Management -->
-                <label>
-                    <input type="checkbox" id="hideBlacklistEnabled">
-                    Hide/Blacklist System <span class="tooltip" data-tooltip="Hide manga you are not interested in from listings and searches">?</span>
-                </label>
-                <label>
-                    <input type="checkbox" id="autoHideBlacklistedTagsEnabled">
-                    Auto-hide manga with blacklisted tags <span class="tooltip" data-tooltip="Automatically hides galleries on listing pages if any blacklisted tag is detected">?</span>
-                </label>
-
-                <div style="margin-top:8px;">
-                    <button type="button" id="clearHiddenManga" class="btn-secondary">Clear All Hidden Manga</button>
-                    <button type="button" id="manageHiddenManga" class="link-button">Manage hidden manga <span id="hiddenMangaCount"></span></button>
+        <!-- Main Content -->
+        <form id="settingsForm" class="settings-main">
+            
+            <!-- Tab: General -->
+            <div id="tab-general" class="tab-content active">
+                <h2 class="section-title">General Settings</h2>
+                
+                <div class="setting-card">
+                    <h3>Account</h3>
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <span class="setting-label">Auto Login</span>
+                            <span class="setting-desc">Automatically log in with saved credentials</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="autoLoginEnabled">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div id="autoLoginCredentials" style="margin-top: 15px; display: none;">
+                        <div style="margin-bottom: 10px;">
+                            <label style="display:block; margin-bottom:5px;">Email</label>
+                            <input type="text" id="email" placeholder="Email">
+                        </div>
+                        <div>
+                            <label style="display:block; margin-bottom:5px;">Password</label>
+                            <input type="password" id="password" placeholder="Password">
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Search & Smart Tag Controls moved into Tag Management -->
-                <div class="tag-list-section">
-                    <label>
-                        <input type="checkbox" id="mustAddTagsEnabled">
-                        Must Add Tags <span class="tooltip" data-tooltip="Enable or disable the 'Must Add Tags' feature.">?</span>
-                    </label>
-                    <label>Must Add Tags: <input type="text" id="must-add-tags"> <span class="tooltip" data-tooltip="Tags that must be included in search. Separate with commas.">?</span></label>
-                    <label>
-                        <input type="checkbox" id="smartTagEnabled">
-                        Smart Tags <span class="tooltip" data-tooltip="Automatically wraps plain tag or language input into advanced search syntax (e.g., tag:&quot;...&quot; or language:&quot;...&quot;)">?</span>
-                    </label>
+                <div class="setting-card">
+                    <h3>Filtering</h3>
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <span class="setting-label">English Filter Button</span>
+                            <span class="setting-desc">Add button to filter for English translations only</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="englishFilterEnabled">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <span class="setting-label">Month Filter</span>
+                            <span class="setting-desc">Filter manga by publication month</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="monthFilterEnabled">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
                 </div>
 
-                <div class="tag-list-section">
-                    <label>
-                        Show Non-English:
-                        <select id="showNonEnglishSelect">
+                <div class="setting-card">
+                    <h3>Interface</h3>
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <span class="setting-label">Show Tooltips</span>
+                            <span class="setting-desc">Enable help tooltips on hover (in settings)</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="tooltipsEnabled">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Reading -->
+            <div id="tab-reading" class="tab-content">
+                <h2 class="section-title">Reading Experience</h2>
+
+                <div class="setting-card">
+                    <h3>Interface</h3>
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <span class="setting-label">Show Page Numbers</span>
+                            <span class="setting-desc">Display page count on manga thumbnails</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="showPageNumbersEnabled">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <span class="setting-label">Gallery Tooltips</span>
+                            <span class="setting-desc">Show details on hover over covers</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="galleryCaptionTooltipsEnabled">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <span class="setting-label">Open in New Tab</span>
+                            <span class="setting-desc">Open galleries in a new tab</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="openInNewTabEnabled">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div id="open-in-New-Tab-options" style="margin-top: 10px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 4px; display: none;">
+                        <label style="display: block; margin-bottom: 5px;">
+                            <input type="radio" id="open-in-new-tab-background" name="open-in-new-tab" value="background"> Background
+                        </label>
+                        <label style="display: block;">
+                            <input type="radio" id="open-in-new-tab-foreground" name="open-in-new-tab" value="foreground"> Foreground
+                        </label>
+                    </div>
+                </div>
+
+                <div class="setting-card">
+                    <h3>Discovery</h3>
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <span class="setting-label">Find Similar Button</span>
+                            <span class="setting-desc">Find manga similar to the current one</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="findSimilarEnabled">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div id="find-similar-options" style="margin-top: 10px; display: none;">
+                        <label style="margin-right: 15px;"><input type="radio" id="open-immediately" name="find-similar-type" value="immediately"> Open Immediately</label>
+                        <label><input type="radio" id="input-tags" name="find-similar-type" value="input-tags"> Input Tags</label>
+                    </div>
+
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <span class="setting-label">Find Alt Manga</span>
+                            <span class="setting-desc">Find alternative sources</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="findAltmangaEnabled">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <span class="setting-label">Find Alt Manga (Thumbnail)</span>
+                            <span class="setting-desc">Show alternatives as thumbnails</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="findAltMangaThumbnailEnabled">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div id="find-Alt-Manga-Thumbnail-options" style="margin-top: 10px; display: none;">
+                         <label><input type="checkbox" id="mangagroupingenabled" name="manga-grouping-type" value="grouping"> Group alt versions on page</label>
+                    </div>
+
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <span class="setting-label">Replace with Bookmarks</span>
+                            <span class="setting-desc">Show bookmarks in Related Manga section</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="replaceRelatedWithBookmarks">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <span class="setting-label">Related Flip Button</span>
+                            <span class="setting-desc">Flip between Related and Bookmarks</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="enableRelatedFlipButton">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="setting-card">
+                    <h3>Random Hentai Preferences</h3>
+                    <div style="margin-bottom: 10px;">
+                        <label style="display:block; margin-bottom:5px;">Preferred Language</label>
+                        <input type="text" id="pref-language" placeholder="e.g. english, japanese">
+                    </div>
+                    <div style="margin-bottom: 10px;">
+                        <label style="display:block; margin-bottom:5px;">Preferred Tags</label>
+                        <input type="text" id="pref-tags" placeholder="e.g. big breasts, stockings">
+                    </div>
+                    <div style="margin-bottom: 10px;">
+                        <label style="display:block; margin-bottom:5px;">Blacklisted Tags</label>
+                        <input type="text" id="blacklisted-tags" placeholder="e.g. guro, scat">
+                    </div>
+                    <div style="display:flex; gap:10px; margin-bottom:10px;">
+                        <div style="flex:1;">
+                            <label style="display:block; margin-bottom:5px;">Min Pages</label>
+                            <input type="number" id="pref-pages-min">
+                        </div>
+                        <div style="flex:1;">
+                            <label style="display:block; margin-bottom:5px;">Max Pages</label>
+                            <input type="number" id="pref-pages-max">
+                        </div>
+                    </div>
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <span class="setting-label">Match All Tags</span>
+                            <span class="setting-desc">If unchecked, matches any tag</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="matchAllTags">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="setting-card">
+                    <h3>Fade & Read</h3>
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <span class="setting-label">Mark as Read System</span>
+                            <span class="setting-desc">Visually mark read galleries</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="markAsReadEnabled">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <span class="setting-label">Auto-mark as Read</span>
+                            <span class="setting-desc">Mark as read when reaching last page</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="autoMarkReadEnabled">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    
+                    <div style="margin-top: 15px;">
+                        <label style="display:block; margin-bottom:5px;">Non-English Opacity: <span id="nonEnglishOpacityValue">0.2</span></label>
+                        <input type="range" id="nonEnglishOpacity" min="0.1" max="1.0" step="0.1" value="0.2">
+                    </div>
+                    <div style="margin-top: 15px;">
+                        <label style="display:block; margin-bottom:5px;">Read Galleries Opacity: <span id="readGalleriesOpacityValue">0.6</span></label>
+                        <input type="range" id="readGalleriesOpacity" min="0.1" max="1.0" step="0.1" value="0.6">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Tags -->
+            <div id="tab-tags" class="tab-content">
+                <h2 class="section-title">Tag Management</h2>
+                
+                <div class="setting-card">
+                    <h3>Warnings & Blacklist</h3>
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <span class="setting-label">Tag Warning System</span>
+                            <span class="setting-desc">Show badges for warning/blacklisted tags</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="tagWarningEnabled">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <span class="setting-label">Hide/Blacklist System</span>
+                            <span class="setting-desc">Hide manga with specific tags</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="hideBlacklistEnabled">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <span class="setting-label">Auto-hide Blacklisted</span>
+                            <span class="setting-desc">Automatically hide galleries with blacklisted tags</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="autoHideBlacklistedTagsEnabled">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    
+                    <div style="margin-top: 15px; display: flex; gap: 10px;">
+                        <button type="button" id="toggleTagLists" class="btn btn-primary">Manage Tags</button>
+                        <button type="button" id="manageHiddenManga" class="btn btn-secondary">Hidden Manga <span id="hiddenMangaCount"></span></button>
+                    </div>
+                </div>
+
+                <div class="setting-card">
+                    <h3>Smart Tags</h3>
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <span class="setting-label">Smart Tags</span>
+                            <span class="setting-desc">Auto-wrap inputs in search syntax</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="smartTagEnabled">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <span class="setting-label">Must Add Tags</span>
+                            <span class="setting-desc">Always include specific tags in search</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="mustAddTagsEnabled">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <input type="text" id="must-add-tags" placeholder="e.g. english, -scat">
+                    </div>
+                </div>
+
+                <div class="setting-card">
+                    <h3>Language Visibility</h3>
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <span class="setting-label">Non-English Manga</span>
+                        </div>
+                        <select id="showNonEnglishSelect" style="width: auto;">
                             <option value="show">Show</option>
                             <option value="hide">Hide</option>
                             <option value="fade">Fade</option>
                         </select>
-                        <span class="tooltip" data-tooltip="Control the visibility of non-English manga.">?</span>
-                    </label>
+                    </div>
                 </div>
 
-                <!-- Tag Management Modal (module) -->
+                <!-- Modals Container (Hidden) -->
                 <div id="tagManagementModal" class="nhp-modal">
                     <div class="nhp-modal-content">
                         <div class="nhp-modal-header">
                             <span class="title">Manage Tags</span>
                             <button type="button" id="closeTagManagementModal" class="close-btn">&times;</button>
                         </div>
-                        <div class="nhp-modal-list" style="padding:4px 0;">
+                        <div class="nhp-modal-list">
                             <div class="tag-list-section">
-                                <h4>Blacklist Tags (Red Badges)</h4>
-                                <textarea id="blacklistTags" placeholder="Enter tags separated by commas (e.g., scat, guro, vore)" rows="3"></textarea>
-                                <span class="tooltip" data-tooltip="Tags that will show red warning badges. Separate with commas.">?</span>
+                                <h4>Blacklist Tags (Red)</h4>
+                                <textarea id="blacklistTags" placeholder="e.g. scat, guro" rows="3"></textarea>
                             </div>
-
                             <div class="tag-list-section">
-                                <h4>Warning Tags (Orange Badges)</h4>
-                                <textarea id="warningTags" placeholder="Enter tags separated by commas (e.g., ntr, cheating, netorare)" rows="3"></textarea>
-                                <span class="tooltip" data-tooltip="Tags that will show orange warning badges. Separate with commas.">?</span>
+                                <h4>Warning Tags (Orange)</h4>
+                                <textarea id="warningTags" placeholder="e.g. ntr, cheating" rows="3"></textarea>
                             </div>
-
                             <div class="tag-list-section">
-                                <h4>Favorite Tags</h4>
-                                <textarea id="favoriteTags" placeholder="Enter favorite tags separated by commas" rows="3" readonly></textarea>
-                                <span class="tooltip" data-tooltip="Your favorite tags (managed by starring tags in gallery view). Shows blue badges.">?</span>
-                                <button type="button" id="clearFavoriteTags" class="btn-secondary">Clear All Favorites</button>
+                                <h4>Favorite Tags (Blue)</h4>
+                                <textarea id="favoriteTags" rows="3" readonly></textarea>
+                                <button type="button" id="clearFavoriteTags" class="btn-secondary" style="margin-top:5px">Clear Favorites</button>
+                            </div>
+                            <div class="tag-list-section">
+                                <h4>Smart Tag Overrides</h4>
+                                <div id="smart-tag-overrides">
+                                    <div id="overrides-list"></div>
+                                    <div style="margin-top:10px; display:flex; gap:8px;">
+                                        <input type="text" id="override-name-input" placeholder="Tag name">
+                                        <select id="override-type-select">
+                                            <option value="artist">artist</option>
+                                            <option value="group">group</option>
+                                            <option value="parody">parody</option>
+                                            <option value="character">character</option>
+                                            <option value="tag">tag</option>
+                                        </select>
+                                        <button type="button" id="add-override-btn" class="btn-secondary">Add</button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <div class="nhp-modal-actions" style="margin-top:10px; display:flex; gap:8px;">
-                            <button type="button" id="resetTagSettings" class="btn-secondary">Reset to Defaults</button>
-                        </div>
                     </div>
                 </div>
 
-                <div class="tag-list-section">
-                    <h4>Smart Tag Overrides</h4>
-                    <div id="smart-tag-overrides">
-                        <div id="overrides-list"></div>
-                        <div class="override-add-controls" style="margin-top:10px; display:flex; gap:8px; align-items:center;">
-                            <input type="text" id="override-name-input" placeholder="Enter tag name" style="flex:1; min-width:200px;">
-                            <select id="override-type-select">
-                                <option value="artist">artist</option>
-                                <option value="group">group</option>
-                                <option value="parody">parody</option>
-                                <option value="character">character</option>
-                                <option value="tag">tag</option>
-                            </select>
-                            <button type="button" id="add-override-btn" class="btn-secondary">Add Override</button>
+                <div id="hiddenMangaModal" class="nhp-modal">
+                    <div class="nhp-modal-content">
+                        <div class="nhp-modal-header">
+                            <span class="title">Hidden Manga</span>
+                            <button type="button" id="closeHiddenMangaModal" class="close-btn">&times;</button>
                         </div>
-                        <p style="font-size:12px; color:#aaa; margin-top:8px;">When a name matches multiple types (e.g., tag vs group), choose a default here. These are used to skip ambiguity prompts.</p>
+                        <div id="hiddenMangaList" class="nhp-modal-list"></div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Hidden Manga Management Modal (moved under Tag Management) -->
-        <div id="hiddenMangaModal" class="nhp-modal">
-            <div class="nhp-modal-content">
-                <div class="nhp-modal-header">
-                    <span class="title">Hidden Manga</span>
-                    <button type="button" id="closeHiddenMangaModal" class="close-btn">&times;</button>
-                </div>
-                <div id="hiddenMangaList" class="nhp-modal-list"></div>
-            </div>
-        </div>
-         <label>
-            <input type="checkbox" id="showPageNumbersEnabled">
-            Show Page Numbers <span class="tooltip" data-tooltip="Displays the page count for each manga thumbnail.">?</span>
-        </label>
-        <label>
-            <input type="checkbox" id="offlineFavoritingEnabled">
-            Offline Favoriting <span class="tooltip" data-tooltip="Allows favoriting manga even without being logged in.">?</span>
-        </label>
-         <label>
-            <input type="checkbox" id="tooltipsEnabled">
-            Show Tooltips <span class="tooltip" data-tooltip="Enables or disables tooltips.">?</span>
-        </label>
-
-        <label>
-            <input type="checkbox" id="findSimilarEnabled">
-            Find Similar Button <span class="tooltip" data-tooltip="Finds similar manga based on the current one.">?</span>
-        </label>
-        <div id="find-similar-options" style="display: none;">
-            <label>
-                <input type="radio" id="open-immediately" name="find-similar-type" value="immediately">
-                Open Immediately <span class="tooltip" data-tooltip="Opens the similar manga immediately.">?</span>
-            </label>
-            <label>
-                <input type="radio" id="input-tags" name="find-similar-type" value="input-tags">
-                Input Tags <span class="tooltip" data-tooltip="Allows inputting tags to find similar manga.">?</span>
-            </label>
-        </div>
-        <label>
-            <input type="checkbox" id="englishFilterEnabled">
-            English Filter Button <span class="tooltip" data-tooltip="Filters manga to show only English translations.">?</span>
-        </label>
-        <label>
-            <input type="checkbox" id="autoLoginEnabled">
-            Auto Login <span class="tooltip" data-tooltip="Automatically logs in with saved credentials.">?</span>
-        </label>
-        <div id="autoLoginCredentials">
-            <label>
-                Email: <input type="text" id="email">
-            </label>
-            <label>
-                Password: <input type="password" id="password">
-            </label>
-        </div>
-        <label>
-            <input type="checkbox" id="bookmarkLinkEnabled">
-            Bookmark Link <span class="tooltip" data-tooltip="Adds a link to your bookmark in the manga title.">?</span>
-        </label>
-        <label>
-            <input type="checkbox" id="findAltmangaEnabled">
-            Find Alt Manga <span class="tooltip" data-tooltip="Finds alternative sources for the manga.">?</span>
-        </label>
-        <label>
-            <input type="checkbox" id="findAltMangaThumbnailEnabled">
-            Find Alt Manga (Thumbnail) <span class="tooltip" data-tooltip="Displays alternative manga sources as thumbnails.">?</span>
-        </label>
-        <div id="find-Alt-Manga-Thumbnail-options" style="display: none;">
-            <label>
-                <input type="checkbox" id="mangagroupingenabled" name="manga-grouping-type" value="grouping">
-                Find Alt Manga Grouping <span class="tooltip" data-tooltip="Groups alternative versions of manga together on the page.">?</span>
-            </label>
-         </div>
-        <label>
-            <input type="checkbox" id="openInNewTabEnabled">
-            Open in New Tab <span class="tooltip" data-tooltip="Opens links in a new tab.">?</span>
-        </label>
-                       <div id="open-in-New-Tab-options" style="display: none;">
-            <label>
-                <input type="radio" id="open-in-new-tab-background" name="open-in-new-tab" value="background">
-                Open in New Tab (Background) <span class="tooltip" data-tooltip="Opens the link in a new tab without focusing on it.">?</span>
-            </label>
-            <label>
-                <input type="radio" id="open-in-new-tab-foreground" name="open-in-new-tab" value="foreground">
-                Open in New Tab (Foreground) <span class="tooltip" data-tooltip="Opens the link in a new tab and focuses on it.">?</span>
-            </label>
-         </div>
-        <label>
-            <input type="checkbox" id="monthFilterEnabled">
-            Month Filter <span class="tooltip" data-tooltip="Filters manga by publication month.">?</span>
-        </label>
-        <label>
-            <input type="checkbox" id="mangaBookMarkingButtonEnabled">
-            Manga Bookmarking Button <span class="tooltip" data-tooltip="Allows bookmarking manga for quick access.">?</span>
-        </label>
-        
-        <div id="manga-bookmarking-options" style="display: none;">
-            <label>
-                <input type="radio" id="manga-bookmarking-cover" name="manga-bookmarking-type" value="cover">
-                Show Cover <span class="tooltip" data-tooltip="Displays the cover image for bookmarks.">?</span>
-            </label>
-            <label>
-                <input type="radio" id="manga-bookmarking-title" name="manga-bookmarking-type" value="title">
-                Show Title <span class="tooltip" data-tooltip="Displays the title only for bookmarks.">?</span>
-            </label>
-            <label>
-                <input type="radio" id="manga-bookmarking-both" name="manga-bookmarking-type" value="both">
-                Show Both <span class="tooltip" data-tooltip="Displays both the cover and title for bookmarks.">?</span>
-            </label>
-
-        </div>
-        <label>
-            <input type="checkbox" id="bookmarksEnabled">
-            Bookmarks Button <span class="tooltip" data-tooltip="Enables the bookmarks feature.">?</span>
-        </label>
-        <div class="bookmark-actions">
-            <button type="button" id="exportBookmarks">Export Bookmarks</button>
-            <button type="button" id="importBookmarks">Import Bookmarks</button>
-            <input type="file" id="importBookmarksFile" accept=".json">
-        </div>
-        <div>
-          <label for="max-manga-per-bookmark-slider">Max Manga per Bookmark:</label>
-          <input type="range" id="max-manga-per-bookmark-slider" min="1" max="25" value="5">
-          <span id="max-manga-per-bookmark-on-mobile-value">5</span>
-          <span class="tooltip" data-tooltip="Sets the maximum number of manga fetched per bookmarked page.">?</span>
-        </div>
-        
-
-        <!-- Page Management Section -->
-        <div id="page-management">
-            <h3 class="expand-icon">Page Management <span class="tooltip" data-tooltip="Enable or disable custom pages and features.">?</span></h3>
-            <div id="page-management-content">
-                <p>Control which custom pages and navigation elements are enabled:</p>
-
-                <div class="section-header">Feature Pages</div>
-                <label>
-                    <input type="checkbox" id="offlineFavoritesPageEnabled">
-                     Offline Favorites Page <span class="tooltip" data-tooltip="Adds a tab to view all your offline favorites.">?</span>
-                </label>
-                <label>
-                    <input type="checkbox" id="readMangaPageEnabled">
-                     Read Manga Page <span class="tooltip" data-tooltip="Adds a tab to view all your read manga with management options.">?</span>
-                </label>
-                <div id="read-manga-page-options" style="display: none; margin-left: 20px; margin-bottom: 15px;">
-                    <div>
-                        <label for="max-read-manga-display-slider">Max Read Manga to Display:</label>
-                        <input type="range" id="max-read-manga-display-slider" min="10" max="500" step="10" value="50">
-                        <span id="max-read-manga-display-value">50</span>
-                        <span class="tooltip" data-tooltip="Sets the maximum number of manga displayed on the Read Manga page. Higher values may affect performance.">?</span>
-                    </div>
-                </div>
-                <label>
-                    <input type="checkbox" id="quickNutPageEnabled">
-                     Quick Nut Page <span class="tooltip" data-tooltip="Aggregates galleries from your favorites into one page.">?</span>
-                </label>
-                <div id="quick-nut-page-options" style="display: none; margin-left: 20px; margin-bottom: 15px;">
-                    <div>
-                        <label>
-                            <input type="checkbox" id="quickNutEnglishOnlyEnabled">
-                            Only English
+            <!-- Tab: Bookmarks -->
+            <div id="tab-bookmarks" class="tab-content">
+                <h2 class="section-title">Bookmarks</h2>
+                
+                <div class="setting-card">
+                    <h3>Functionality</h3>
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <span class="setting-label">Bookmarks Button</span>
+                            <span class="setting-desc">Enable bookmarking feature</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="bookmarksEnabled">
+                            <span class="toggle-slider"></span>
                         </label>
                     </div>
-                    <div style="margin-top:8px;">
-                        <label>
-                            <input type="checkbox" id="quickNutSkipReadEnabled">
-                            Skip already read
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <span class="setting-label">Bookmark Link</span>
+                            <span class="setting-desc">Add link to bookmark in manga title</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="bookmarkLinkEnabled">
+                            <span class="toggle-slider"></span>
                         </label>
                     </div>
-                    <div style="margin-top:8px;">
-                        <label>
-                            Refresh Mode:
-                            <select id="quickNutRefreshMode">
-                                <option value="daily">Every 24 hours</option>
-                                <option value="per_visit">Every visit</option>
-                                <option value="custom">Custom (minutes)</option>
-                            </select>
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <span class="setting-label">Manga Bookmarking Button</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="mangaBookMarkingButtonEnabled">
+                            <span class="toggle-slider"></span>
                         </label>
                     </div>
-                    <div id="quickNutCustomMinutesContainer" style="margin-top:8px;">
-                        <label for="quickNutCustomMinutes">Custom minutes:</label>
-                        <input type="number" id="quickNutCustomMinutes" min="1" max="10080" value="1440">
+                    <div id="manga-bookmarking-options" style="margin-top: 10px; display: none;">
+                        <label><input type="radio" id="manga-bookmarking-cover" name="manga-bookmarking-type" value="cover"> Cover</label>
+                        <label><input type="radio" id="manga-bookmarking-title" name="manga-bookmarking-type" value="title"> Title</label>
+                        <label><input type="radio" id="manga-bookmarking-both" name="manga-bookmarking-type" value="both"> Both</label>
                     </div>
                 </div>
-                <label>
-                    <input type="checkbox" id="nfmPageEnabled">
-                    NFM (Nhentai Favorite Manager) Page <span class="tooltip" data-tooltip="Enables the Nhentai Favorite Manager page for favorite management.">?</span>
-                </label>
-                <label>
-                    <input type="checkbox" id="replaceRelatedWithBookmarks">
-                    Replace Related Manga with Bookmarks <span class="tooltip" data-tooltip="Replaces the Related Manga section with content from your bookmarks.">?</span>
-                </label>
-                <label>
-                    <input type="checkbox" id="enableRelatedFlipButton">
-                    Related Flip Button <span class="tooltip" data-tooltip="Shows a Flip button to toggle between bookmarked and original related manga. Only works when 'Replace Related Manga with Bookmarks' is enabled.">?</span>
-                </label>
-                <label>
-                    <input type="checkbox" id="bookmarksPageEnabled">
-                    Bookmarks Page <span class="tooltip" data-tooltip="Enables the dedicated Bookmarks page for managing saved bookmarks.">?</span>
-                </label>
-            <div id="bookmark-page-options" style="display: none;">
-                <label>
-                    Bookmark Arrangement Type:
-                    <select id="bookmark-arrangement-type">
-                        <option value="default">Default (Most Recent)</option>
-                        <option value="alphabetical">Alphabetical (A-Z)</option>
-                        <option value="reverse-alphabetical">Reverse Alphabetical (Z-A)</option>
-                        <option value="most-items">Most Items</option>
-                        <option value="least-items">Least Items</option>
-                    </select>
-                    <span class="tooltip" data-tooltip="Choose how bookmarks are sorted on the bookmarks page.">?</span>
-                </label>
-                <label>
-                    <input type="checkbox" id="enableRandomButton">
-                    Random Button <span class="tooltip" data-tooltip="Randomly selects a bookmarked manga for reading.">?</span>
-                </label>
-                <div id="random-options" style="display: none;">
-                    <label>
-                        <input type="radio" id="random-open-in-new-tab" name="random-open-type" value="new-tab">
-                        Open Random Manga in New Tab <span class="tooltip" data-tooltip="Opens the randomly selected manga in a new tab.">?</span>
-                    </label>
-                    <label>
-                        <input type="radio" id="random-open-in-current-tab" name="random-open-type" value="current-tab">
-                        Open Random Manga in Current Tab <span class="tooltip" data-tooltip="Opens the randomly selected manga in the current tab.">?</span>
-                    </label>
-                    
-                </div>
-                        <label>
-            <input type="checkbox" id="galleryCaptionTooltipsEnabled">
-            Gallery Caption Tooltips <span class="tooltip" data-tooltip="Enables or disables tooltips for gallery captions showing tags.">?</span>
-        </label>
-            </div>
-                <div class="section-header">Navigation</div>
 
-                <label>
-                    <input type="checkbox" id="twitterButtonEnabled">
-                    Delete Twitter Button <span class="tooltip" data-tooltip="Deletes the Twitter button.">?</span>
-                </label>
-                <label>
-                    <input type="checkbox" id="profileButtonEnabled">
-                    Delete Profile Button <span class="tooltip" data-tooltip="Deletes the Profile button.">?</span>
-                </label>
-                <label>
-                    <input type="checkbox" id="infoButtonEnabled">
-                    Delete Info Button <span class="tooltip" data-tooltip="Deletes the Info button.">?</span>
-                </label>
-                <label>
-                    <input type="checkbox" id="logoutButtonEnabled">
-                    Delete Logout Button <span class="tooltip" data-tooltip="Deletes the Logout button.">?</span>
-             </label>
-                <div class="section-header">Tab Arrangement</div>
-                <div id="tab-arrangement">
-                    <p>Drag and drop tabs to rearrange their order:</p>
-                    <ul id="tab-list" class="sortable-list">
-                        <li data-tab="random" class="tab-item"><i class="fa fa-bars handle"></i> Random</li>
-                        <li data-tab="tags" class="tab-item"><i class="fa fa-bars handle"></i> Tags</li>
-                        <li data-tab="artists" class="tab-item"><i class="fa fa-bars handle"></i> Artists</li>
-                        <li data-tab="characters" class="tab-item"><i class="fa fa-bars handle"></i> Characters</li>
-                        <li data-tab="parodies" class="tab-item"><i class="fa fa-bars handle"></i> Parodies</li>
-                        <li data-tab="groups" class="tab-item"><i class="fa fa-bars handle"></i> Groups</li>
-                        <li data-tab="info" class="tab-item"><i class="fa fa-bars handle"></i> Info</li>
-                        <li data-tab="twitter" class="tab-item"><i class="fa fa-bars handle"></i> Twitter</li>
-                        <li data-tab="read_manga" class="tab-item"><i class="fa fa-bars handle"></i> Read Manga</li>
-                        <li data-tab="quick_nut" class="tab-item"><i class="fa fa-bars handle"></i> Quick Nut</li>
-                        <!-- Offline Favorites tab will be added dynamically if user is not logged in -->
-                    </ul>
-                    <button type="button" id="resetTabOrder" class="btn-secondary">Reset to Default Order</button>
-                </div>
-
-                <div class="section-header">Bookmarks Page Arrangement</div>
-                <div id="bookmarks-arrangement">
-                    <p>Drag and drop elements to rearrange their order in the bookmarks page:</p>
-                    <ul id="bookmarks-list" class="sortable-list">
-                        <li data-element="bookmarksTitle" class="tab-item"><i class="fa fa-bars handle"></i> Bookmarked Pages Title</li>
-                        <li data-element="searchInput" class="tab-item"><i class="fa fa-bars handle"></i> Search Input</li>
-                        <li data-element="tagSearchInput" class="tab-item"><i class="fa fa-bars handle"></i> Tag Search Input</li>
-                        <li data-element="bookmarksList" class="tab-item"><i class="fa fa-bars handle"></i> Bookmarks List</li>
-                        <li data-element="mangaBookmarksTitle" class="tab-item"><i class="fa fa-bars handle"></i> Manga Bookmarks Title</li>
-                        <li data-element="mangaBookmarksList" class="tab-item"><i class="fa fa-bars handle"></i> Manga Bookmarks List</li>
-                    </ul>
-                    <button type="button" id="resetBookmarksOrder" class="btn-secondary">Reset to Default Order</button>
-                </div>
-                </label>
-        </div>
-     </div>
-
-        <div id="random-settings">
-            <h3 class="expand-icon">Random Hentai Preferences <span class="tooltip" data-tooltip="Configure preferences for random hentai.">?</span></h3>
-            <div id="random-settings-content">
-                <label>Language: <input type="text" id="pref-language"> <span class="tooltip" data-tooltip="Preferred language for random hentai.">?</span></label>
-                <label>Tags: <input type="text" id="pref-tags"> <span class="tooltip" data-tooltip="Preferred tags for filtering hentai.">?</span></label>
-                <label>Blacklisted Tags: <input type="text" id="blacklisted-tags"> <span class="tooltip" data-tooltip="Tags to exclude from search results.">?</span></label>
-                <label>Minimum Pages: <input type="number" id="pref-pages-min"> <span class="tooltip" data-tooltip="Minimum number of pages for random hentai.">?</span></label>
-                <label>Maximum Pages: <input type="number" id="pref-pages-max"> <span class="tooltip" data-tooltip="Maximum number of pages for random hentai.">?</span></label>
-                <label>
-                    <input type="checkbox" id="matchAllTags">
-                    Match All Tags (unchecked = match any) <span class="tooltip" data-tooltip="If enabled, all tags must match instead of any.">?</span>
-                </label>
-            </div>
-        </div>
-
-        <!-- Separator Line -->
-        <hr style="margin: 20px 0; border: none; border-top: 1px solid #444;">
-
-        <!-- Online Data Sync Section -->
-        <div id="online-sync-settings">
-            <h3 class="expand-icon">Online Data Sync <span class="tooltip" data-tooltip="Sync your userscript data with cloud storage providers">?</span></h3>
-            <div id="online-sync-settings-content">
-                <p>Sync your bookmarks, favorites, and settings across devices using cloud storage.</p>
-
-                <!-- User UUID -->
-                <div class="sync-section">
-                    <h4>User Identification</h4>
-                    <label>
-                        Your UUID: <div class="uuid-controls">
-                            <input type="text" id="userUUID" readonly style="background: #222; color: #ccc;">
-                            <button type="button" id="edit-uuid">Edit</button>
-                            <button type="button" id="regenerate-uuid">Regenerate</button>
-                            <button type="button" id="browse-users">Browse Users</button>
+                <div class="setting-card">
+                    <h3>Data Management</h3>
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <span class="setting-label">Import/Export</span>
                         </div>
-                        <span class="tooltip" data-tooltip="Unique identifier for your data. Keep this safe!">?</span>
-                    </label>
-                    <style>
-                        @media (max-width: 768px) {
-                            .uuid-controls {
-                                display: flex;
-                                flex-wrap: wrap;
-                                gap: 5px;
-                            }
-                            .uuid-controls input[type="text"] {
-                                flex-grow: 1;
-                                min-width: 150px;
-                            }
-                            .uuid-controls button {
-                                flex-grow: 1;
-                            }
-                        }
-                    </style>
-                    <div id="uuid-edit-warning" style="display: none; color: #ff6b6b; font-size: 12px; margin-top: 5px;">
-                        ⚠️ Warning: Changing your UUID will affect which data you can access. Make sure you have the correct UUID for your data.
-                    </div>
-                    <div id="available-users" style="display: none; margin-top: 10px; padding: 10px; background: #333; border-radius: 3px;">
-                        <h5 style="margin: 0 0 10px 0; color: #fff;">Available Users in Cloud Storage:</h5>
-                        <div id="users-list" style="font-family: monospace; font-size: 12px;"></div>
-                        <button type="button" id="close-users-list" style="margin-top: 10px; padding: 2px 8px; font-size: 11px;">Close</button>
-                    </div>
-                </div>
-
-                <!-- Public Section -->
-                <div class="sync-section">
-                    <h4>Public Sync (Standard Security)</h4>
-                    <label>
-                        <input type="checkbox" id="publicSyncEnabled">
-                        Public Sync <span class="tooltip" data-tooltip="Use predefined JSONStorage.net endpoint with standard security">?</span>
-                    </label>
-                    <div id="public-sync-options" style="margin-left: 20px; display: none;">
-                        <p style="font-size: 12px; color: #aaa;">Uses predefined JSONStorage.net API with standard security level.</p>
-                        <div class="sync-controls">
-                            <button type="button" id="public-sync-upload">Upload Data</button>
-                            <button type="button" id="public-sync-download">Download Data</button>
-                            <span id="public-sync-status" class="sync-status"></span>
-                        </div>
-                        <div class="sync-info">
-                            <small>Last sync: <span id="public-last-sync">Never</span></small>
+                        <div class="bookmark-actions">
+                            <button type="button" id="exportBookmarks" class="btn btn-secondary">Export</button>
+                            <button type="button" id="importBookmarks" class="btn btn-secondary">Import</button>
+                            <input type="file" id="importBookmarksFile" accept=".json" style="display:none">
                         </div>
                     </div>
-                </div>
-
-                <!-- Private Section -->
-                <div class="sync-section">
-                    <h4>Private Sync (Enhanced Security)</h4>
-                    <label>
-                        <input type="checkbox" id="privateSyncEnabled">
-                        Private Sync <span class="tooltip" data-tooltip="Use your own JSONStorage.net credentials for enhanced security">?</span>
-                    </label>
-                    <div id="private-sync-options" style="margin-left: 20px; margin-top: 10px; display: none;">
-                        <label>
-                            Storage URL: <input type="text" id="privateStorageUrl" placeholder="https://api.jsonstorage.net/v1/json/your-endpoint">
-                            <span class="tooltip" data-tooltip="Your custom JSONStorage.net endpoint URL">?</span>
-                        </label>
-                        <label>
-                            API Key: <input type="password" id="privateApiKey" placeholder="Your API key">
-                            <span class="tooltip" data-tooltip="Your private JSONStorage.net API key">?</span>
-                        </label>
-                        <div class="sync-controls">
-                            <button type="button" id="private-sync-upload">Upload Data</button>
-                            <button type="button" id="private-sync-download">Download Data</button>
-                            <span id="private-sync-status" class="sync-status"></span>
-                        </div>
-                        <div class="sync-info">
-                            <small>Last sync: <span id="private-last-sync">Never</span></small>
-                        </div>
+                    <div style="margin-top: 15px;">
+                        <label style="display:block; margin-bottom:5px;">Max Manga per Bookmark: <span id="max-manga-per-bookmark-on-mobile-value">5</span></label>
+                        <input type="range" id="max-manga-per-bookmark-slider" min="1" max="25" value="5">
                     </div>
-                </div>
-
-                <!-- Sync Settings -->
-                <div class="sync-section">
-                    <h4>Sync Options</h4>
-                    <label>
-                        <input type="checkbox" id="autoSyncEnabled">
-                        Auto Sync <span class="tooltip" data-tooltip="Automatically sync data when changes are made">?</span>
-                    </label>
-                    <label>
-                        Sync Interval (minutes): <input type="number" id="syncInterval" min="5" max="1440" value="30">
-                        <span class="tooltip" data-tooltip="How often to automatically sync (5-1440 minutes)">?</span>
-                    </label>
-                    <div id="auto-sync-status" style="font-size: 12px; color: #666; margin-top: 5px;">
-                        No automatic syncs yet
-                    </div>
-                    <button id="trigger-auto-sync" style="margin-top: 10px; padding: 5px 10px; font-size: 12px;">
-                        Trigger Sync Now
-                    </button>
                 </div>
             </div>
-        </div>
 
-        <!-- Share & Inbox Section (moved below Online Data Sync) -->
-        <label>
-            <input type="checkbox" id="shareButtonEnabled">
-            Share Button <span class="tooltip" data-tooltip="Adds a Share button to send a gallery to a recipient UUID.">?</span>
-        </label>
-        <!-- Inbox Settings Section -->
-        <div id="inbox-settings">
-            <h3 class="expand-icon">Inbox <span class="tooltip" data-tooltip="Configure inbox polling and viewing">?</span></h3>
-            <div id="inbox-settings-content">
-                <label>
-                    <input type="checkbox" id="receiveSharesEnabled">
-                    Enable Inbox polling <span class="tooltip" data-tooltip="Periodically check and save messages to the Inbox">?</span>
-                </label>
-                <label>
-                    <input type="checkbox" id="receivePopupsEnabled">
-                    Show popup on new messages <span class="tooltip" data-tooltip="Display a popup when new messages arrive">?</span>
-                </label>
-                <label>
-                    Poll Interval (minutes): <input type="number" id="inboxPollIntervalMin" min="1" max="1440" step="1" value="5">
-                    <span class="tooltip" data-tooltip="How often to check the inbox (1–1440 minutes)">?</span>
-                </label>
-                <div style="margin-top:8px;">
-                    <button type="button" id="checkInboxNow" class="btn-secondary">Check Inbox Now</button>
-                    <button type="button" id="clearInbox" class="btn-secondary" style="margin-left:8px;">Clear Inbox</button>
+            <!-- Tab: Sync & Data -->
+            <div id="tab-sync" class="tab-content">
+                <h2 class="section-title">Sync & Data</h2>
+                <!-- Preserving original Sync HTML structure -->
+                <div id="online-sync-settings">
+                    <div id="online-sync-settings-content">
+                        <div class="setting-card">
+                            <h3>User Identification</h3>
+                            <div class="sync-section" style="border:none; padding:0; background:transparent;">
+                                <label>
+                                    Your UUID: <div class="uuid-controls" style="display:inline-block;">
+                                        <input type="text" id="userUUID" readonly style="width: 100px !important;">
+                                        <button type="button" id="edit-uuid" class="btn btn-secondary" style="padding:2px 8px; font-size:12px;">Edit</button>
+                                        <button type="button" id="regenerate-uuid" class="btn btn-secondary" style="padding:2px 8px; font-size:12px;">Regen</button>
+                                        <button type="button" id="browse-users" class="btn btn-secondary" style="padding:2px 8px; font-size:12px;">Browse</button>
+                                    </div>
+                                </label>
+                                <div id="uuid-edit-warning" style="display: none; color: #ff6b6b; font-size: 12px; margin-top: 5px;">
+                                    ⚠️ Warning: Changing your UUID will affect data access.
+                                </div>
+                                <div id="available-users" style="display: none; margin-top: 10px; padding: 10px; background: #333; border-radius: 3px;">
+                                    <div id="users-list"></div>
+                                    <button type="button" id="close-users-list" class="btn btn-secondary" style="margin-top:5px">Close</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="setting-card">
+                            <h3>Public Sync</h3>
+                            <div class="setting-row">
+                                <span class="setting-label">Enable Public Sync</span>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="publicSyncEnabled">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div id="public-sync-options" style="display: none; margin-top:10px;">
+                                <div class="sync-controls">
+                                    <button type="button" id="public-sync-upload" class="btn btn-secondary">Upload</button>
+                                    <button type="button" id="public-sync-download" class="btn btn-secondary">Download</button>
+                                    <span id="public-sync-status" class="sync-status"></span>
+                                </div>
+                                <div class="sync-info"><small>Last sync: <span id="public-last-sync">Never</span></small></div>
+                            </div>
+                        </div>
+
+                        <div class="setting-card">
+                            <h3>Private Sync</h3>
+                            <div class="setting-row">
+                                <span class="setting-label">Enable Private Sync</span>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="privateSyncEnabled">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div id="private-sync-options" style="display: none; margin-top:10px;">
+                                <input type="text" id="privateStorageUrl" placeholder="Storage URL" style="margin-bottom:10px;">
+                                <input type="password" id="privateApiKey" placeholder="API Key" style="margin-bottom:10px;">
+                                <div class="sync-controls">
+                                    <button type="button" id="private-sync-upload" class="btn btn-secondary">Upload</button>
+                                    <button type="button" id="private-sync-download" class="btn btn-secondary">Download</button>
+                                    <span id="private-sync-status" class="sync-status"></span>
+                                </div>
+                                <div class="sync-info"><small>Last sync: <span id="private-last-sync">Never</span></small></div>
+                            </div>
+                        </div>
+                        
+                        <div class="setting-card">
+                            <h3>Auto Sync</h3>
+                            <div class="setting-row">
+                                <span class="setting-label">Enable Auto Sync</span>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="autoSyncEnabled">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div style="margin-top:10px;">
+                                <label>Interval (min): <input type="number" id="syncInterval" min="5" style="width:80px;"></label>
+                                <div id="auto-sync-status" style="font-size:12px; margin-top:5px; color:#aaa;"></div>
+                                <button id="trigger-auto-sync" class="btn btn-secondary" style="margin-top:5px;">Sync Now</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div id="inbox-list" style="margin-top:10px;"></div>
-            </div>
-        </div>
 
-        <!-- Advanced Storage Section -->
-        <div id="advanced-settings">
-            <h3 class="expand-icon">Advanced Storage Management <span class="tooltip" data-tooltip="View and modify all data stored in GM.getValue">?</span></h3>
-            <div id="advanced-settings-content">
-                <p>This section allows you to view and modify all data stored by this userscript.</p>
-                <button type="button" id="refresh-storage">Refresh Storage Data</button>
-                <div id="storage-keys-list"></div>
-
+                <div id="advanced-settings">
+                    <div class="setting-card">
+                        <h3 id="storage-explorer-header" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+                            Storage Explorer <i class="fa fa-chevron-down"></i>
+                        </h3>
+                        <div id="advanced-settings-content" style="display:none; margin-top:15px; border-top:1px solid rgba(255,255,255,0.1); padding-top:15px;">
+                            <button type="button" id="refresh-storage" class="btn btn-secondary">Refresh Data</button>
+                            <div id="storage-keys-list" style="margin-top:15px;"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Advanced Storage Modal -->
                 <div id="edit-value-modal">
                     <div id="edit-value-content">
-                        <h3>Edit Storage Value</h3>
+                        <h3>Edit Value</h3>
                         <p id="editing-key-name">Key: </p>
                         <textarea id="edit-value-textarea"></textarea>
                         <div class="modal-buttons">
-                            <button type="button" id="cancel-edit">Cancel</button>
-                            <button type="button" id="save-edit">Save Changes</button>
+                            <button type="button" id="cancel-edit" class="btn btn-secondary">Cancel</button>
+                            <button type="button" id="save-edit" class="btn btn-primary">Save</button>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <button type="submit">Save Settings</button>
-    </form>
+            <!-- Tab: Inbox & Social -->
+            <div id="tab-social" class="tab-content">
+                <h2 class="section-title">Inbox & Social</h2>
+                
+                <div class="setting-card">
+                    <h3>Inbox</h3>
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <span class="setting-label">Enable Inbox Polling</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="receiveSharesEnabled">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <span class="setting-label">Show Popups</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="receivePopupsEnabled">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div style="margin-top:10px;">
+                        <label>Poll Interval (min): <input type="number" id="inboxPollIntervalMin" min="1" style="width:80px;"></label>
+                        <div style="margin-top:10px;">
+                            <button type="button" id="checkInboxNow" class="btn btn-secondary">Check Now</button>
+                            <button type="button" id="clearInbox" class="btn btn-secondary">Clear</button>
+                        </div>
+                        <div id="inbox-list" style="margin-top:15px;"></div>
+                    </div>
+                </div>
+
+                <div class="setting-card">
+                    <h3>Social Features</h3>
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <span class="setting-label">Share Button</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="shareButtonEnabled">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    
+                    <h4 style="margin-top:20px; margin-bottom:10px; color:var(--nh-text-muted);">Remove Buttons</h4>
+                    <div class="setting-row">
+                        <span class="setting-label">Twitter</span>
+                        <label class="toggle-switch"><input type="checkbox" id="twitterButtonEnabled"><span class="toggle-slider"></span></label>
+                    </div>
+                    <div class="setting-row">
+                        <span class="setting-label">Profile</span>
+                        <label class="toggle-switch"><input type="checkbox" id="profileButtonEnabled"><span class="toggle-slider"></span></label>
+                    </div>
+                    <div class="setting-row">
+                        <span class="setting-label">Info</span>
+                        <label class="toggle-switch"><input type="checkbox" id="infoButtonEnabled"><span class="toggle-slider"></span></label>
+                    </div>
+                    <div class="setting-row">
+                        <span class="setting-label">Logout</span>
+                        <label class="toggle-switch"><input type="checkbox" id="logoutButtonEnabled"><span class="toggle-slider"></span></label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Custom Pages -->
+            <div id="tab-pages" class="tab-content">
+                <h2 class="section-title">Custom Pages</h2>
+                
+                <div class="setting-card">
+                    <h3>Feature Pages</h3>
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <span class="setting-label">Offline Favorites Page</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="offlineFavoritesPageEnabled">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <span class="setting-label">Offline Favoriting</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="offlineFavoritingEnabled">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <span class="setting-label">Read Manga Page</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="readMangaPageEnabled">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div id="read-manga-page-options" style="display:none; margin-top:10px;">
+                        <label>Max Display: <input type="range" id="max-read-manga-display-slider" min="10" max="500" step="10"></label>
+                        <span id="max-read-manga-display-value"></span>
+                    </div>
+
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <span class="setting-label">Quick Nut Page</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="quickNutPageEnabled">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div id="quick-nut-page-options" style="display:none; margin-top:10px;">
+                        <label style="display:block;"><input type="checkbox" id="quickNutEnglishOnlyEnabled"> Only English</label>
+                        <label style="display:block;"><input type="checkbox" id="quickNutSkipReadEnabled"> Skip Read</label>
+                        <select id="quickNutRefreshMode" style="margin-top:5px;">
+                            <option value="daily">Every 24 hours</option>
+                            <option value="per_visit">Every visit</option>
+                            <option value="custom">Custom</option>
+                        </select>
+                        <div id="quickNutCustomMinutesContainer" style="display:none; margin-top:5px;">
+                            <input type="number" id="quickNutCustomMinutes" placeholder="Minutes">
+                        </div>
+                    </div>
+                    
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <span class="setting-label">NFM Page</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="nfmPageEnabled">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <span class="setting-label">Bookmarks Page</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="bookmarksPageEnabled">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div id="bookmark-page-options" style="display:none; margin-top:10px;">
+                        <select id="bookmark-arrangement-type">
+                            <option value="default">Default</option>
+                            <option value="alphabetical">A-Z</option>
+                            <option value="reverse-alphabetical">Z-A</option>
+                            <option value="most-items">Most Items</option>
+                            <option value="least-items">Least Items</option>
+                        </select>
+                        <div style="margin-top:10px;">
+                            <label><input type="checkbox" id="enableRandomButton"> Enable Random Button</label>
+                        </div>
+                        <div id="random-options" style="display:none; margin-top:5px; margin-left:15px;">
+                            <label><input type="radio" id="random-open-in-new-tab" name="random-open-type" value="new-tab"> New Tab</label>
+                            <label><input type="radio" id="random-open-in-current-tab" name="random-open-type" value="current-tab"> Current Tab</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Layout -->
+            <div id="tab-layout" class="tab-content">
+                <h2 class="section-title">Layout Configuration</h2>
+                
+                <div class="setting-card">
+                    <h3>Layout Mode</h3>
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <span class="setting-label">Use Classic Layout</span>
+                            <span class="setting-desc">Disable tabs and show all settings in one page</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="useClassicLayout">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="setting-card">
+                    <h3>Tab Arrangement</h3>
+                    <p class="setting-desc">Drag to rearrange tabs</p>
+                    <div id="tab-arrangement">
+                        <ul id="tab-list" class="sortable-list">
+                            <li data-tab="random" class="tab-item"><i class="fa fa-bars handle"></i> Random</li>
+                            <li data-tab="tags" class="tab-item"><i class="fa fa-bars handle"></i> Tags</li>
+                            <li data-tab="artists" class="tab-item"><i class="fa fa-bars handle"></i> Artists</li>
+                            <li data-tab="characters" class="tab-item"><i class="fa fa-bars handle"></i> Characters</li>
+                            <li data-tab="parodies" class="tab-item"><i class="fa fa-bars handle"></i> Parodies</li>
+                            <li data-tab="groups" class="tab-item"><i class="fa fa-bars handle"></i> Groups</li>
+                            <li data-tab="info" class="tab-item"><i class="fa fa-bars handle"></i> Info</li>
+                            <li data-tab="twitter" class="tab-item"><i class="fa fa-bars handle"></i> Twitter</li>
+                            <li data-tab="read_manga" class="tab-item"><i class="fa fa-bars handle"></i> Read Manga</li>
+                            <li data-tab="quick_nut" class="tab-item"><i class="fa fa-bars handle"></i> Quick Nut</li>
+                        </ul>
+                        <button type="button" id="resetTabOrder" class="btn btn-secondary" style="margin-top:10px;">Reset Order</button>
+                    </div>
+                </div>
+
+                <div class="setting-card">
+                    <h3>Bookmarks Page Layout</h3>
+                    <div id="bookmarks-arrangement">
+                        <ul id="bookmarks-list" class="sortable-list">
+                            <li data-element="bookmarksTitle" class="tab-item"><i class="fa fa-bars handle"></i> Bookmarked Pages Title</li>
+                            <li data-element="searchInput" class="tab-item"><i class="fa fa-bars handle"></i> Search Input</li>
+                            <li data-element="tagSearchInput" class="tab-item"><i class="fa fa-bars handle"></i> Tag Search Input</li>
+                            <li data-element="bookmarksList" class="tab-item"><i class="fa fa-bars handle"></i> Bookmarks List</li>
+                            <li data-element="mangaBookmarksTitle" class="tab-item"><i class="fa fa-bars handle"></i> Manga Bookmarks Title</li>
+                            <li data-element="mangaBookmarksList" class="tab-item"><i class="fa fa-bars handle"></i> Manga Bookmarks List</li>
+                        </ul>
+                        <button type="button" id="resetBookmarksOrder" class="btn btn-secondary" style="margin-top:10px;">Reset Order</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="save-bar">
+                <button type="submit" class="btn btn-primary">Save Settings</button>
+            </div>
+        </form>
+    </div>
 </div>
 `;
 
 // Append settings form to the container
 $('div.container').append(settingsHtml);
+
+// Add Tab Switching Logic
+$(document).ready(function() {
+    $('.nav-item').click(function() {
+        $('.nav-item').removeClass('active');
+        $(this).addClass('active');
+        
+        const target = $(this).data('tab');
+        $('.tab-content').removeClass('active');
+        $('#tab-' + target).addClass('active');
+    });
+});
 
 
 
@@ -3546,6 +3460,7 @@ $('div.container').append(settingsHtml);
             const findSimilarType = await GM.getValue('findSimilarType', 'immediately');
             const showNonEnglish = await GM.getValue('showNonEnglish', 'show');
             const showPageNumbersEnabled = await GM.getValue('showPageNumbersEnabled', true);
+            const useClassicLayout = await GM.getValue('useClassicLayout', false);
 
             // New Fade & Read settings
             const markAsReadEnabled = await GM.getValue('markAsReadEnabled', true);
@@ -3567,6 +3482,10 @@ $('div.container').append(settingsHtml);
             $('#find-similar-options').toggle(findSimilarEnabled);
             $('#showNonEnglishSelect').val(showNonEnglish);
             $('#showPageNumbersEnabled').prop('checked', showPageNumbersEnabled);
+            $('#useClassicLayout').prop('checked', useClassicLayout);
+            if (useClassicLayout) {
+                $('.settings-wrapper').addClass('classic-mode');
+            }
 
             $('#englishFilterEnabled').prop('checked', englishFilterEnabled);
             $('#autoLoginEnabled').prop('checked', autoLoginEnabled);
@@ -4621,6 +4540,7 @@ $('#openInNewTabEnabled').change(function() {
             const findSimilarType = $('input[name="find-similar-type"]:checked').val();
             const showNonEnglish = $('#showNonEnglishSelect').val();
             const showPageNumbersEnabled = $('#showPageNumbersEnabled').prop('checked');
+            const useClassicLayout = $('#useClassicLayout').prop('checked');
 
             // Collect new Fade & Read settings
             const markAsReadEnabled = $('#markAsReadEnabled').prop('checked');
@@ -4653,6 +4573,7 @@ $('#openInNewTabEnabled').change(function() {
 
             await GM.setValue('showNonEnglish', showNonEnglish);
             await GM.setValue('showPageNumbersEnabled', showPageNumbersEnabled);
+            await GM.setValue('useClassicLayout', useClassicLayout);
             await GM.setValue('findSimilarEnabled', findSimilarEnabled);
             await GM.setValue('englishFilterEnabled', englishFilterEnabled);
             await GM.setValue('autoLoginEnabled', autoLoginEnabled);
@@ -4798,39 +4719,26 @@ $('#openInNewTabEnabled').change(function() {
 
 //------------------------------------------------ Advanced Settings Management Functions---------------------------------------------------------
 
-    // Toggle advanced settings section
-    const advancedHeader = document.querySelector('#advanced-settings h3');
+    // Toggle advanced settings section (Storage Explorer)
+    const advancedHeader = document.getElementById('storage-explorer-header');
     const advancedContent = document.getElementById('advanced-settings-content');
 
-    if (!advancedHeader) {
-        console.error('Advanced settings header not found');
-        return;
+    if (advancedHeader && advancedContent) {
+        advancedHeader.addEventListener('click', function() {
+            const isHidden = advancedContent.style.display === 'none';
+            advancedContent.style.display = isHidden ? 'block' : 'none';
+            
+            // Toggle chevron icon
+            const icon = advancedHeader.querySelector('i');
+            if (icon) {
+                icon.className = isHidden ? 'fa fa-chevron-up' : 'fa fa-chevron-down';
+            }
+
+            if (isHidden) {
+                refreshStorageData();
+            }
+        });
     }
-
-    if (!advancedContent) {
-        console.error('Advanced settings content not found');
-        return;
-    }
-
-    console.log('Advanced header found:', advancedHeader);
-    console.log('Initial display state:', advancedContent.style.display);
-
-    advancedHeader.addEventListener('click', function() {
-        console.log('Header clicked');
-        advancedContent.style.display = (advancedContent.style.display === 'none' || advancedContent.style.display === '') ? 'block' : 'none';
-        console.log('New display state:', advancedContent.style.display);
-
-        // Toggle the expanded class
-        advancedHeader.classList.toggle('expanded', advancedContent.style.display === 'block');
-        console.log('Classes after toggle:', advancedHeader.className);
-
-        if (advancedContent.style.display === 'block') {
-            refreshStorageData();
-        }
-    });
-
-
-
 
     // Refresh storage button
     const refreshBtn = document.getElementById('refresh-storage');
