@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      10.3.0
+// @version      10.3.1
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -22,7 +22,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "10.3.0";
+const CURRENT_VERSION = "10.3.1";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -9968,6 +9968,19 @@ class OnlineDataSync {
         };
     }
 
+    async getPublicUsersSnapshot() {
+        const snap = await GM.getValue('publicUsersSnapshot', null);
+        if (!snap || typeof snap !== 'object') return { users: [], at: null };
+        const users = Array.isArray(snap.users) ? snap.users.filter(u => typeof u === 'string') : [];
+        const at = typeof snap.at === 'string' ? snap.at : null;
+        return { users, at };
+    }
+
+    async setPublicUsersSnapshot(users) {
+        const list = Array.isArray(users) ? users.filter(u => typeof u === 'string') : [];
+        await GM.setValue('publicUsersSnapshot', { users: list, at: new Date().toISOString() });
+    }
+
     // Generate 5-character alphanumeric UUID
     generateUUID() {
         const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -10077,21 +10090,60 @@ class OnlineDataSync {
         const userUUID = userSyncData.userUUID;
 
         // Download existing data to merge with current user's data
+        const isPublicSyncTarget = !!(config && config.url && config.url === this.publicConfig.url);
         let existingData = {};
         try {
             existingData = await provider.download(config);
         } catch (error) {
-            // If download fails (e.g., no data exists yet), start with empty object
+            if (isPublicSyncTarget) {
+                throw new Error(`Public sync safety: aborting upload because existing cloud data could not be downloaded (${error && error.message ? error.message : String(error)})`);
+            }
             console.log('No existing data found, creating new storage');
+        }
+
+        if (existingData === null || (typeof existingData !== 'object') || Array.isArray(existingData)) {
+            if (isPublicSyncTarget) {
+                throw new Error('Public sync safety: aborting upload because existing cloud data format is invalid');
+            }
+            existingData = {};
+        }
+
+        if (!existingData.users && existingData.userUUID && existingData.data) {
+            existingData = { users: { [existingData.userUUID]: existingData } };
         }
 
         // Ensure existingData has the correct structure for multiple users
         if (!existingData.users) {
+            if (isPublicSyncTarget) {
+                throw new Error('Public sync safety: aborting upload because existing cloud data has no users map');
+            }
             existingData = {
               //  version: CURRENT_VERSION,
                 //lastUpdated: new Date().toISOString(),
                 users: {}
             };
+        }
+
+        if (typeof existingData.users !== 'object' || existingData.users === null || Array.isArray(existingData.users)) {
+            if (isPublicSyncTarget) {
+                throw new Error('Public sync safety: aborting upload because existing cloud users map is invalid');
+            }
+            existingData.users = {};
+        }
+
+        if (isPublicSyncTarget) {
+            const existingUsers = Object.keys(existingData.users);
+            const snapshot = await this.getPublicUsersSnapshot();
+            if (snapshot.users.length) {
+                const existingSet = new Set(existingUsers);
+                const missingCount = snapshot.users.reduce((acc, u) => acc + (existingSet.has(u) ? 0 : 1), 0);
+                const shrunk = existingUsers.length < snapshot.users.length;
+                const missingTooMany = missingCount >= 3 || (snapshot.users.length >= 10 && missingCount >= Math.ceil(snapshot.users.length * 0.25));
+                if (shrunk && missingTooMany) {
+                    throw new Error('Public sync safety: aborting upload because public storage appears to be missing many users compared to your last known snapshot');
+                }
+            }
+            await this.setPublicUsersSnapshot(existingUsers);
         }
 
         // Add/update current user's data
@@ -10112,6 +10164,10 @@ class OnlineDataSync {
         }
 
         const allData = await provider.download(config);
+        const isPublicSyncTarget = !!(config && config.url && config.url === this.publicConfig.url);
+        if (isPublicSyncTarget && allData && typeof allData === 'object' && allData.users && typeof allData.users === 'object' && !Array.isArray(allData.users)) {
+            await this.setPublicUsersSnapshot(Object.keys(allData.users));
+        }
         const userUUID = await this.getUserUUID();
 
         // Handle both old single-user format and new multi-user format
@@ -10143,6 +10199,10 @@ class OnlineDataSync {
         }
 
         const allData = await provider.download(config);
+        const isPublicSyncTarget = !!(config && config.url && config.url === this.publicConfig.url);
+        if (isPublicSyncTarget && allData && typeof allData === 'object' && allData.users && typeof allData.users === 'object' && !Array.isArray(allData.users)) {
+            await this.setPublicUsersSnapshot(Object.keys(allData.users));
+        }
 
         if (allData.users) {
             // Multi-user format
@@ -10373,18 +10433,64 @@ class TaxonomyManager {
     }
 }
 
+function uint8ArrayToBase64(bytes) {
+    let binary = '';
+    const chunkSize = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+        binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+    }
+    return btoa(binary);
+}
+
+function base64ToUint8Array(base64) {
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes;
+}
+
+function supportsGzipStreams() {
+    return typeof CompressionStream === 'function' && typeof DecompressionStream === 'function';
+}
+
+async function gzipCompressStringToBase64(text) {
+    const cs = new CompressionStream('gzip');
+    const stream = new Blob([text]).stream().pipeThrough(cs);
+    const buffer = await new Response(stream).arrayBuffer();
+    return uint8ArrayToBase64(new Uint8Array(buffer));
+}
+
+async function gzipDecompressBase64ToString(base64) {
+    const bytes = base64ToUint8Array(base64);
+    const ds = new DecompressionStream('gzip');
+    const stream = new Blob([bytes]).stream().pipeThrough(ds);
+    return await new Response(stream).text();
+}
+
 // JSONStorage.net provider implementation
 class JSONStorageProvider {
-    // Compress individual user data using LZString compression
-    compressUserData(userData) {
+    async compressUserData(userData) {
         try {
-            // Preserve the original version if it exists, otherwise use current version
             const preservedVersion = userData.version || CURRENT_VERSION;
-            
+            const json = JSON.stringify(userData);
+            if (supportsGzipStreams()) {
+                try {
+                    const compressedData = await gzipCompressStringToBase64(json);
+                    return {
+                        isCompressed: true,
+                        algo: 'gzip',
+                        version: preservedVersion,
+                        compressedData
+                    };
+                } catch (_) {}
+            }
             return {
                 isCompressed: true,
+                algo: 'lz-string',
                 version: preservedVersion,
-                compressedData: LZString.compressToBase64(JSON.stringify(userData))
+                compressedData: LZString.compressToBase64(json)
             };
         } catch (error) {
             console.error('User data compression failed, using uncompressed data:', error);
@@ -10393,9 +10499,14 @@ class JSONStorageProvider {
     }
     
     // Decompress individual user data if it's compressed
-    decompressUserData(userData) {
+    async decompressUserData(userData) {
         try {
             if (userData && userData.isCompressed && userData.compressedData) {
+                const algo = (userData.algo || '').toLowerCase();
+                if (algo === 'gzip' && supportsGzipStreams()) {
+                    const json = await gzipDecompressBase64ToString(userData.compressedData);
+                    return JSON.parse(json);
+                }
                 return JSON.parse(LZString.decompressFromBase64(userData.compressedData));
             }
             return userData; // Return as is if not compressed
@@ -10406,7 +10517,7 @@ class JSONStorageProvider {
     }
 
     // Process data for upload - compresses each user's data individually
-    prepareDataForUpload(data) {
+    async prepareDataForUpload(data) {
         // If data doesn't have users structure, return as is
         if (!data || !data.users) return data;
         
@@ -10418,14 +10529,14 @@ class JSONStorageProvider {
         
         // Compress each user's data individually
         for (const [uuid, userData] of Object.entries(data.users)) {
-            processedData.users[uuid] = this.compressUserData(userData);
+            processedData.users[uuid] = await this.compressUserData(userData);
         }
         
         return processedData;
     }
     
     // Process downloaded data - decompresses each user's data individually
-    processDownloadedData(data) {
+    async processDownloadedData(data) {
         // If data doesn't have users structure, return as is
         if (!data || !data.users) return data;
         
@@ -10437,17 +10548,15 @@ class JSONStorageProvider {
         
         // Decompress each user's data individually
         for (const [uuid, userData] of Object.entries(data.users)) {
-            processedData.users[uuid] = this.decompressUserData(userData);
+            processedData.users[uuid] = await this.decompressUserData(userData);
         }
         
         return processedData;
     }
 
     async upload(config, data) {
+        const processedData = await this.prepareDataForUpload(data);
         return new Promise((resolve, reject) => {
-            // Process data for upload (compress each user's data individually)
-            const processedData = this.prepareDataForUpload(data);
-            
             GM.xmlHttpRequest({
                 method: 'PUT',
                 url: `${config.url}?apiKey=${config.apiKey}`,
@@ -10477,16 +10586,16 @@ class JSONStorageProvider {
                 headers: {
                     'Accept': 'application/json'
                 },
-                onload: function(response) {
+                onload: async (response) => {
                     if (response.status === 200) {
                         const data = JSON.parse(response.responseText);
                         // Process downloaded data (decompress each user's data individually)
-                        const processedData = this.processDownloadedData(data);
+                        const processedData = await this.processDownloadedData(data);
                         resolve(processedData);
                     } else {
                         reject(new Error(`Download failed: ${response.status} ${response.statusText}`));
                     }
-                }.bind(this),
+                },
                 onerror: function(error) {
                     reject(new Error(`Network error: ${error}`));
                 }
