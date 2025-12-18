@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      10.3.1
+// @version      10.3.2
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -22,7 +22,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "10.3.1";
+const CURRENT_VERSION = "10.3.2";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -3035,6 +3035,11 @@ const settingsHtml = `
                 <h2 class="section-title">Sync & Data</h2>
                 <!-- Preserving original Sync HTML structure -->
                 <div id="online-sync-settings">
+                    <div class="setting-card">
+                        <h3 id="online-sync-header" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center;">
+                            Online Data Sync <i class="fa fa-chevron-down"></i>
+                        </h3>
+                    </div>
                     <div id="online-sync-settings-content">
                         <div class="setting-card">
                             <h3>User Identification</h3>
@@ -4008,13 +4013,19 @@ $('#findSimilarEnabled').on('change', function() {
             });
 
             // Add expand/collapse functionality for Online Data Sync section
-            const onlineSyncExpanded = await GM.getValue('onlineSyncExpanded', false);
+            const onlineSyncExpanded = await GM.getValue('onlineSyncExpanded', true);
             $('#online-sync-settings-content').toggle(onlineSyncExpanded);
-            $('#online-sync-settings h3').toggleClass('expanded', onlineSyncExpanded);
-            $('#online-sync-settings h3').click(async function() {
+            $('#online-sync-header').toggleClass('expanded', onlineSyncExpanded);
+            $('#online-sync-header i')
+                .toggleClass('fa-chevron-down', !onlineSyncExpanded)
+                .toggleClass('fa-chevron-up', onlineSyncExpanded);
+            $('#online-sync-header').off('click').on('click', async function() {
                 const isExpanded = $(this).hasClass('expanded');
                 $(this).toggleClass('expanded', !isExpanded);
                 $('#online-sync-settings-content').slideToggle();
+                $('#online-sync-header i')
+                    .toggleClass('fa-chevron-down', isExpanded)
+                    .toggleClass('fa-chevron-up', !isExpanded);
                 await GM.setValue('onlineSyncExpanded', !isExpanded);
             });
 
