@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      10.3.2
+// @version      10.3.3
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -22,7 +22,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "10.3.2";
+const CURRENT_VERSION = "10.3.3";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -10483,7 +10483,15 @@ async function gzipDecompressBase64ToString(base64) {
 // JSONStorage.net provider implementation
 class JSONStorageProvider {
     async compressUserData(userData) {
+        // Return as-is if null/undefined
+        if (!userData) return userData;
+
         try {
+            // Prevent double compression if data is already compressed
+            if (userData.isCompressed && userData.compressedData) {
+                return userData;
+            }
+
             const preservedVersion = userData.version || CURRENT_VERSION;
             const json = JSON.stringify(userData);
             if (supportsGzipStreams()) {
@@ -10514,11 +10522,24 @@ class JSONStorageProvider {
         try {
             if (userData && userData.isCompressed && userData.compressedData) {
                 const algo = (userData.algo || '').toLowerCase();
+                let json = null;
+
                 if (algo === 'gzip' && supportsGzipStreams()) {
-                    const json = await gzipDecompressBase64ToString(userData.compressedData);
-                    return JSON.parse(json);
+                    json = await gzipDecompressBase64ToString(userData.compressedData);
+                } else {
+                    json = LZString.decompressFromBase64(userData.compressedData);
                 }
-                return JSON.parse(LZString.decompressFromBase64(userData.compressedData));
+
+                if (json === null) {
+                    throw new Error(`Decompression failed (algo: ${algo || 'lz-string'})`);
+                }
+
+                const decompressed = JSON.parse(json);
+                if (decompressed === null) {
+                    throw new Error('Decompressed data resulted in null');
+                }
+
+                return decompressed;
             }
             return userData; // Return as is if not compressed
         } catch (error) {
