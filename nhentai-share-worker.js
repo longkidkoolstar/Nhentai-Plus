@@ -94,8 +94,48 @@ export default {
       return Response.redirect(target, 302);
     }
 
+    // PROXY /sync -> Handle sync requests to new storage
+    if (path === '/sync' || path === '/sync/') {
+      // New Bin URL provided by user
+      const STORAGE_URL = 'https://api.jsonstorage.net/v1/json/d206ce58-9543-48db-a5e4-997cfc745ef3/acac021f-7bae-4492-8f3c-e90b18960dea';
+      // Existing API Key
+      const STORAGE_KEY = '2f9e71c8-be66-4623-a2cc-a6f05e958563';
+
+      if (method === 'GET') {
+        const proxyRes = await fetch(`${STORAGE_URL}?apiKey=${STORAGE_KEY}`);
+        if (!proxyRes.ok) return json({ error: 'Upstream sync error' }, proxyRes.status);
+        const data = await proxyRes.json();
+        return json(data);
+      }
+
+      if (method === 'POST' || method === 'PUT') {
+        let payload = null;
+        try { payload = await request.json(); } catch (_) {}
+        if (!payload) return json({ error: 'Missing payload' }, 400);
+
+        const proxyRes = await fetch(`${STORAGE_URL}?apiKey=${STORAGE_KEY}`, {
+            method: 'PUT', // JSONStorage uses PUT for updates
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        
+        if (!proxyRes.ok) return json({ error: 'Upstream sync error' }, proxyRes.status);
+        const data = await proxyRes.json();
+        return json(data);
+      }
+    }
+
+    // GET /status -> Check for forced updates
+    if (path === '/status') {
+      return json({
+        forceUpdate: false, // Set to true to enable the lock
+        minVersion: "10.3.4", // Users below this version will be locked out
+        message: "A critical update is required to fix data corruption issues. Please update immediately."
+      });
+    }
+
     // Default help route
-    const help = 'NHentai Share Worker\n\nPOST /send with {toUUID, id|url, fromUUID?}.\nGET /inbox?uuid=...&drain=true to retrieve messages.\nPOST /share (legacy) and GET /g/:id available.';
+    const help = 'NHentai Share Worker\n\nPOST /send with {toUUID, id|url, fromUUID?}.\nGET /inbox?uuid=...&drain=true to retrieve messages.\nPOST /share (legacy) and GET /g/:id available.\nPOST/GET /sync for data synchronization.\nGET /status for version checks.';
     return new Response(help, { status: 200, headers: { ...corsHeaders(), 'Content-Type': 'text/plain' } });
   }
 };
@@ -103,7 +143,7 @@ export default {
 function corsHeaders() {
   return {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Max-Age': '86400'
   };

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      10.3.3
+// @version      10.3.4
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -22,10 +22,13 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "10.3.3";
+const CURRENT_VERSION = "10.3.4";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
+  // Check for forced updates from server
+  checkForForcedUpdate();
+
   const lastSeenVersion = await GM.getValue("lastSeenVersion", "0.0.0");
 
   if (CURRENT_VERSION !== lastSeenVersion) {
@@ -103,6 +106,65 @@ function showChangelogPopup(message) {
       setTimeout(() => popup.remove(), 300);
     }
   }, 15000);
+}
+
+/**
+ * Checks server for forced update requirements
+ * Optimized for incognito: caches check status for 1 hour in session storage
+ */
+async function checkForForcedUpdate() {
+    try {
+        // Use sessionStorage as it's per-tab/session and handles incognito well
+        const now = Date.now();
+        const lastCheck = parseInt(sessionStorage.getItem('nhp_last_update_check') || '0');
+        const ONE_HOUR = 60 * 60 * 1000;
+
+        // Only check if it's been more than an hour or if never checked in this session
+        if (now - lastCheck < ONE_HOUR) {
+            console.log("Forced update check skipped (last check < 1h ago)");
+            return;
+        }
+
+        const res = await fetch('https://nhentai-share.babykoolstar.workers.dev/status');
+        const data = await res.json();
+        
+        // Update last check time regardless of result to prevent spamming the server
+        sessionStorage.setItem('nhp_last_update_check', now.toString());
+
+        if (data.forceUpdate && data.minVersion) {
+            if (isVersionOlder(CURRENT_VERSION, data.minVersion)) {
+                console.log("Forced update required!");
+                forceUpdateLoop(data.message);
+            } else {
+                console.log("Version check passed:", CURRENT_VERSION);
+            }
+        }
+    } catch (error) {
+        console.error("Error checking version status:", error);
+    }
+}
+
+function isVersionOlder(current, min) {
+    const p1 = current.split('.').map(Number);
+    const p2 = min.split('.').map(Number);
+    for (let i = 0; i < Math.max(p1.length, p2.length); i++) {
+        const v1 = p1[i] || 0;
+        const v2 = p2[i] || 0;
+        if (v1 < v2) return true;
+        if (v1 > v2) return false;
+    }
+    return false;
+}
+
+function forceUpdateLoop(msg) {
+    if (document.hasFocus()) {
+        if (confirm(msg || 'A critical update is required. Click OK to update now.')) {
+             window.open('https://greasyfork.org/en/scripts/498553-nhentai-plus', '_blank');
+             window.location.href = 'https://greasyfork.org/en/scripts/498553-nhentai-plus';
+        }
+    }
+    // Recursive call to keep displaying the popup
+    setTimeout(() => forceUpdateLoop(msg), 1000);
 }
 
 
@@ -9970,8 +10032,11 @@ class OnlineDataSync {
             jsonstorage: new JSONStorageProvider()
         };
         this.publicConfig = {
-            url: 'https://api.jsonstorage.net/v1/json/d206ce58-9543-48db-a5e4-997cfc745ef3/6629f339-5696-4b2e-b63d-b5d092dc46f6',
-            apiKey: '2f9e71c8-be66-4623-a2cc-a6f05e958563'
+            // Proxied through Cloudflare Worker to protect credentials and allow storage migration
+            // The old version (10.2.1) will continue to use the old hardcoded JSONStorage URL (and corrupt it),
+            // while updated clients will use this proxy pointing to a new, clean storage bin.
+            url: 'https://nhentai-share.babykoolstar.workers.dev/sync',
+            apiKey: 'proxy' // Key is handled by the worker
         };
         this.taxonomyConfig = {
             url: 'https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/nhentai_taxonomy.json',
