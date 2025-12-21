@@ -1,4 +1,12 @@
 {
+  "10.3.5": {
+    "date": "2025-12-20",
+    "changes": [
+      "feat(settings): persist active tab selection between sessions",
+      "feat(settings): persist active tab selection between sessions",
+      "Add logic to remember and restore the last active settings tab when switching between classic and modern modes. The selected tab is now saved using GM.setValue and restored on subsequent visits."
+    ]
+  },
   "10.3.4": {
     "date": "2025-12-19",
     "changes": [

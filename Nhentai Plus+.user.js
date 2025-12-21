@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      10.3.4
+// @version      10.3.5
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -22,7 +22,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "10.3.4";
+const CURRENT_VERSION = "10.3.5";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -3437,15 +3437,30 @@ const settingsHtml = `
 // Append settings form to the container
 $('div.container').append(settingsHtml);
 
-// Add Tab Switching Logic
+const settingsLastTabKey = 'settingsLastTab';
+
+function setActiveSettingsTab(requestedTab) {
+    const fallbackTab = 'general';
+    const tab = String(requestedTab || '').trim() || fallbackTab;
+    const $navItem = $(`.settings-nav .nav-item[data-tab="${tab}"]`);
+    const $tabContent = $(`#tab-${tab}`);
+    const resolvedTab = ($navItem.length && $tabContent.length) ? tab : fallbackTab;
+
+    $('.settings-nav .nav-item').removeClass('active');
+    $(`.settings-nav .nav-item[data-tab="${resolvedTab}"]`).addClass('active');
+    $('.tab-content').removeClass('active');
+    $(`#tab-${resolvedTab}`).addClass('active');
+
+    return resolvedTab;
+}
+
 $(document).ready(function() {
-    $('.nav-item').click(function() {
-        $('.nav-item').removeClass('active');
-        $(this).addClass('active');
-        
+    $('.settings-nav .nav-item').on('click', async function() {
         const target = $(this).data('tab');
-        $('.tab-content').removeClass('active');
-        $('#tab-' + target).addClass('active');
+        const resolvedTab = setActiveSettingsTab(target);
+        if (!$('.settings-wrapper').hasClass('classic-mode')) {
+            await GM.setValue(settingsLastTabKey, resolvedTab);
+        }
     });
 });
 
@@ -3552,6 +3567,10 @@ $(document).ready(function() {
             $('#useClassicLayout').prop('checked', useClassicLayout);
             if (useClassicLayout) {
                 $('.settings-wrapper').addClass('classic-mode');
+            } else {
+                const savedTab = await GM.getValue(settingsLastTabKey, 'general');
+                const resolvedTab = setActiveSettingsTab(savedTab);
+                await GM.setValue(settingsLastTabKey, resolvedTab);
             }
 
             $('#englishFilterEnabled').prop('checked', englishFilterEnabled);
