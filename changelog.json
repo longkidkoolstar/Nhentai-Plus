@@ -1,4 +1,13 @@
 {
+  "10.3.6": {
+    "date": "2025-12-30",
+    "changes": [
+      "feat(search): add smart tag no results fallback and error image removal",
+      "Implement fallback modal when smart tag search returns no results",
+      "Add functionality to remove error images on custom pages",
+      "Bump version to 10.3.6"
+    ]
+  },
   "10.3.5": {
     "date": "2025-12-20",
     "changes": [

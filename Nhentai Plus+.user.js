@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      10.3.5
+// @version      10.3.6
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -22,7 +22,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "10.3.5";
+const CURRENT_VERSION = "10.3.6";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -9665,7 +9665,12 @@ document.querySelector('form.search').addEventListener('submit', async function(
     const searchInput = this.querySelector('input[name="q"]');
     let raw = (searchInput.value || '').trim();
 
-    const smartTagEnabled = await GM.getValue('smartTagEnabled', true);
+    let smartTagEnabled = await GM.getValue('smartTagEnabled', true);
+    const smartTagBypassOnce = await GM.getValue('smartTagBypassOnce', false);
+    if (smartTagBypassOnce) {
+        await GM.setValue('smartTagBypassOnce', false);
+        smartTagEnabled = false;
+    }
     const mustAddTagsEnabled = await GM.getValue('mustAddTagsEnabled', false);
     const mustAddTags = (await GM.getValue('mustAddTags', [])).map(tag => tag.toLowerCase());
     if (typeof taxonomyManager !== 'undefined') {
@@ -9976,6 +9981,166 @@ document.querySelector('form.search').addEventListener('submit', async function(
     window.location.href = `/search/?q=${encodeURIComponent(finalQuery)}`;
 });
 
+function deSmartTagQuery(q) {
+    const text = String(q || '').trim();
+    if (!text) return '';
+    const tokens = text.match(/(?:[^\s"]+:"[^"]*"|[^\s]+)/g) || [];
+    const out = [];
+    for (const token of tokens) {
+        const mQuoted = token.match(/^([a-z]+):"([^"]*)"$/i);
+        if (mQuoted) {
+            out.push(mQuoted[2]);
+            continue;
+        }
+        const mBare = token.match(/^([a-z]+):(.+)$/i);
+        if (mBare) {
+            const v = String(mBare[2] || '').replace(/^"(.*)"$/, '$1');
+            out.push(v);
+            continue;
+        }
+        out.push(String(token).replace(/^"(.*)"$/, '$1'));
+    }
+    return out.join(' ').replace(/\s+/g, ' ').trim();
+}
+
+(async function smartTagNoResultsFallbackInit() {
+    const smartTagEnabled = await GM.getValue('smartTagEnabled', true);
+    if (!smartTagEnabled) return;
+    if (!/\/search\/?$/i.test(window.location.pathname) && !/\/search\//i.test(window.location.pathname)) return;
+
+    const h2 = document.querySelector('.container.index-container h2');
+    const title = (h2 && h2.textContent) ? h2.textContent.trim() : '';
+    if (!/no results found/i.test(title)) return;
+
+    const q = new URLSearchParams(window.location.search).get('q') || '';
+    if (!/\w+:"/i.test(q)) return;
+
+    const existing = document.getElementById('smarttag-noresults-modal');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'smarttag-noresults-modal';
+    overlay.style.position = 'fixed';
+    overlay.style.inset = '0';
+    overlay.style.background = 'rgba(0, 0, 0, 0.8)';
+    overlay.style.zIndex = '9999';
+    overlay.style.display = 'flex';
+    overlay.style.alignItems = 'center';
+    overlay.style.justifyContent = 'center';
+
+    const box = document.createElement('div');
+    box.style.background = '#222';
+    box.style.color = '#fff';
+    box.style.border = '1px solid #444';
+    box.style.borderRadius = '6px';
+    box.style.boxShadow = '0 8px 24px rgba(0,0,0,0.45)';
+    box.style.maxWidth = '520px';
+    box.style.width = '92%';
+    box.style.padding = '16px';
+    box.style.fontFamily = 'Segoe UI, system-ui, -apple-system, Roboto, Arial';
+
+    const heading = document.createElement('h3');
+    heading.textContent = 'No results found';
+    heading.style.margin = '0 0 10px 0';
+    heading.style.color = '#fff';
+
+    const desc = document.createElement('p');
+    desc.textContent = 'Search again to perform a search without Smart Tags.';
+    desc.style.margin = '0 0 12px 0';
+    desc.style.fontSize = '14px';
+    desc.style.color = '#ccc';
+
+    const actions = document.createElement('div');
+    actions.style.display = 'flex';
+    actions.style.gap = '8px';
+    actions.style.marginTop = '12px';
+    actions.style.justifyContent = 'flex-end';
+
+    const cancel = document.createElement('button');
+    cancel.textContent = 'Dismiss';
+    cancel.className = 'btn-secondary';
+    cancel.style.background = '#444';
+    cancel.style.border = '1px solid #666';
+    cancel.style.color = '#fff';
+    cancel.style.padding = '8px 16px';
+    cancel.style.borderRadius = '3px';
+    cancel.addEventListener('mouseenter', () => { cancel.style.background = '#555'; });
+    cancel.addEventListener('mouseleave', () => { cancel.style.background = '#444'; });
+
+    const retry = document.createElement('button');
+    retry.textContent = 'Search Again (No Smart Tags)';
+    retry.className = 'btn-primary';
+    retry.style.background = '#e53935';
+    retry.style.border = '1px solid #ff6f60';
+    retry.style.color = '#fff';
+    retry.style.padding = '8px 16px';
+    retry.style.borderRadius = '3px';
+    retry.addEventListener('mouseenter', () => { retry.style.background = '#ff5252'; });
+    retry.addEventListener('mouseleave', () => { retry.style.background = '#e53935'; });
+
+    cancel.addEventListener('click', () => overlay.remove());
+    overlay.addEventListener('click', (evt) => { if (evt.target === overlay) overlay.remove(); });
+    retry.addEventListener('click', async () => {
+        const form = document.querySelector('form.search');
+        const input = form ? form.querySelector('input[name="q"]') : null;
+        const fallback = deSmartTagQuery(q);
+        if (input) input.value = fallback;
+        await GM.setValue('smartTagBypassOnce', true);
+        overlay.remove();
+        if (form) {
+            form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+        } else {
+            window.location.href = `/search/?q=${encodeURIComponent(fallback)}`;
+        }
+    });
+
+    actions.appendChild(cancel);
+    actions.appendChild(retry);
+    box.appendChild(heading);
+    box.appendChild(desc);
+    box.appendChild(actions);
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+})();
+
+(function removeErrorImageOnCustomPagesInit() {
+    if (window.__nhPlusErrorImageRemovalInit) return;
+    window.__nhPlusErrorImageRemovalInit = true;
+
+    const selector = '#content > div > img.error-image.error-image-light';
+
+    function isTargetPage() {
+        const path = String(window.location.pathname || '');
+        const hash = String(window.location.hash || '');
+        return path.includes('/continue_reading/') ||
+            path.includes('/settings/') ||
+            path.includes('/quick-nut/') ||
+            path.includes('/read-manga/') ||
+            path.includes('/bookmarks') ||
+            hash === '#quick-nut' ||
+            hash === '#read-manga';
+    }
+
+    function removeOnce() {
+        if (!isTargetPage()) return;
+        const img = document.querySelector(selector);
+        if (img) img.remove();
+    }
+
+    removeOnce();
+
+    const observer = new MutationObserver(() => removeOnce());
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+
+    const originalPushState = history.pushState;
+    history.pushState = function() {
+        const ret = originalPushState.apply(this, arguments);
+        setTimeout(removeOnce, 0);
+        return ret;
+    };
+
+    window.addEventListener('popstate', () => setTimeout(removeOnce, 0));
+})();
 
 
 // Modify XHR requests
