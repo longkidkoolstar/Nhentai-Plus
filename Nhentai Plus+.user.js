@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      10.4.0
+// @version      10.4.1
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -22,7 +22,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "10.4.0";
+const CURRENT_VERSION = "10.4.1";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -7896,58 +7896,65 @@ async function appendButton() {
 
 // Create a function to check for the element and append the button
 function checkAndAppendButton() {
-    const target = document.querySelector("#bookmarksContainer > h2:nth-child(1)");
-    if (target) {
-        // Append the button
-        const button = $('<button class="random-button"><i class="fas fa-random"></i> Random</button>');
-        $(target).after(button);
-        $(target).css('display', 'inline-block');
-        button.css({
-            'display': 'inline-block',
-            'margin-left': '10px',
-            'position': 'relative',
-            'top': '-3px'
-        });
-
-        button.on('click', async () => {
-            if (bookmarks.length > 0) {
-                const randomIndex = Math.floor(Math.random() * bookmarks.length);
-                const randomBookmark = bookmarks[randomIndex];
-                const link = `https://nhentai.net/g/${randomBookmark.id}`;
-
-                // Store bookmark info in localStorage for the next page
-                localStorage.setItem('randomMangaSource', JSON.stringify({
-                    source: randomBookmark.source,
-                    id: randomBookmark.id
-                }));
-
-                // Get the openInNewTabType value from storage
-                const openInNewTabType = await GM.getValue('openInNewTabType', 'new-tab');
-                const enableRandomButton = await GM.getValue('enableRandomButton', true);
-                const randomOpenType = await GM.getValue('randomOpenType', 'new-tab');
-
-                // Determine how to open the link based on the openInNewTabType value
-                if (enableRandomButton && randomOpenType === 'new-tab') {
-                    // Open the link in a new tab
-                    window.open(link, '_blank');
-                } else if (enableRandomButton && randomOpenType === 'current-tab') {
-                    // Open the link in the current tab
-                    window.location.href = link;
-                } else if (openInNewTabType === 'new-tab') {
-                    // Open the link in a new tab
-                    window.open(link, '_blank');
-                } else if (openInNewTabType === 'current-tab') {
-                    // Open the link in the current tab
-                    window.location.href = link;
-                }
-            } else {
-                showPopup("No bookmarks found.", {
-                    timeout: 3000
-                });
+    const targets = document.querySelectorAll(".bookmarks-title");
+    if (targets.length > 0) {
+        targets.forEach(target => {
+            // Check if button already exists to avoid duplicates
+            if (target.nextElementSibling && target.nextElementSibling.classList.contains('random-button')) {
+                return;
             }
+
+            // Append the button
+            const button = $('<button class="random-button"><i class="fas fa-random"></i> Random</button>');
+            $(target).after(button);
+            $(target).css('display', 'inline-block');
+            button.css({
+                'display': 'inline-block',
+                'margin-left': '10px',
+                'position': 'relative',
+                'top': '-3px'
+            });
+
+            button.on('click', async () => {
+                if (bookmarks.length > 0) {
+                    const randomIndex = Math.floor(Math.random() * bookmarks.length);
+                    const randomBookmark = bookmarks[randomIndex];
+                    const link = `https://nhentai.net/g/${randomBookmark.id}/`;
+
+                    // Store bookmark info in localStorage for the next page
+                    localStorage.setItem('randomMangaSource', JSON.stringify({
+                        source: randomBookmark.source,
+                        id: randomBookmark.id
+                    }));
+
+                    // Get the openInNewTabType value from storage
+                    const openInNewTabType = await GM.getValue('openInNewTabType', 'new-tab');
+                    const enableRandomButton = await GM.getValue('enableRandomButton', true);
+                    const randomOpenType = await GM.getValue('randomOpenType', 'new-tab');
+
+                    // Determine how to open the link based on the openInNewTabType value
+                    if (enableRandomButton && randomOpenType === 'new-tab') {
+                        // Open the link in a new tab
+                        window.open(link, '_blank');
+                    } else if (enableRandomButton && randomOpenType === 'current-tab') {
+                        // Open the link in the current tab
+                        window.location.href = link;
+                    } else if (openInNewTabType === 'new-tab') {
+                        // Open the link in a new tab
+                        window.open(link, '_blank');
+                    } else if (openInNewTabType === 'current-tab') {
+                        // Open the link in the current tab
+                        window.location.href = link;
+                    }
+                } else {
+                    showPopup("No bookmarks found.", {
+                        timeout: 3000
+                    });
+                }
+            });
         });
 
-        // Clear the interval since we've found the element
+        // Clear the interval since we've found the elements
         clearInterval(intervalId);
     }
 }
