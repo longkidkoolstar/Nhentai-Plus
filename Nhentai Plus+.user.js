@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      10.3.6
+// @version      10.4.0
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -22,7 +22,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "10.3.6";
+const CURRENT_VERSION = "10.4.0";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -1495,45 +1495,92 @@ async function displayBookmarkedPages() {
         // Note: For default arrangement, we keep the original order (most recent first)
 
         const bookmarksContainer = $('<div id="bookmarksContainer" class="container">');
+        
+        // Create Tabs Navigation
+        const tabsNav = $('<div class="bookmarks-tabs">');
+        const pagesTabBtn = $('<button class="tab-btn active" data-tab="pages">Bookmarked Pages</button>');
+        const mangaTabBtn = $('<button class="tab-btn" data-tab="manga">Bookmarked Manga</button>');
+        tabsNav.append(pagesTabBtn, mangaTabBtn);
+
+        // Create Pages Tab Content
+        const pagesTabContent = $('<div id="pages-tab" class="tab-content active">');
         const bookmarksTitle = $('<h2 class="bookmarks-title">Bookmarked Pages</h2>');
+        const pageTitleInput = $('<input type="text" id="searchBookmarks" placeholder="Search pages..." class="search-input">');
+        const pageTagInput = $('<input type="text" id="searchPageTags" placeholder="Search page tags..." class="search-input">');
         const bookmarksList = $('<ul class="bookmarks-list">');
-        const searchInput = $('<input type="text" id="searchBookmarks" placeholder="Search bookmarks..." class="search-input">');
-        const mangaBookmarksTitle = $('<h2 class="bookmarks-title">Bookmarked Mangas</h2>');
-        const mangaBookmarksList = $('<ul class="bookmarks-grid">');
-        const tagSearchInput = $('<input type="text" id="searchMangaTags" placeholder="Search manga tags..." class="search-input">');
+        pagesTabContent.append(bookmarksTitle, pageTitleInput, pageTagInput, bookmarksList);
 
-        // Get the bookmarks page order from storage or use default order
-        const defaultOrder = ['bookmarksTitle', 'searchInput', 'tagSearchInput', 'bookmarksList', 'mangaBookmarksTitle', 'mangaBookmarksList'];
-        const bookmarksOrder = await GM.getValue('bookmarksContainerOrder', defaultOrder);
+        // Create Manga Tab Content
+        const mangaTabContent = $('<div id="manga-tab" class="tab-content">');
+        const mangaBookmarksTitle = $('<h2 class="bookmarks-title">Bookmarked Manga</h2>');
+        const mangaTitleInput = $('<input type="text" id="searchMangaTitle" placeholder="Search manga title..." class="search-input">');
+        const mangaTagInput = $('<input type="text" id="searchMangaTags" placeholder="Search manga tags..." class="search-input">');
+        const mangaBookmarksList = $('<ul id="mangaBookmarksList" class="bookmarks-grid">');
+        mangaTabContent.append(mangaBookmarksTitle, mangaTitleInput, mangaTagInput, mangaBookmarksList);
 
-        // Create a map of element names to their actual elements
-        const elementsMap = {
-            'bookmarksTitle': bookmarksTitle,
-            'searchInput': searchInput,
-            'tagSearchInput': tagSearchInput,
-            'bookmarksList': bookmarksList,
-            'mangaBookmarksTitle': mangaBookmarksTitle,
-            'mangaBookmarksList': mangaBookmarksList
-        };
-
-        // Append elements in the order specified by bookmarksOrder
-        bookmarksOrder.forEach(elementName => {
-            if (elementsMap[elementName]) {
-                bookmarksContainer.append(elementsMap[elementName]);
-            }
-        });
+        bookmarksContainer.append(tabsNav, pagesTabContent, mangaTabContent);
         $('body').append(bookmarksContainer);
+
+        // Tab Switching Logic
+        tabsNav.find('.tab-btn').on('click', function() {
+            const tabId = $(this).data('tab');
+            
+            // Update buttons
+            $('.tab-btn').removeClass('active');
+            $(this).addClass('active');
+            
+            // Update content
+            $('.tab-content').removeClass('active');
+            $(`#${tabId}-tab`).addClass('active');
+        });
 
         // Add CSS styles
         const styles = `
+            /* Tab Styles */
+            .bookmarks-tabs {
+                display: flex;
+                margin-bottom: 20px;
+                border-bottom: 2px solid #444;
+            }
+            .tab-btn {
+                background: none;
+                border: none;
+                color: #aaa;
+                padding: 10px 20px;
+                cursor: pointer;
+                font-size: 16px;
+                font-weight: bold;
+                transition: color 0.3s, border-bottom 0.3s;
+                border-bottom: 2px solid transparent;
+                margin-bottom: -2px;
+            }
+            .tab-btn:hover {
+                color: #f1faee;
+            }
+            .tab-btn.active {
+                color: #e63946;
+                border-bottom: 2px solid #e63946;
+            }
+            .tab-content {
+                display: none;
+                animation: fadeIn 0.3s ease;
+            }
+            .tab-content.active {
+                display: block;
+            }
+            @keyframes fadeIn {
+                from { opacity: 0; transform: translateY(5px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+
             #bookmarksContainer {
                 margin: 20px auto;
                 padding: 20px;
                 background-color: #2c2c2c;
                 border-radius: 8px;
-                box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-                width: 80%;
-                max-width: 600px;
+                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+                width: 90%;
+                max-width: 1200px; /* Increased max-width for better grid */
             }
             .bookmarks-title {
                 font-size: 24px;
@@ -1551,8 +1598,23 @@ async function displayBookmarkedPages() {
             .bookmarks-list {
                 list-style: none;
                 padding: 0;
-                max-height: 100%;
-                overflow-y: hidden;
+                max-height: 60vh; /* Limit height relative to viewport */
+                overflow-y: auto;
+                scrollbar-width: thin;
+                scrollbar-color: #e63946 #2c2c2c;
+                border: 1px solid #444;
+                border-radius: 4px;
+                background: #222;
+            }
+            .bookmarks-list::-webkit-scrollbar {
+                width: 8px;
+            }
+            .bookmarks-list::-webkit-scrollbar-track {
+                background: #2c2c2c;
+            }
+            .bookmarks-list::-webkit-scrollbar-thumb {
+                background-color: #e63946;
+                border-radius: 4px;
             }
             .bookmark-link {
                 display: block;
@@ -1570,19 +1632,47 @@ async function displayBookmarkedPages() {
             .delete-button:hover {
                 color: #f1faee;
             }
-                .delete-button-pages {
-                position: relative;
-                top: -32px;
-                float: right;
+            
+            .bookmark-list-item {
+                display: flex;
+                align-items: center;
+                border-bottom: 1px solid #333;
+                background-color: #2a2a2a;
+                transition: background-color 0.2s;
+            }
+            .bookmark-list-item:hover {
+                background-color: #333;
+            }
+            .bookmark-list-item .bookmark-link {
+                flex-grow: 1;
+                padding: 12px 15px;
+                font-size: 16px;
+                color: #ddd;
+                text-decoration: none;
+                transition: color 0.2s;
+                display: block;
+            }
+            .bookmark-list-item .bookmark-link:hover {
+                color: #e63946;
+                background-color: transparent; /* Override default hover */
+                padding-left: 15px; /* Reset or keep simple */
+            }
+            
+            .delete-button-pages {
                 background: none;
                 border: none;
-                color: #e63946;
+                color: #666;
                 cursor: pointer;
-                font-size: 14px;
+                font-size: 18px;
+                padding: 0 15px;
+                transition: color 0.2s;
+                height: 100%;
+                display: flex;
+                align-items: center;
             }
 
             .delete-button-pages:hover {
-                color: #f1faee;
+                color: #e63946;
             }
             .undo-popup {
                 position: fixed;
@@ -1633,7 +1723,7 @@ async function displayBookmarkedPages() {
 // Fetch titles for each bookmark and update dynamically
 for (const page of bookmarkedPages) {
     // Append a loading list item first
-    const listItem = $(`<li><a href="${page}" class="bookmark-link">Loading...</a><button class="delete-button-pages">✖</button></li>`);
+    const listItem = $(`<li class="bookmark-list-item"><a href="${page}" class="bookmark-link">Loading...</a><button class="delete-button-pages">✖</button></li>`);
     bookmarksList.append(listItem);
 
     // Using async IIFE to handle async operations in the loop
@@ -1688,7 +1778,7 @@ for (const page of bookmarkedPages) {
             }
 
             // Update the list item with the fetched title/display text
-            const updatedListItem = $(`<li><a href="${page}" class="bookmark-link">${displayText}</a><button class="delete-button-pages">✖</button></li>`);
+            const updatedListItem = $(`<li class="bookmark-list-item"><a href="${page}" class="bookmark-link">${displayText}</a><button class="delete-button-pages">✖</button></li>`);
             listItem.replaceWith(updatedListItem);
 
             // Add delete functionality
@@ -1879,10 +1969,27 @@ for (const page of bookmarkedPages) {
         const additionalStyles = `
             #mangaBookmarksList {
                 display: grid;
-                grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+                grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
                 gap: 15px;
                 list-style-type: none;
-                padding: 0;
+                padding: 10px;
+                max-height: 70vh;
+                overflow-y: auto;
+                background: #222;
+                border: 1px solid #444;
+                border-radius: 4px;
+                scrollbar-width: thin;
+                scrollbar-color: #e63946 #2c2c2c;
+            }
+            #mangaBookmarksList::-webkit-scrollbar {
+                width: 8px;
+            }
+            #mangaBookmarksList::-webkit-scrollbar-track {
+                background: #2c2c2c;
+            }
+            #mangaBookmarksList::-webkit-scrollbar-thumb {
+                background-color: #e63946;
+                border-radius: 4px;
             }
 
             .bookmark-item {
@@ -2095,12 +2202,14 @@ for (const page of bookmarkedPages) {
 
 
         // Modified search functionality to work with the new layout
-        searchInput.on('input', filterBookmarks);
-        tagSearchInput.on('input', filterBookmarks);
+        pageTitleInput.on('input', filterPages);
+        pageTagInput.on('input', filterPages);
+        mangaTitleInput.on('input', filterManga);
+        mangaTagInput.on('input', filterManga);
 
-        function filterBookmarks() {
-            const searchQuery = searchInput.val().toLowerCase();
-            const tagQueries = tagSearchInput.val().toLowerCase().trim().split(/,\s*|\s+/);
+        function filterManga() {
+            const searchQuery = mangaTitleInput.val().toLowerCase();
+            const tagQueries = mangaTagInput.val().toLowerCase().trim().split(/,\s*|\s+/);
 
             mangaBookmarksList.children('li').each(async function () {
                 const $li = $(this);
@@ -2115,7 +2224,7 @@ for (const page of bookmarkedPages) {
                 const imageSrc = $li.find('.bookmark-link img').attr('src') || '';
 
                 const searchMatch = textContent.includes(searchQuery) || imageSrc.toLowerCase().includes(searchQuery);
-                const tagMatch = tagQueries.every(query => {
+                const tagMatch = (tagQueries.length === 1 && tagQueries[0] === "") ? true : tagQueries.every(query => {
                     const queryWords = query.split(/\s+/);
                     return cleanedTags.some(tag =>
                         queryWords.every(word => tag.includes(word))
@@ -2124,6 +2233,11 @@ for (const page of bookmarkedPages) {
 
                 $li.toggleClass('hidden', !(searchMatch && tagMatch));
             });
+        }
+
+        function filterPages() {
+            const searchQuery = pageTitleInput.val().toLowerCase();
+            const tagQueries = pageTagInput.val().toLowerCase().trim().split(/,\s*|\s+/);
 
             $('.bookmarks-list li').each(async function () {
                 const $li = $(this);
@@ -2133,9 +2247,17 @@ for (const page of bookmarkedPages) {
                 // Get all manga IDs associated with this bookmark
                 const mangaIds = await GM.getValue(`bookmark_manga_ids_${bookmarkUrl}`, []);
 
+                const searchContent = $li.find('.bookmark-link').text().toLowerCase();
+                const searchMatch = searchContent.includes(searchQuery);
+                const isTagQueryEmpty = (tagQueries.length === 1 && tagQueries[0] === "");
+
                 if (!mangaIds || mangaIds.length === 0) {
-                    // If we don't have any manga IDs for this bookmark, hide it
-                    $li.toggleClass('hidden', true);
+                    // If no manga IDs, match only on title and if no tag query
+                    if (searchMatch && isTagQueryEmpty) {
+                        $li.toggleClass('hidden', false);
+                    } else {
+                        $li.toggleClass('hidden', true);
+                    }
                     return;
                 }
 
@@ -2148,11 +2270,7 @@ for (const page of bookmarkedPages) {
                         tag.replace(/\d+K?$/, '').trim().toLowerCase()
                     );
 
-                    const searchContent = $li.find('.bookmark-link').text().toLowerCase();
-                    const searchImageSrc = $li.find('.bookmark-link img').attr('src') || '';
-
-                    const searchMatch = searchContent.includes(searchQuery) || searchImageSrc.toLowerCase().includes(searchQuery);
-                    const tagMatch = tagQueries.every(query => {
+                    const tagMatch = isTagQueryEmpty ? true : tagQueries.every(query => {
                         const queryWords = query.split(/\s+/);
                         return cleanedTags.some(tag =>
                             queryWords.every(word => tag.includes(word))

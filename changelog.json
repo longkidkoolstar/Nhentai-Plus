@@ -1,4 +1,14 @@
 {
+  "10.4.0": {
+    "date": "2026-01-01",
+    "changes": [
+      "feat(bookmarks): complete overhaul of Bookmarks page with tabbed interface",
+      "feat(bookmarks): split Bookmarked Pages and Manga into separate tabs",
+      "feat(bookmarks): independent search functionality for pages and manga tags",
+      "feat(ui): modern scrollable lists and improved styling for bookmark items",
+      "chore(version): bump userscript version to 10.4.0"
+    ]
+  },
   "10.3.6": {
     "date": "2025-12-30",
     "changes": [
