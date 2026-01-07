@@ -1,4 +1,15 @@
 {
+  "10.5.0": {
+    "date": "2026-01-07",
+    "changes": [
+      "feat(favorites): add unfavorite functionality and improve state management",
+      "Implement unfavorite feature with API support and offline handling",
+      "Refactor favorite state management to track offline, pending and synced states",
+      "Update UI to properly reflect current favorite status",
+      "Add support for processing pending unfavorites when logged in",
+      "chore(version): bump userscript version to 10.5.0"
+    ]
+  },
   "10.4.1": {
     "date": "2026-01-01",
     "changes": [

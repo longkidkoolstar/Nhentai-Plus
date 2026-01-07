@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      10.4.1
+// @version      10.5.0
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -22,7 +22,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "10.4.1";
+const CURRENT_VERSION = "10.5.0";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -8113,6 +8113,12 @@ function getMangaLink(mangaID) {
                 console.log("Found stored favorites to process:", toFavorite);
                 await processFavorites(toFavorite);
             }
+
+            const toUnfavorite = await GM.getValue('toUnfavorite', []);
+            if (Array.isArray(toUnfavorite) && toUnfavorite.length > 0) {
+                console.log("Found stored unfavorites to process:", toUnfavorite);
+                await processUnfavorites(toUnfavorite);
+            }
         }
 
         // Only proceed with manga-specific features if we're on a manga page
@@ -8143,16 +8149,54 @@ function getMangaLink(mangaID) {
             return;
         }
 
-        // Get stored favorites
+        function isButtonFavorited(button) {
+            if (!button) return false;
+            if (button.classList && button.classList.contains('favorited')) return true;
+            const textEl = button.querySelector('span.text');
+            const text = String((textEl ? textEl.textContent : button.textContent) || '').trim();
+            return text.toLowerCase().includes('unfavorite');
+        }
+
+        async function updateOfflineFavoritesFromButtonState(button) {
+            const shouldBeFavorited = isButtonFavorited(button);
+            let currentOfflineFavorites = await GM.getValue('offlineFavorites', []);
+            if (!Array.isArray(currentOfflineFavorites)) currentOfflineFavorites = [];
+
+            const has = currentOfflineFavorites.includes(mangaId);
+            if (shouldBeFavorited && !has) {
+                currentOfflineFavorites.push(mangaId);
+                await GM.setValue('offlineFavorites', currentOfflineFavorites);
+            } else if (!shouldBeFavorited && has) {
+                currentOfflineFavorites = currentOfflineFavorites.filter(id => id !== mangaId);
+                await GM.setValue('offlineFavorites', currentOfflineFavorites);
+            }
+        }
+
+        // Get stored favorites (persisted) + pending favorites (not yet synced)
+        let offlineFavorites = await GM.getValue('offlineFavorites', []);
+        if (!Array.isArray(offlineFavorites)) {
+            offlineFavorites = [];
+            await GM.setValue('offlineFavorites', offlineFavorites);
+        }
+
         let toFavorite = await GM.getValue('toFavorite', []);
         if (!Array.isArray(toFavorite)) {
             toFavorite = [];
             await GM.setValue('toFavorite', toFavorite);
         }
-        console.log("Stored favorites:", toFavorite);
+
+        let toUnfavorite = await GM.getValue('toUnfavorite', []);
+        if (!Array.isArray(toUnfavorite)) {
+            toUnfavorite = [];
+            await GM.setValue('toUnfavorite', toUnfavorite);
+        }
+
+        console.log("Stored favorites:", offlineFavorites);
+        console.log("Pending favorites:", toFavorite);
+        console.log("Pending unfavorites:", toUnfavorite);
 
         // Is this manga in our favorites?
-        const isFavorited = toFavorite.includes(mangaId);
+        const isFavorited = offlineFavorites.includes(mangaId) || toFavorite.includes(mangaId);
         console.log("Current manga in stored favorites:", isFavorited);
 
         // Enable button if disabled
@@ -8166,12 +8210,23 @@ function getMangaLink(mangaID) {
             updateButtonToFavorited(favoriteBtn);
         }
 
+        if (isLoggedIn) {
+            await updateOfflineFavoritesFromButtonState(favoriteBtn);
+        }
+
         // Add click event to favorite button
         favoriteBtn.addEventListener('click', async function(e) {
+            console.log("Favorite button clicked");
+
+            if (isLoggedIn) {
+                setTimeout(() => {
+                    updateOfflineFavoritesFromButtonState(favoriteBtn);
+                }, 350);
+                return;
+            }
+
             e.preventDefault();
             e.stopPropagation();
-
-            console.log("Favorite button clicked");
 
             // Get the CURRENT list of favorites (not the one from page load)
             // This ensures we have the most up-to-date list
@@ -8180,48 +8235,46 @@ function getMangaLink(mangaID) {
                 currentFavorites = [];
             }
 
+            let currentOfflineFavorites = await GM.getValue('offlineFavorites', []);
+            if (!Array.isArray(currentOfflineFavorites)) currentOfflineFavorites = [];
+
+            let currentPendingUnfavorites = await GM.getValue('toUnfavorite', []);
+            if (!Array.isArray(currentPendingUnfavorites)) currentPendingUnfavorites = [];
+
             // Check if this manga is CURRENTLY in favorites
-            const currentlyFavorited = currentFavorites.includes(mangaId);
+            const currentlyFavorited = currentFavorites.includes(mangaId) || currentOfflineFavorites.includes(mangaId);
             console.log("Manga currently in favorites:", currentlyFavorited);
 
-            if (isLoggedIn) {
-                // Send favorite request directly to API
-                try {
-                   
-                } catch (error) {
-                    console.error("Failed to favorite manga:", error);
-
-                    // Show error popup
-                    showPopup("Failed to favorite manga: " + error.message, {
-                        timeout: 4000,
-                        width: '300px'
-                    });
-                }
-            } else {
-                // Toggle in stored favorites
+            if (!isLoggedIn) {
                 if (currentlyFavorited) {
-                    // Remove from favorites
-                    const index = currentFavorites.indexOf(mangaId);
-                    currentFavorites.splice(index, 1);
+                    const wasPendingFavorite = currentFavorites.includes(mangaId);
+                    const pendingIndex = currentFavorites.indexOf(mangaId);
+                    if (pendingIndex !== -1) currentFavorites.splice(pendingIndex, 1);
+
+                    currentOfflineFavorites = currentOfflineFavorites.filter(id => id !== mangaId);
+
+                    if (!wasPendingFavorite && !currentPendingUnfavorites.includes(mangaId)) {
+                        currentPendingUnfavorites.push(mangaId);
+                    }
+
                     updateButtonToUnfavorited(favoriteBtn);
-                //    showPopup("Removed from offline favorites", {
-                //        timeout: 2000,
-                //        width: '300px'
-                //    });
                     console.log("Removed manga from stored favorites:", mangaId);
                 } else {
-                    // Add to favorites
-                    currentFavorites.push(mangaId);
+                    if (!currentFavorites.includes(mangaId)) currentFavorites.push(mangaId);
+                    if (!currentOfflineFavorites.includes(mangaId)) currentOfflineFavorites.push(mangaId);
+
+                    currentPendingUnfavorites = currentPendingUnfavorites.filter(id => id !== mangaId);
+
                     updateButtonToFavorited(favoriteBtn);
-                //    showPopup("Added to offline favorites", {
-                //        timeout: 2000,
-                //        width: '300px'
-                //    });
                     console.log("Added manga to stored favorites:", mangaId);
                 }
 
                 await GM.setValue('toFavorite', currentFavorites);
-                console.log("Updated stored favorites:", currentFavorites);
+                await GM.setValue('toUnfavorite', currentPendingUnfavorites);
+                await GM.setValue('offlineFavorites', currentOfflineFavorites);
+                console.log("Updated pending favorites:", currentFavorites);
+                console.log("Updated pending unfavorites:", currentPendingUnfavorites);
+                console.log("Updated stored favorites:", currentOfflineFavorites);
             }
         });
     }
@@ -8412,6 +8465,45 @@ async function sendFavoriteRequest(mangaId) {
 }
 }
 
+async function sendUnfavoriteRequest(mangaId) {
+    return new Promise((resolve, reject) => {
+        console.log("Sending unfavorite request for manga:", mangaId);
+
+        const csrfToken = getCsrfToken();
+        if (!csrfToken) {
+            console.error("Could not find CSRF token for request");
+            reject(new Error("Missing CSRF token"));
+            return;
+        }
+
+        fetch(`https://nhentai.net/api/gallery/${mangaId}/unfavorite`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+                "X-CSRFToken": csrfToken,
+                "Referer": "https://nhentai.net/g/" + mangaId + "/",
+                "User-Agent": navigator.userAgent
+            },
+            body: `csrf_token=${encodeURIComponent(csrfToken)}`,
+            credentials: "include",
+            mode: "cors"
+        })
+        .then(response => {
+            console.log("Unfavorite request response for manga " + mangaId + ":", response.status);
+            if (response.status === 200) {
+                resolve(response);
+            } else {
+                console.error("Unfavorite request failed for manga " + mangaId + ":", response.status);
+                reject(new Error(`Request failed with status ${response.status}`));
+            }
+        })
+        .catch(error => {
+            console.error("Unfavorite request error for manga " + mangaId + ":", error);
+            reject(error);
+        });
+    });
+}
+
 // Improved CSRF token extraction function
 function getCsrfToken() {
     // Try to get from script tag with the most up-to-date token
@@ -8559,6 +8651,24 @@ async function processFavorites(favorites) {
             await new Promise(resolve => setTimeout(resolve, 500));
         }
 
+        if (successfulOnes.length > 0) {
+            let offlineFavorites = await GM.getValue('offlineFavorites', []);
+            if (!Array.isArray(offlineFavorites)) offlineFavorites = [];
+            const offlineSet = new Set(offlineFavorites);
+            for (const id of successfulOnes) {
+                if (!offlineSet.has(id)) {
+                    offlineFavorites.push(id);
+                    offlineSet.add(id);
+                }
+            }
+            await GM.setValue('offlineFavorites', offlineFavorites);
+
+            let toUnfavorite = await GM.getValue('toUnfavorite', []);
+            if (!Array.isArray(toUnfavorite)) toUnfavorite = [];
+            toUnfavorite = toUnfavorite.filter(id => !successfulOnes.includes(id));
+            await GM.setValue('toUnfavorite', toUnfavorite);
+        }
+
         // Keep only the failed ones in storage
         if (failedOnes.length > 0) {
             await GM.setValue('toFavorite', failedOnes);
@@ -8587,6 +8697,97 @@ async function processFavorites(favorites) {
             ]
         });
     }
+
+async function processUnfavorites(unfavorites) {
+    if (window.location.href.startsWith("https://nhentai.net/login/")) {
+        return;
+    }
+
+    console.log("Processing stored unfavorites:", unfavorites);
+
+    try {
+        await verifyCookies();
+    } catch (error) {
+        console.error("Cookie verification failed:", error);
+        showPopup(`Cannot process unfavorites: ${error.message}. Try logging in again.`, {
+            timeout: 5000,
+            width: '300px'
+        });
+        return;
+    }
+
+    const progressPopup = showPopup(`Processing unfavorites: 0/${unfavorites.length}`, {
+        autoClose: false,
+        width: '300px',
+        buttons: [
+            {
+                text: "Cancel",
+                callback: () => {
+                    processingCanceled = true;
+                }
+            }
+        ]
+    });
+
+    const successfulOnes = [];
+    const failedOnes = [];
+    let processingCanceled = false;
+
+    for (let i = 0; i < unfavorites.length; i++) {
+        if (processingCanceled) {
+            progressPopup.updateMessage(`Processing canceled. Completed: ${successfulOnes.length}/${unfavorites.length}`);
+            break;
+        }
+
+        const mangaId = unfavorites[i];
+        progressPopup.updateMessage(`Processing unfavorites: ${i+1}/${unfavorites.length}`);
+
+        try {
+            await sendUnfavoriteRequest(mangaId);
+            console.log("Successfully unfavorited manga:", mangaId);
+            successfulOnes.push(mangaId);
+        } catch (error) {
+            console.error("Error unfavoriting manga:", mangaId, error);
+            failedOnes.push(mangaId);
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 500));
+    }
+
+    if (successfulOnes.length > 0) {
+        let offlineFavorites = await GM.getValue('offlineFavorites', []);
+        if (!Array.isArray(offlineFavorites)) offlineFavorites = [];
+        offlineFavorites = offlineFavorites.filter(id => !successfulOnes.includes(id));
+        await GM.setValue('offlineFavorites', offlineFavorites);
+
+        let toFavorite = await GM.getValue('toFavorite', []);
+        if (!Array.isArray(toFavorite)) toFavorite = [];
+        toFavorite = toFavorite.filter(id => !successfulOnes.includes(id));
+        await GM.setValue('toFavorite', toFavorite);
+    }
+
+    if (failedOnes.length > 0) {
+        await GM.setValue('toUnfavorite', failedOnes);
+        console.log("Updated stored unfavorites with failed ones:", failedOnes);
+    } else {
+        await GM.setValue('toUnfavorite', []);
+        console.log("Cleared stored unfavorites");
+    }
+
+    progressPopup.updateMessage(`Completed: ${successfulOnes.length} successful, ${failedOnes.length} failed`);
+    progressPopup.close();
+
+    showPopup(`Completed: ${successfulOnes.length} successful, ${failedOnes.length} failed`, {
+        timeout: 5000,
+        width: '300px',
+        buttons: [
+            {
+                text: "OK",
+                callback: () => {}
+            }
+        ]
+    });
+}
 
 init();
 //--------------------------**Offline Favoriting**----------------------------------------------
@@ -8818,8 +9019,27 @@ async function handleOfflineFavoritesPage() {
         notFoundMessage.remove();
     }
 
-    // Get offline favorites
-    const offlineFavorites = await GM.getValue('toFavorite', []);
+    async function getCombinedFavorites() {
+        const offlineFavorites = await GM.getValue('offlineFavorites', []);
+        const pendingFavorites = await GM.getValue('toFavorite', []);
+        const combinedFavorites = [];
+        const seen = new Set();
+        for (const id of Array.isArray(offlineFavorites) ? offlineFavorites : []) {
+            if (!seen.has(id)) {
+                combinedFavorites.push(id);
+                seen.add(id);
+            }
+        }
+        for (const id of Array.isArray(pendingFavorites) ? pendingFavorites : []) {
+            if (!seen.has(id)) {
+                combinedFavorites.push(id);
+                seen.add(id);
+            }
+        }
+        return combinedFavorites;
+    }
+
+    let combinedFavorites = await getCombinedFavorites();
 
     // Create container for favorites
     const container = document.createElement('div');
@@ -9078,17 +9298,46 @@ async function handleOfflineFavoritesPage() {
                                     console.error("Error getting manga info for undo:", error);
                                 }
 
-                                // Remove from favorites
-                                const updatedFavorites = sortedFavorites.filter(id => id !== mangaId);
-                                await GM.setValue('toFavorite', updatedFavorites);
+                                let currentOfflineFavorites = await GM.getValue('offlineFavorites', []);
+                                if (!Array.isArray(currentOfflineFavorites)) currentOfflineFavorites = [];
+                                let currentPendingFavorites = await GM.getValue('toFavorite', []);
+                                if (!Array.isArray(currentPendingFavorites)) currentPendingFavorites = [];
+                                let currentPendingUnfavorites = await GM.getValue('toUnfavorite', []);
+                                if (!Array.isArray(currentPendingUnfavorites)) currentPendingUnfavorites = [];
+
+                                const wasPending = currentPendingFavorites.includes(deletedMangaId);
+
+                                currentOfflineFavorites = currentOfflineFavorites.filter(id => id !== deletedMangaId);
+                                currentPendingFavorites = currentPendingFavorites.filter(id => id !== deletedMangaId);
+
+                                await GM.setValue('offlineFavorites', currentOfflineFavorites);
+                                await GM.setValue('toFavorite', currentPendingFavorites);
+
+                                if (!wasPending && !currentPendingUnfavorites.includes(deletedMangaId)) {
+                                    currentPendingUnfavorites.push(deletedMangaId);
+                                }
+                                await GM.setValue('toUnfavorite', currentPendingUnfavorites);
 
                                 // Remove from display
                                 favoriteItem.remove();
 
-                                // Update display if no favorites left
-                                if (updatedFavorites.length === 0) {
-                                    renderFavorites(updatedFavorites, sortOrder);
+                                const combinedFavoritesAfterDelete = [];
+                                const seenAfterDelete = new Set();
+                                for (const id of currentOfflineFavorites) {
+                                    if (!seenAfterDelete.has(id)) {
+                                        combinedFavoritesAfterDelete.push(id);
+                                        seenAfterDelete.add(id);
+                                    }
                                 }
+                                for (const id of currentPendingFavorites) {
+                                    if (!seenAfterDelete.has(id)) {
+                                        combinedFavoritesAfterDelete.push(id);
+                                        seenAfterDelete.add(id);
+                                    }
+                                }
+                                combinedFavorites = combinedFavoritesAfterDelete;
+
+                                renderFavorites(combinedFavoritesAfterDelete, sortOrder);
 
                                 // Show confirmation with undo button
                                 showPopup(
@@ -9100,20 +9349,43 @@ async function handleOfflineFavoritesPage() {
                                             {
                                                 text: "Undo",
                                                 callback: async () => {
-                                                    // Get current favorites
-                                                    const currentFavorites = await GM.getValue('toFavorite', []);
+                                                    let undoOfflineFavorites = await GM.getValue('offlineFavorites', []);
+                                                    if (!Array.isArray(undoOfflineFavorites)) undoOfflineFavorites = [];
+                                                    let undoPendingFavorites = await GM.getValue('toFavorite', []);
+                                                    if (!Array.isArray(undoPendingFavorites)) undoPendingFavorites = [];
+                                                    let undoPendingUnfavorites = await GM.getValue('toUnfavorite', []);
+                                                    if (!Array.isArray(undoPendingUnfavorites)) undoPendingUnfavorites = [];
 
-                                                    // Add the manga back if it's not already there
-                                                    if (!currentFavorites.includes(deletedMangaId)) {
-                                                        currentFavorites.push(deletedMangaId);
-                                                        await GM.setValue('toFavorite', currentFavorites);
-
-                                                        // Refresh the display to show the restored item
-                                                        renderFavorites(currentFavorites, sortOrder);
-
-                                                        // Show confirmation
-                                                        showPopup('Favorite restored', { timeout: 2000 });
+                                                    if (!undoOfflineFavorites.includes(deletedMangaId)) {
+                                                        undoOfflineFavorites.push(deletedMangaId);
                                                     }
+                                                    if (wasPending && !undoPendingFavorites.includes(deletedMangaId)) {
+                                                        undoPendingFavorites.push(deletedMangaId);
+                                                    }
+                                                    undoPendingUnfavorites = undoPendingUnfavorites.filter(id => id !== deletedMangaId);
+
+                                                    await GM.setValue('offlineFavorites', undoOfflineFavorites);
+                                                    await GM.setValue('toFavorite', undoPendingFavorites);
+                                                    await GM.setValue('toUnfavorite', undoPendingUnfavorites);
+
+                                                    const combinedFavoritesAfterUndo = [];
+                                                    const seenAfterUndo = new Set();
+                                                    for (const id of undoOfflineFavorites) {
+                                                        if (!seenAfterUndo.has(id)) {
+                                                            combinedFavoritesAfterUndo.push(id);
+                                                            seenAfterUndo.add(id);
+                                                        }
+                                                    }
+                                                    for (const id of undoPendingFavorites) {
+                                                        if (!seenAfterUndo.has(id)) {
+                                                            combinedFavoritesAfterUndo.push(id);
+                                                            seenAfterUndo.add(id);
+                                                        }
+                                                    }
+
+                                                    combinedFavorites = combinedFavoritesAfterUndo;
+                                                    renderFavorites(combinedFavoritesAfterUndo, sortOrder);
+                                                    showPopup('Favorite restored', { timeout: 2000 });
                                                 }
                                             }
                                         ]
@@ -9194,11 +9466,12 @@ async function handleOfflineFavoritesPage() {
     }
 
     // Initialize with current favorites
-    renderFavorites(offlineFavorites);
+    renderFavorites(combinedFavorites);
 
     // Add event listener for sort control
-    document.getElementById('sort-favorites').addEventListener('change', function() {
-        renderFavorites(offlineFavorites, this.value);
+    document.getElementById('sort-favorites').addEventListener('change', async function() {
+        combinedFavorites = await getCombinedFavorites();
+        renderFavorites(combinedFavorites, this.value);
     });
 }
 
@@ -10242,6 +10515,7 @@ function deSmartTagQuery(q) {
             path.includes('/quick-nut/') ||
             path.includes('/read-manga/') ||
             path.includes('/bookmarks') ||
+            path.includes('/favorite') ||
             hash === '#quick-nut' ||
             hash === '#read-manga';
     }
