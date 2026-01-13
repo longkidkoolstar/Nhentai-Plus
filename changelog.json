@@ -1,4 +1,14 @@
 {
+  "10.5.1": {
+    "date": "2026-01-13",
+    "changes": [
+      "feat(filter): improve popular sort filter with dynamic updates",
+      "- Refactor month filter to use a cleaner array-based approach",
+      "- Add active state tracking for sort options",
+      "- Implement automatic reinjection on navigation changes",
+      "- Add mutation observer to handle dynamic content changes"
+    ]
+  },
   "10.5.0": {
     "date": "2026-01-07",
     "changes": [

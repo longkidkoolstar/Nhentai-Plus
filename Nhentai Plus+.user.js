@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      10.5.0
+// @version      10.5.1
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -22,7 +22,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "10.5.0";
+const CURRENT_VERSION = "10.5.1";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -7234,20 +7234,101 @@ async function addMonthFilter() {
                 baseUrl += '?' + remainingParams;
             }
 
+            const currentSort = (new URLSearchParams(window.location.search).get('sort') || '').toLowerCase();
+            const sortOptions = [
+                { sort: 'popular-today', label: 'today' },
+                { sort: 'popular-week', label: 'week' },
+                { sort: 'popular-month', label: 'month' },
+                { sort: 'popular', label: 'all time' }
+            ];
 
-            const monthFilterHtml = `
-                <span class="sort-name">Popular:</span>
-                <a href="${baseUrl}${baseUrl.includes('?') ? '&' : '?'}sort=popular-today">today</a>
-                <a href="${baseUrl}${baseUrl.includes('?') ? '&' : '?'}sort=popular-week">week</a>
-                <a href="${baseUrl}${baseUrl.includes('?') ? '&' : '?'}sort=popular-month">month</a>
-                <a href="${baseUrl}${baseUrl.includes('?') ? '&' : '?'}sort=popular">all time</a>
-            `;
-            sortTypes[1].innerHTML = monthFilterHtml;
+            const monthFilterHtml =
+                `<span class="sort-name">Popular:</span>` +
+                sortOptions.map(opt => {
+                    const href = `${baseUrl}${baseUrl.includes('?') ? '&' : '?'}sort=${opt.sort}`;
+                    const cls = opt.sort === currentSort ? ' class="current"' : '';
+                    return `<a href="${href}" data-nhp-sort="${opt.sort}"${cls}>${opt.label}</a>`;
+                }).join('');
+
+            if (sortTypes[1].innerHTML !== monthFilterHtml) {
+                sortTypes[1].innerHTML = monthFilterHtml;
+            }
+
+            if (!sortTypes[1].dataset.nhpMonthSortBound) {
+                sortTypes[1].dataset.nhpMonthSortBound = '1';
+                sortTypes[1].addEventListener('click', (evt) => {
+                    const a = evt.target && evt.target.closest ? evt.target.closest('a[data-nhp-sort]') : null;
+                    if (!a) return;
+                    const links = sortTypes[1].querySelectorAll('a[data-nhp-sort]');
+                    links.forEach(link => link.classList.remove('current'));
+                    a.classList.add('current');
+                }, { passive: true });
+            }
         }
     }
 }
 
-addMonthFilter();
+function initMonthFilterReinjector() {
+    if (window.__nhPlusMonthFilterReinjectorInit) return;
+    window.__nhPlusMonthFilterReinjectorInit = true;
+
+    let scheduled = false;
+    let lastHref = '';
+    let lastRunAt = 0;
+    const schedule = () => {
+        if (scheduled) return;
+        scheduled = true;
+        setTimeout(async () => {
+            scheduled = false;
+            const now = Date.now();
+            const href = String(window.location.href || '');
+            if (href === lastHref && now - lastRunAt < 250) return;
+            lastHref = href;
+            lastRunAt = now;
+            await addMonthFilter();
+        }, 0);
+    };
+
+    schedule();
+
+    document.addEventListener('pjax:end', schedule, { passive: true });
+    document.addEventListener('pjax:complete', schedule, { passive: true });
+    document.addEventListener('pjax:success', schedule, { passive: true });
+
+    const originalPushState = history.pushState;
+    history.pushState = function() {
+        const ret = originalPushState.apply(this, arguments);
+        schedule();
+        return ret;
+    };
+
+    const originalReplaceState = history.replaceState;
+    history.replaceState = function() {
+        const ret = originalReplaceState.apply(this, arguments);
+        schedule();
+        return ret;
+    };
+
+    window.addEventListener('popstate', schedule, { passive: true });
+
+    const content = document.getElementById('content');
+    if (content) {
+        const observer = new MutationObserver(() => schedule());
+        observer.observe(content, { childList: true, subtree: false });
+    } else {
+        const observer = new MutationObserver(() => {
+            const c = document.getElementById('content');
+            if (!c) return;
+            observer.disconnect();
+            const innerObserver = new MutationObserver(() => schedule());
+            innerObserver.observe(c, { childList: true, subtree: false });
+            schedule();
+        });
+        observer.observe(document.documentElement, { childList: true, subtree: false });
+    }
+}
+
+initMonthFilterReinjector();
 
 
 
