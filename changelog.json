@@ -1,4 +1,12 @@
 {
+  "10.5.2": {
+    "date": "2026-01-26",
+    "changes": [
+      "feat(share): prevent duplicate sharing of the same gallery to the same user",
+      "feat(inbox): add setting to automatically remove inbox items after opening",
+      "chore(version): bump userscript version to 10.5.2"
+    ]
+  },
   "10.5.1": {
     "date": "2026-01-13",
     "changes": [

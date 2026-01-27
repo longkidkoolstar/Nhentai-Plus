@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      10.5.1
+// @version      10.5.2
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -22,7 +22,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "10.5.1";
+const CURRENT_VERSION = "10.5.2";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -3350,6 +3350,16 @@ const settingsHtml = `
                             <span class="toggle-slider"></span>
                         </label>
                     </div>
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <span class="setting-label">Auto-remove Read</span>
+                            <div class="setting-desc" style="font-size:11px;color:#888;">Remove from inbox after opening</div>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="inboxAutoRemoveRead">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
                     <div style="margin-top:10px;">
                         <label>Poll Interval (min): <input type="number" id="inboxPollIntervalMin" min="1" style="width:80px;"></label>
                         <div style="margin-top:10px;">
@@ -3612,6 +3622,7 @@ $(document).ready(function() {
             const shareButtonEnabled = await GM.getValue('shareButtonEnabled', true);
             const receiveSharesEnabled = await GM.getValue('receiveSharesEnabled', true);
             const receivePopupsEnabled = await GM.getValue('receivePopupsEnabled', true);
+            const inboxAutoRemoveRead = await GM.getValue('inboxAutoRemoveRead', false);
             let inboxPollIntervalMin = await GM.getValue('inboxPollIntervalMin', null);
             if (inboxPollIntervalMin === null) {
                 const legacySec = await GM.getValue('inboxPollIntervalSec', null);
@@ -3718,6 +3729,7 @@ $(document).ready(function() {
             $('#shareButtonEnabled').prop('checked', shareButtonEnabled);
             $('#receiveSharesEnabled').prop('checked', receiveSharesEnabled);
             $('#receivePopupsEnabled').prop('checked', receivePopupsEnabled);
+            $('#inboxAutoRemoveRead').prop('checked', inboxAutoRemoveRead);
             $('#inboxPollIntervalMin').val(inboxPollIntervalMin);
             $('#monthFilterEnabled').prop('checked', monthFilterEnabled);
             $('#tooltipsEnabled').prop('checked', tooltipsEnabled);
@@ -4718,6 +4730,7 @@ $('#openInNewTabEnabled').change(function() {
             const shareButtonEnabled = $('#shareButtonEnabled').prop('checked');
             const receiveSharesEnabled = $('#receiveSharesEnabled').prop('checked');
             const receivePopupsEnabled = $('#receivePopupsEnabled').prop('checked');
+            const inboxAutoRemoveRead = $('#inboxAutoRemoveRead').prop('checked');
             const inboxPollIntervalMin = parseInt($('#inboxPollIntervalMin').val(), 10) || 5;
             const mangaBookMarkingType = $('input[name="manga-bookmarking-type"]:checked').val();
             const bookmarkArrangementType = $('#bookmark-arrangement-type').val();
@@ -4806,6 +4819,7 @@ $('#openInNewTabEnabled').change(function() {
             await GM.setValue('shareButtonEnabled', shareButtonEnabled);
             await GM.setValue('receiveSharesEnabled', receiveSharesEnabled);
             await GM.setValue('receivePopupsEnabled', receivePopupsEnabled);
+            await GM.setValue('inboxAutoRemoveRead', inboxAutoRemoveRead);
             await GM.setValue('inboxPollIntervalMin', inboxPollIntervalMin);
             await GM.setValue('mangaBookMarkingType', mangaBookMarkingType);
             await GM.setValue('bookmarkArrangementType', bookmarkArrangementType);
@@ -6991,6 +7005,14 @@ async function addShareButton() {
               return;
             }
 
+            // Check for duplicates in local history
+            const sentShares = await GM.getValue('sentShares', []);
+            const alreadySent = sentShares.some(s => s.toUUID === toUUID && String(s.id) === String(galleryId));
+            if (alreadySent) {
+                showPopup('You have already shared this gallery with this user.', { timeout: 4000 });
+                return;
+            }
+
                             // Verify recipient exists in JSONStorage public cloud
                             let recipientExists = false;
                             try {
@@ -7022,6 +7044,11 @@ async function addShareButton() {
                                 const data = await res.json();
                                 if (data && data.status === 'ok') {
                                     showPopup('Gallery shared successfully!', { timeout: 3000 });
+                                    // Save to history to prevent duplicates
+                                    sentShares.push({ toUUID, id: galleryId, ts: Date.now() });
+                                    // Keep history manageable (last 200 items)
+                                    if (sentShares.length > 200) sentShares.shift();
+                                    await GM.setValue('sentShares', sentShares);
                                 } else {
                                     showPopup('Share request sent, but unexpected response.', { timeout: 3000 });
                                 }
@@ -7175,10 +7202,18 @@ async function renderInboxList() {
     // Attach handlers
     container.find('.inbox-open').off('click').on('click', async function() {
         const index = $(this).closest('.inbox-item').data('index');
-        const msgs = await GM.getValue('inboxMessages', []);
+        let msgs = await GM.getValue('inboxMessages', []);
         const m = msgs[index];
         const url = m?.url || (m?.id ? `https://nhentai.net/g/${m.id}/` : '');
+        
         if (url) {
+            const autoRemove = await GM.getValue('inboxAutoRemoveRead', false);
+            if (autoRemove) {
+                msgs.splice(index, 1);
+                await GM.setValue('inboxMessages', msgs);
+                await renderInboxList();
+            }
+
             const popup = window.open(url, '_blank');
             if (!popup) window.location.href = url;
         }
