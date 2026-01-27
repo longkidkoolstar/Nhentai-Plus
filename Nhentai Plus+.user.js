@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      10.5.2
+// @version      10.5.3
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -22,7 +22,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "10.5.2";
+const CURRENT_VERSION = "10.5.3";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -543,6 +543,14 @@ function shuffleArray(array) {
 // Adds a button to the page that allows the user to find alternative manga to the current one.
 // Checks if the feature is enabled in the settings before appending the button.
 
+function cleanFindAltSearchTitle(rawTitle) {
+    let title = String(rawTitle || '');
+    title = title.split(/\s*[|｜]\s*/)[0] || '';
+    title = title.replace(/[\[\]\(\)]|Ch\.|ch\.|Vol\.|vol\.|Ep\.|Ep|ep\.|ep|(?<!\w)-(?!\w)|\d+/g, '');
+    title = title.replace(/\s+/g, ' ').trim();
+    return title;
+}
+
 async function addFindAltButton() {
     const findAltmangaEnabled = await GM.getValue('findAltmangaEnabled', true);
     if (!findAltmangaEnabled) return;
@@ -581,8 +589,7 @@ async function addFindAltButton() {
             titleText = titleElement.text();
         }
 
-        // Remove text inside square brackets [], parentheses (), 'Ch.', 'ch.', 'Vol.', 'vol.', and all Chinese and Japanese characters
-        const cleanedTitleText = titleText.replace(/[\[\]\(\)]|Ch\.|ch\.|Vol\.|vol\.|Ep\.|Ep|ep\.|ep|\|[\u3002\uFF01-\uFF5E\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF]|(?<!\w)-(?!\w)|\d+/g, '').trim();
+        const cleanedTitleText = cleanFindAltSearchTitle(titleText);
 
         // Find the search input
         const searchInput = $('input[name="q"]');
@@ -735,9 +742,10 @@ addFindAltButton();
             const coverElement = place.parent().find(".cover:visible");
             const href = coverElement.attr('href');
             const captionTitle = place.parent().find(".cover:visible > .caption").text();
+            const cleanedCaptionTitle = cleanFindAltSearchTitle(captionTitle);
 
             try {
-                let titles = [captionTitle]; // Start with the caption title
+                let titles = [cleanedCaptionTitle];
 
                 // Try to get the title from the manga page if href exists
                 if (href) {
@@ -754,10 +762,10 @@ addFindAltButton();
                             if (titleElement) {
                                 const prettySpan = titleElement.querySelector('.pretty');
                                 let titleText = prettySpan ? prettySpan.textContent.trim() : titleElement.textContent.trim();
-                                const cleanedTitleText = titleText.replace(/[\[\]\(\)]|Ch\.|ch\.|Vol\.|vol\.|Ep\.|Ep|ep\.|ep|\|[\u3002\uFF01-\uFF5E\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF]|(?<!\w)-(?!\w)|\d+/g, '').trim();
+                                const cleanedTitleText = cleanFindAltSearchTitle(titleText);
 
                                 // Add the cleaned title if it's different from the caption title
-                                if (cleanedTitleText && cleanedTitleText !== captionTitle) {
+                                if (cleanedTitleText && cleanedTitleText !== cleanedCaptionTitle) {
                                     titles.push(cleanedTitleText);
                                 }
                             }

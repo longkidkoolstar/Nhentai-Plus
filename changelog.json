@@ -1,4 +1,11 @@
 {
+  "10.5.3": {
+    "date": "2026-01-27",
+    "changes": [
+      "fix(find-alt): use title before pipe separator for searches",
+      "chore(version): bump userscript version to 10.5.3"
+    ]
+  },
   "10.5.2": {
     "date": "2026-01-26",
     "changes": [
