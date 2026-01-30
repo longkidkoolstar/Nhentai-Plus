@@ -3361,7 +3361,7 @@ const settingsHtml = `
                     <div class="setting-row">
                         <div class="setting-info">
                             <span class="setting-label">Auto-remove Read</span>
-                            <div class="setting-desc" style="font-size:11px;color:#888;">Remove from inbox after opening</div>
+                            <div class="setting-desc" style="font-size:11px;color:#888;">Remove from inbox after reading</div>
                         </div>
                         <label class="toggle-switch">
                             <input type="checkbox" id="inboxAutoRemoveRead">
