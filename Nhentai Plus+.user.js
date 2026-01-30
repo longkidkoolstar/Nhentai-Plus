@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      10.5.3
+// @version      10.5.4
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -22,7 +22,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "10.5.3";
+const CURRENT_VERSION = "10.5.4";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -7210,18 +7210,10 @@ async function renderInboxList() {
     // Attach handlers
     container.find('.inbox-open').off('click').on('click', async function() {
         const index = $(this).closest('.inbox-item').data('index');
-        let msgs = await GM.getValue('inboxMessages', []);
+        const msgs = await GM.getValue('inboxMessages', []);
         const m = msgs[index];
         const url = m?.url || (m?.id ? `https://nhentai.net/g/${m.id}/` : '');
-        
         if (url) {
-            const autoRemove = await GM.getValue('inboxAutoRemoveRead', false);
-            if (autoRemove) {
-                msgs.splice(index, 1);
-                await GM.setValue('inboxMessages', msgs);
-                await renderInboxList();
-            }
-
             const popup = window.open(url, '_blank');
             if (!popup) window.location.href = url;
         }
@@ -11760,6 +11752,7 @@ class MarkAsReadSystem {
             if (gallery && gallery.id && !this.readGalleries.has(gallery.id)) {
                 this.readGalleries.add(gallery.id);
                 await this.cacheGalleryData(gallery.id, gallery.title, gallery.coverImageUrl);
+                await this.checkAndRemoveFromInbox(gallery.id); // Check inbox removal
                 markedCount++;
             }
         }
@@ -11800,6 +11793,33 @@ class MarkAsReadSystem {
     }
 
     /**
+     * Check if the gallery is in the inbox and remove it if the setting is enabled
+     */
+    async checkAndRemoveFromInbox(galleryId) {
+        if (!galleryId) return;
+        try {
+            const autoRemove = await GM.getValue('inboxAutoRemoveRead', false);
+            if (!autoRemove) return;
+
+            const msgs = await GM.getValue('inboxMessages', []);
+            const originalLength = msgs.length;
+            const newMsgs = msgs.filter(m => String(m.id) !== String(galleryId));
+
+            if (newMsgs.length < originalLength) {
+                await GM.setValue('inboxMessages', newMsgs);
+                // If the user is on the settings page, this might help, but renderInboxList is global.
+                // We can try to call it if it's available in the scope, or just leave it.
+                if (typeof renderInboxList === 'function') {
+                    await renderInboxList();
+                }
+                console.log(`Removed gallery ${galleryId} from inbox (auto-remove read).`);
+            }
+        } catch (e) {
+            console.error('Error removing read gallery from inbox:', e);
+        }
+    }
+
+    /**
      * Mark a gallery as read
      */
     async markAsRead(galleryId) {
@@ -11807,6 +11827,9 @@ class MarkAsReadSystem {
 
         this.readGalleries.add(galleryId);
         await this.saveReadGalleries();
+
+        // Remove from inbox if setting is enabled
+        await this.checkAndRemoveFromInbox(galleryId);
 
         // Cache gallery data for Read Manga page
         await this.cacheGalleryData(galleryId);

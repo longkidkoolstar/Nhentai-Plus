@@ -1,4 +1,11 @@
 {
+  "10.5.4": {
+    "date": "2026-01-29",
+    "changes": [
+      "fix(inbox): update auto-remove behavior to trigger when gallery is marked as read instead of when opened",
+      "chore(version): bump userscript version to 10.5.4"
+    ]
+  },
   "10.5.3": {
     "date": "2026-01-27",
     "changes": [
