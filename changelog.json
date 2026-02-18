@@ -1,4 +1,11 @@
 {
+  "10.5.5": {
+    "date": "2026-02-18",
+    "changes": [
+      "feat(cache): improve caching and data management",
+      "chore(version): bump userscript version to 10.5.5"
+    ]
+  },
   "10.5.4": {
     "date": "2026-01-29",
     "changes": [
@@ -268,62 +275,61 @@
       "chore(version): bump userscript version to 9.7.0"
     ]
   },
-    "9.6.2": {
-        "date": "2025-10-19",
-        "changes": [
-            "fix(related-manga): Prevent infinite loading when no bookmarks and 'Replace Related Manga' is enabled.",
-            "feat(related-manga): Update text to 'More Like This (There were no Bookmarks that match this manga)' when no matching bookmarks are found."
-        ]
-    },
-    "9.6.1": {
-        "date": "2025-10-16",
-        "changes": [
-            "fix(sync): Preserve original version number for other users' data during compression."
-        ]
-    },
-    "9.6.0": {
-        "date": "2025-10-16",
-        "changes": [
-            "feat(sync): Implement data compression for sync data to reduce storage size and improve performance.",
-            "feat(sync): Ensure backward compatibility for sync data, allowing older uncompressed data to be processed correctly.",
-            "feat(sync): Maintain multi-user data separation and compression for individual users within the sync system.",
-            "feat(sync): Expanded syncable keys to include all user preferences and data for comprehensive synchronization."
-        ]
-    },
-    "9.5.1": {
+  "9.6.2": {
+    "date": "2025-10-19",
+    "changes": [
+      "fix(related-manga): Prevent infinite loading when no bookmarks and 'Replace Related Manga' is enabled.",
+      "feat(related-manga): Update text to 'More Like This (There were no Bookmarks that match this manga)' when no matching bookmarks are found."
+    ]
+  },
+  "9.6.1": {
+    "date": "2025-10-16",
+    "changes": [
+      "fix(sync): Preserve original version number for other users' data during compression."
+    ]
+  },
+  "9.6.0": {
+    "date": "2025-10-16",
+    "changes": [
+      "feat(sync): Implement data compression for sync data to reduce storage size and improve performance.",
+      "feat(sync): Ensure backward compatibility for sync data, allowing older uncompressed data to be processed correctly.",
+      "feat(sync): Maintain multi-user data separation and compression for individual users within the sync system.",
+      "feat(sync): Expanded syncable keys to include all user preferences and data for comprehensive synchronization."
+    ]
+  },
+  "9.5.1": {
     "date": "2025-10-14",
     "changes": [
       "fix(random-hentai): Implement retry mechanism with exponential backoff for 429 (Too Many Requests) errors, waiting 5s then 10s before retrying."
     ]
   },
-    "9.5.0": {
+  "9.5.0": {
     "date": "2025-10-14",
     "changes": [
       "feat(random-hentai): Add support for multiple languages in random search preferences, allowing comma-separated language inputs."
     ]
   },
-    "9.4.2": {
+  "9.4.2": {
     "date": "2025-09-27",
     "changes": [
       "fix(bookmarks): fix multiple bookmark removal in bookmark page",
       "Fixed an issue where only the first bookmark could be removed properly, and subsequent removals would reappear after refresh"
     ]
   },
-    "9.4.1": {
+  "9.4.1": {
     "date": "2025-07-26",
     "changes": [
       "fix(read-manga): ensure recent reads are displayed correctly",
       "Reverse the order of read galleries before slicing to ensure the most recently read manga are displayed when a limit is applied."
     ]
   },
-    "9.4.0": {
+  "9.4.0": {
     "date": "2025-07-25",
     "changes": [
       "feat(read-manga): add configurable limit for read manga display",
       "Add slider in settings to control maximum number of manga displayed on Read Manga page. Defaults to 100 with range from 10-500 to balance performance and usability."
     ]
   },
-
   "9.3.1": {
     "date": "2025-07-18",
     "changes": [
@@ -343,7 +349,7 @@
       "Improve mobile responsiveness and control elements"
     ]
   },
-"9.2.0": {
+  "9.2.0": {
     "date": "2025-07-14",
     "changes": [
       "feat(mark-as-read): enhance justRead processing and caching",
@@ -352,13 +358,13 @@
       "Implement enhanced gallery data caching with metadata support"
     ]
   },
-"9.1.1": {
+  "9.1.1": {
     "date": "2025-07-14",
     "changes": [
       "feat: Added justRead processing - now correctly parses gallery objects from localStorage, including title and cover image, and caches them for the Read Manga page. This feature works in collaboration with the `nhentaimangaloader` script."
     ]
   },
-"9.1.0": {
+  "9.1.0": {
     "date": "2025-07-13",
     "changes": [
       "feat: adjust element positions based on settings and UI state",
@@ -366,14 +372,14 @@
       "- Add interval checks to adjust tag warning badges when alt version button is present"
     ]
   },
-"9.0.1": {
+  "9.0.1": {
     "date": "2025-07-12",
     "changes": [
       "fix: update version to 9.0.1 and remove hover effect",
       "fix: Remove gallery hover effect that was causing captions to appear under galleries"
     ]
   },
-"9.0.0": {
+  "9.0.0": {
     "date": "2025-07-11",
     "changes": [
       "🆕 MAJOR: Mark as Read System - Complete reading tracking system with visual feedback",
@@ -396,7 +402,7 @@
       "🛡️ STABILITY: Error Handling - Robust error handling and fallback mechanisms"
     ]
   },
-"8.1.4.1": {
+  "8.1.4.1": {
     "date": "2025-07-08",
     "changes": [
       "fix: English filter now accepts both 'English' and 'language:\"english\"' for backward compatibility"
@@ -415,50 +421,50 @@
       "feat(changelog): Updated changelog URL to GitHub raw content"
     ]
   },
-"8.1.2": {
-  "date": "2025-06-30",
-  "changes": [
-    "feat(sync): Added new keys to syncableKeys for comprehensive data synchronization"
-  ]
-},
-"8.1.1": {
-  "date": "2025-06-30",
-  "changes": [
-    "✨ NEW: Mobile UI - UUID input and buttons are now responsive on mobile devices"
-  ]
-},
-"8.1.0": {
-  "date": "2025-06-30",
-  "changes": [
-    "feat(sync): add auto-sync manager with manual trigger and status display",
-    "Implement AutoSyncManager class for scheduled data synchronization",
-    "Add manual sync trigger button and status display in UI",
-    "Include data change detection for immediate sync",
-    "Support exponential backoff retry on errors"
-  ]
-},
-"8.0.0": {
-  "date": "2025-06-29",
-  "changes": [
-    "🆕 NEW: Online Data Sync - Sync your bookmarks, favorites, and settings across devices",
-    "🔒 NEW: Public Sync - Use predefined JSONStorage.net API with standard security",
-    "🔐 NEW: Private Sync - Use your own JSONStorage.net credentials for enhanced security",
-    "🆔 NEW: UUID System - Unique 5-character identifier for each user's data",
-    "✏️ NEW: UUID Edit - Manually edit UUID to recover accidentally regenerated ones",
-    "🔄 NEW: UUID Regeneration - Generate new UUID when needed",
-    "👥 NEW: Multi-User Support - Multiple users can store data in same cloud storage",
-    "🔍 NEW: Browse Users - View all available UUIDs in private storage",
-    "💾 NEW: Auto-Save Credentials - Private storage credentials saved automatically",
-    "🔧 FIX: UUID editing now properly updates Tampermonkey storage",
-    "🎨 FIX: Private sync credentials hidden when disabled",
-    "📊 NEW: Version Tracking - Each sync includes userscript version information",
-    "🛡️ NEW: Data Protection - No data overwriting between different users",
-    "⚡ NEW: Instant UUID Updates - UUID changes take effect immediately",
-    "🎯 NEW: Smart Data Merging - Preserves all users' data when uploading",
-    "📱 NEW: Cross-Device Sync - Access your data from any device",
-    "🔐 NEW: Enhanced Security - Private sync for sensitive data storage"
-  ]
-},
+  "8.1.2": {
+    "date": "2025-06-30",
+    "changes": [
+      "feat(sync): Added new keys to syncableKeys for comprehensive data synchronization"
+    ]
+  },
+  "8.1.1": {
+    "date": "2025-06-30",
+    "changes": [
+      "✨ NEW: Mobile UI - UUID input and buttons are now responsive on mobile devices"
+    ]
+  },
+  "8.1.0": {
+    "date": "2025-06-30",
+    "changes": [
+      "feat(sync): add auto-sync manager with manual trigger and status display",
+      "Implement AutoSyncManager class for scheduled data synchronization",
+      "Add manual sync trigger button and status display in UI",
+      "Include data change detection for immediate sync",
+      "Support exponential backoff retry on errors"
+    ]
+  },
+  "8.0.0": {
+    "date": "2025-06-29",
+    "changes": [
+      "🆕 NEW: Online Data Sync - Sync your bookmarks, favorites, and settings across devices",
+      "🔒 NEW: Public Sync - Use predefined JSONStorage.net API with standard security",
+      "🔐 NEW: Private Sync - Use your own JSONStorage.net credentials for enhanced security",
+      "🆔 NEW: UUID System - Unique 5-character identifier for each user's data",
+      "✏️ NEW: UUID Edit - Manually edit UUID to recover accidentally regenerated ones",
+      "🔄 NEW: UUID Regeneration - Generate new UUID when needed",
+      "👥 NEW: Multi-User Support - Multiple users can store data in same cloud storage",
+      "🔍 NEW: Browse Users - View all available UUIDs in private storage",
+      "💾 NEW: Auto-Save Credentials - Private storage credentials saved automatically",
+      "🔧 FIX: UUID editing now properly updates Tampermonkey storage",
+      "🎨 FIX: Private sync credentials hidden when disabled",
+      "📊 NEW: Version Tracking - Each sync includes userscript version information",
+      "🛡️ NEW: Data Protection - No data overwriting between different users",
+      "⚡ NEW: Instant UUID Updates - UUID changes take effect immediately",
+      "🎯 NEW: Smart Data Merging - Preserves all users' data when uploading",
+      "📱 NEW: Cross-Device Sync - Access your data from any device",
+      "🔐 NEW: Enhanced Security - Private sync for sensitive data storage"
+    ]
+  },
   "7.12.0": {
     "date": "2025-06-15",
     "changes": [

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      10.5.4
+// @version      10.5.5
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -22,61 +22,61 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "10.5.4";
+const CURRENT_VERSION = "10.5.5";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
-  // Check for forced updates from server
-  checkForForcedUpdate();
+    // Check for forced updates from server
+    checkForForcedUpdate();
 
-  const lastSeenVersion = await GM.getValue("lastSeenVersion", "0.0.0");
+    const lastSeenVersion = await GM.getValue("lastSeenVersion", "0.0.0");
 
-  if (CURRENT_VERSION !== lastSeenVersion) {
-    try {
-      const res = await fetch(CHANGELOG_URL);
-      const changelogData = await res.json();
-      const log = changelogData[CURRENT_VERSION];
+    if (CURRENT_VERSION !== lastSeenVersion) {
+        try {
+            const res = await fetch(CHANGELOG_URL);
+            const changelogData = await res.json();
+            const log = changelogData[CURRENT_VERSION];
 
-      if (log) {
-        const msg = `🆕 Version ${CURRENT_VERSION} (${log.date})\n\n` +
+            if (log) {
+                const msg = `🆕 Version ${CURRENT_VERSION} (${log.date})\n\n` +
                     log.changes.map(line => `• ${line}`).join("\n");
 
-        showChangelogPopup(msg);
-      }
+                showChangelogPopup(msg);
+            }
 
-      // Purge old taxonomy keys from GM storage on version update
-      try {
-        await GM.deleteValue('taxonomyCompressed');
-        await GM.deleteValue('taxonomyUpdatedAt');
-        await GM.deleteValue('taxonomyLastFetch');
-      } catch (e) {
-        console.warn('Taxonomy: GM purge failed', e);
-      }
+            // Purge old taxonomy keys from GM storage on version update
+            try {
+                await GM.deleteValue('taxonomyCompressed');
+                await GM.deleteValue('taxonomyUpdatedAt');
+                await GM.deleteValue('taxonomyLastFetch');
+            } catch (e) {
+                console.warn('Taxonomy: GM purge failed', e);
+            }
 
-      await GM.setValue("lastSeenVersion", CURRENT_VERSION);
-    } catch (err) {
-      console.error("Error fetching or displaying changelog:", err);
+            await GM.setValue("lastSeenVersion", CURRENT_VERSION);
+        } catch (err) {
+            console.error("Error fetching or displaying changelog:", err);
+        }
     }
-  }
 })();
 
 function showChangelogPopup(message) {
-  const popup = document.createElement("div");
-  popup.style.position = "fixed";
-  popup.style.bottom = "20px";
-  popup.style.right = "20px";
-  popup.style.maxWidth = "350px";
-  popup.style.backgroundColor = "#1e1e1e";
-  popup.style.color = "#fff";
-  popup.style.padding = "16px";
-  popup.style.borderRadius = "8px";
-  popup.style.boxShadow = "0 4px 12px rgba(0,0,0,0.5)";
-  popup.style.zIndex = 99999;
-  popup.style.fontFamily = "'Segoe UI', Arial, sans-serif";
-  popup.style.opacity = "0";
-  popup.style.transform = "translateY(20px)";
-  popup.style.transition = "opacity 0.3s ease, transform 0.3s ease";
-  popup.innerHTML = `
+    const popup = document.createElement("div");
+    popup.style.position = "fixed";
+    popup.style.bottom = "20px";
+    popup.style.right = "20px";
+    popup.style.maxWidth = "350px";
+    popup.style.backgroundColor = "#1e1e1e";
+    popup.style.color = "#fff";
+    popup.style.padding = "16px";
+    popup.style.borderRadius = "8px";
+    popup.style.boxShadow = "0 4px 12px rgba(0,0,0,0.5)";
+    popup.style.zIndex = 99999;
+    popup.style.fontFamily = "'Segoe UI', Arial, sans-serif";
+    popup.style.opacity = "0";
+    popup.style.transform = "translateY(20px)";
+    popup.style.transition = "opacity 0.3s ease, transform 0.3s ease";
+    popup.innerHTML = `
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
       <strong style="font-size: 16px;">Changelog</strong>
       <button style="background: transparent; color: #aaa; border: none; cursor: pointer; font-size: 18px; line-height: 1; padding: 0;">&times;</button>
@@ -84,28 +84,28 @@ function showChangelogPopup(message) {
     <pre style="white-space: pre-wrap; font-size: 13px; line-height: 1.4; margin: 0; color: #ddd;">${message}</pre>
   `;
 
-  popup.querySelector("button").addEventListener("click", () => {
-    popup.style.opacity = "0";
-    popup.style.transform = "translateY(20px)";
-    setTimeout(() => popup.remove(), 300);
-  });
+    popup.querySelector("button").addEventListener("click", () => {
+        popup.style.opacity = "0";
+        popup.style.transform = "translateY(20px)";
+        setTimeout(() => popup.remove(), 300);
+    });
 
-  document.body.appendChild(popup);
-  
-  // Trigger animation
-  setTimeout(() => {
-    popup.style.opacity = "1";
-    popup.style.transform = "translateY(0)";
-  }, 10);
-  
-  // Auto-dismiss after 15 seconds
-  setTimeout(() => {
-    if (document.body.contains(popup)) {
-      popup.style.opacity = "0";
-      popup.style.transform = "translateY(20px)";
-      setTimeout(() => popup.remove(), 300);
-    }
-  }, 15000);
+    document.body.appendChild(popup);
+
+    // Trigger animation
+    setTimeout(() => {
+        popup.style.opacity = "1";
+        popup.style.transform = "translateY(0)";
+    }, 10);
+
+    // Auto-dismiss after 15 seconds
+    setTimeout(() => {
+        if (document.body.contains(popup)) {
+            popup.style.opacity = "0";
+            popup.style.transform = "translateY(20px)";
+            setTimeout(() => popup.remove(), 300);
+        }
+    }, 15000);
 }
 
 /**
@@ -127,7 +127,7 @@ async function checkForForcedUpdate() {
 
         const res = await fetch('https://nhentai-share.babykoolstar.workers.dev/status');
         const data = await res.json();
-        
+
         // Update last check time regardless of result to prevent spamming the server
         sessionStorage.setItem('nhp_last_update_check', now.toString());
 
@@ -159,8 +159,8 @@ function isVersionOlder(current, min) {
 function forceUpdateLoop(msg) {
     if (document.hasFocus()) {
         if (confirm(msg || 'A critical update is required. Click OK to update now.')) {
-             window.open('https://greasyfork.org/en/scripts/498553-nhentai-plus', '_blank');
-             window.location.href = 'https://greasyfork.org/en/scripts/498553-nhentai-plus';
+            window.open('https://greasyfork.org/en/scripts/498553-nhentai-plus', '_blank');
+            window.location.href = 'https://greasyfork.org/en/scripts/498553-nhentai-plus';
         }
     }
     // Recursive call to keep displaying the popup
@@ -173,7 +173,7 @@ function forceUpdateLoop(msg) {
 //----------------------- **Fix Menu OverFlow**----------------------------------
 
 // Nhentai Plus+.user.js
-$(document).ready(async function() {
+$(document).ready(async function () {
     // Remove the 'required' attribute from the search input when must-add tags are enabled
     const searchInput = document.querySelector('form.search input[name="q"]');
     if (searchInput) {
@@ -195,7 +195,8 @@ $(document).ready(async function() {
 //--------------------------**Fix Menu OverFlow**------------------------------------
 
 /**
- * Detects and removes old-format cache entries while preserving important data
+ * Detects and removes old-format cache entries while preserving important data.
+ * Also prunes readGalleriesCache to a max size and migrates legacy keys.
  */
 async function cleanupOldData() {
     console.log("Starting cleanup of old format entries...");
@@ -223,11 +224,11 @@ async function cleanupOldData() {
         const value = await GM.getValue(key);
         if (typeof value === 'string' &&
             (value.startsWith('Tag: ') ||
-             value.startsWith('Search: ') ||
-             value.startsWith('Artist: ') ||
-             value.startsWith('Character: ') ||
-             value.startsWith('Group: ') ||
-             value.startsWith('Parody: '))) {
+                value.startsWith('Search: ') ||
+                value.startsWith('Artist: ') ||
+                value.startsWith('Character: ') ||
+                value.startsWith('Group: ') ||
+                value.startsWith('Parody: '))) {
 
             // This is an old-style bookmark title, safe to remove
             await GM.deleteValue(key);
@@ -247,6 +248,54 @@ async function cleanupOldData() {
         console.log(`Deleted old title storage key: ${key}`);
         removedCount++;
     }
+
+    // --- Migrate legacy MARArray into readGalleries ---
+    try {
+        const marRaw = await GM.getValue('MARArray', null);
+        if (marRaw !== null) {
+            let marIds = [];
+            if (typeof marRaw === 'string') {
+                try { marIds = JSON.parse(marRaw); } catch (e) { }
+            } else if (Array.isArray(marRaw)) {
+                marIds = marRaw;
+            }
+            if (marIds.length > 0) {
+                const existing = await GM.getValue('readGalleries', []);
+                const merged = Array.from(new Set([...existing, ...marIds]));
+                await GM.setValue('readGalleries', merged);
+                console.log(`Migrated ${marIds.length} MARArray entries into readGalleries.`);
+            }
+            await GM.deleteValue('MARArray');
+            removedCount++;
+        }
+    } catch (e) {
+        console.warn('MARArray migration failed:', e);
+    }
+
+    // --- Delete legacy tags_ keys (now inlined into bookmarkedMangas) ---
+    const tagsKeys = storedKeys.filter(key => key.startsWith('tags_'));
+    for (const key of tagsKeys) {
+        await GM.deleteValue(key);
+        removedCount++;
+    }
+    if (tagsKeys.length > 0) {
+        console.log(`Deleted ${tagsKeys.length} legacy tags_ cache keys.`);
+    }
+
+    // --- Prune readGalleriesCache to at most 500 entries (oldest first) ---
+    /* 
+    // User requested no max cache limit
+    try {
+        const MAX_READ_CACHE = 500;
+        const readCache = await GM.getValue('readGalleriesCache', {});
+        const cacheEntries = Object.entries(readCache);
+        if (cacheEntries.length > MAX_READ_CACHE) {
+             // ... pruning logic removed ...
+        }
+    } catch(e) {
+        console.warn('readGalleriesCache pruning failed:', e);
+    }
+    */
 
     console.log(`Cleanup complete! Removed ${removedCount} old format entries.`);
     return removedCount;
@@ -312,97 +361,97 @@ async function createFindSimilarButton() {
 
     $('#lockedTagsCount').hide();
 
-// Handle click event for 'Find Similar' button
-findSimilarButton.click(async function() {
-    const tagsContainer = $('div.tag-container.field-name:contains("Tags:")');
-    if (!tagsContainer.length) {
-        console.log('Tags container not found.');
-        return;
-    }
-
-    // Find all tag links within the container
-    const tagLinks = tagsContainer.find('a.tag');
-
-    // Update locked tags counter
-    if (!tagLinks.length) {
-        console.log('No tag links found.');
-        return;
-    }
-
-    // Extract tag data (name and count) and assign probabilities based on count
-    const tagsData = Array.from(tagLinks).map(tagLink => {
-        const tagName = $(tagLink).find('.name').text().trim();
-        const tagCount = parseInt($(tagLink).find('.count').text().replace('K', '')) || 0;
-        const probability = Math.sqrt(tagCount); // Adjust this formula as needed
-        return { name: tagName, count: tagCount, probability: probability };
-    });
-
-    await addKnownMultiwordTags(tagsData.map(t => t.name));
-
-    // Shuffle tag data array to randomize selection
-    shuffleArray(tagsData);
-
-    const selectedTags = [];
-    let numTagsSelected = 0;
-
-    // Add locked tags to the selected tags array
-    lockedTags.forEach(tag => {
-        selectedTags.push(tag);
-        numTagsSelected++;
-    });
-
-    tagsData.forEach(tag => {
-        if (numTagsSelected < maxTagsToSelect && !lockedTags.includes(tag.name) && Math.random() < tag.probability) {
-            selectedTags.push(tag.name);
-            numTagsSelected++;
+    // Handle click event for 'Find Similar' button
+    findSimilarButton.click(async function () {
+        const tagsContainer = $('div.tag-container.field-name:contains("Tags:")');
+        if (!tagsContainer.length) {
+            console.log('Tags container not found.');
+            return;
         }
-    });
 
-    // Join selected tag names into a search string
-    const searchTags = selectedTags.map(tag => 'tag:"' + tag + '"').join(' ');
+        // Find all tag links within the container
+        const tagLinks = tagsContainer.find('a.tag');
 
-    const findSimilarType = await GM.getValue('findSimilarType', 'immediately');
-    const searchInput = $('input[name="q"]');
+        // Update locked tags counter
+        if (!tagLinks.length) {
+            console.log('No tag links found.');
+            return;
+        }
 
-    if (findSimilarType === 'immediately') {
-        if (searchInput.length > 0) {
-            // Update search input value with selected tags
-            searchInput.val(searchTags);
-        } else {
-            // If search input not found, create and submit a hidden form
-            const hiddenSearchFormHtml = `
+        // Extract tag data (name and count) and assign probabilities based on count
+        const tagsData = Array.from(tagLinks).map(tagLink => {
+            const tagName = $(tagLink).find('.name').text().trim();
+            const tagCount = parseInt($(tagLink).find('.count').text().replace('K', '')) || 0;
+            const probability = Math.sqrt(tagCount); // Adjust this formula as needed
+            return { name: tagName, count: tagCount, probability: probability };
+        });
+
+        await addKnownMultiwordTags(tagsData.map(t => t.name));
+
+        // Shuffle tag data array to randomize selection
+        shuffleArray(tagsData);
+
+        const selectedTags = [];
+        let numTagsSelected = 0;
+
+        // Add locked tags to the selected tags array
+        lockedTags.forEach(tag => {
+            selectedTags.push(tag);
+            numTagsSelected++;
+        });
+
+        tagsData.forEach(tag => {
+            if (numTagsSelected < maxTagsToSelect && !lockedTags.includes(tag.name) && Math.random() < tag.probability) {
+                selectedTags.push(tag.name);
+                numTagsSelected++;
+            }
+        });
+
+        // Join selected tag names into a search string
+        const searchTags = selectedTags.map(tag => 'tag:"' + tag + '"').join(' ');
+
+        const findSimilarType = await GM.getValue('findSimilarType', 'immediately');
+        const searchInput = $('input[name="q"]');
+
+        if (findSimilarType === 'immediately') {
+            if (searchInput.length > 0) {
+                // Update search input value with selected tags
+                searchInput.val(searchTags);
+            } else {
+                // If search input not found, create and submit a hidden form
+                const hiddenSearchFormHtml = `
                 <form role="search" action="/search/" method="GET" style="display: none;">
                     <input type="hidden" name="q" value="${searchTags}" />
                 </form>
             `;
-            const hiddenSearchForm = $(hiddenSearchFormHtml);
-            $('body').append(hiddenSearchForm);
-            hiddenSearchForm.submit();
-        }
-        // Submit the form
-        $('button[type="submit"]').click();
-    } else if (findSimilarType === 'input-tags') {
-        if (searchInput.length > 0) {
-            // Update search input value with selected tags
-            searchInput.val(searchTags);
-        } else {
-            // If search input not found, create a hidden input
-            const hiddenSearchInputHtml = `
+                const hiddenSearchForm = $(hiddenSearchFormHtml);
+                $('body').append(hiddenSearchForm);
+                hiddenSearchForm.submit();
+            }
+            // Submit the form
+            $('button[type="submit"]').click();
+        } else if (findSimilarType === 'input-tags') {
+            if (searchInput.length > 0) {
+                // Update search input value with selected tags
+                searchInput.val(searchTags);
+            } else {
+                // If search input not found, create a hidden input
+                const hiddenSearchInputHtml = `
                 <input type="hidden" name="q" value="${searchTags}" />
             `;
-            const hiddenSearchInput = $(hiddenSearchInputHtml);
-            $('body').append(hiddenSearchInput);
+                const hiddenSearchInput = $(hiddenSearchInputHtml);
+                $('body').append(hiddenSearchInput);
+            }
         }
-    }
 
-    // Create and display the slider (only once)
-    if (!$('#tagSlider').length) {
-        createSlider();
-    }
-});
+        // Create and display the slider (only once)
+        if (!$('#tagSlider').length) {
+            createSlider();
+        }
+    });
 
     // Handle double-click event for 'Find Similar' button
-    findSimilarButton.dblclick(async function() {
+    findSimilarButton.dblclick(async function () {
         const searchTags = lockedTags.join(' ');
 
         const searchInput = $('input[name="q"]');
@@ -447,7 +496,7 @@ async function createSlider() {
     }
 
     // Update maxTagsToSelect based on slider value and save to GM storage
-    $('#tagSlider').on('input', async function() {
+    $('#tagSlider').on('input', async function () {
         maxTagsToSelect = parseInt($(this).val());
         $('#tagSliderValue').text(maxTagsToSelect);
 
@@ -485,7 +534,7 @@ async function toggleLockButtons() {
 }
 
 // Event listener for locking/unlocking tags
-$(document).on('click', 'span.lock-button', function(event) {
+$(document).on('click', 'span.lock-button', function (event) {
     event.stopPropagation(); // Prevent tag link click event from firing
 
     const tagName = $(this).prev('a.tag').find('.name').text().trim();
@@ -510,7 +559,7 @@ $(document).on('click', 'span.lock-button', function(event) {
 const tagsContainer = $('div.tag-container.field-name:contains("Tags:")');
 if (tagsContainer.length) {
     const tagLinks = tagsContainer.find('a.tag');
-    tagLinks.each(function(index, tagLink) {
+    tagLinks.each(function (index, tagLink) {
         const lockButtonHtml = `
             <span class="lock-button" data-tag-index="${index}">
                 <i class="fas fa-plus"></i>
@@ -572,7 +621,7 @@ async function addFindAltButton() {
     const copyTitleButton = $(copyTitleButtonHtml);
 
     // Handle click event for the button
-    copyTitleButton.click(function() {
+    copyTitleButton.click(function () {
         // Get the title element
         const titleElement = $('h1.title');
         if (!titleElement.length) {
@@ -613,7 +662,7 @@ addFindAltButton();
 
 //------------------------  **Find Alternative Manga Button(Thumbnail Version)**  ------------------
 
-(async function() {
+(async function () {
     const findAltMangaThumbnailEnabled = await GM.getValue('findAltMangaThumbnailEnabled', true); // Default to true if not set
     if (!findAltMangaThumbnailEnabled) return; // Exit if the feature is not enabled
 
@@ -628,9 +677,10 @@ addFindAltButton();
     const version_grouping_filter_brackets = false;
 
     let MARArray = [];
-    GM.getValue("MARArray", "[]").then((value) => {
-        if (typeof value === 'string') {
-            MARArray = JSON.parse(value);
+    // Read from readGalleries (the canonical store) instead of the legacy MARArray key
+    GM.getValue('readGalleries', []).then((value) => {
+        if (Array.isArray(value)) {
+            MARArray = value;
         }
 
         GM.addStyle(`
@@ -798,7 +848,7 @@ addFindAltButton();
                         if (!response.ok) {
                             throw new Error(`HTTP error! status: ${response.status}`);
                         }
-                        
+
                         const text = await response.text();
                         const parser = new DOMParser();
                         const doc = parser.parseFromString(text, 'text/html');
@@ -831,13 +881,13 @@ addFindAltButton();
                     for (let i = 0; i < allResults.length; i++) {
                         // Convert DOM element to jQuery object for consistent handling
                         const $result = $(allResults[i]);
-                        
+
                         if (partially_fade_all_non_english) {
                             $result.find(".cover > img, .cover > .caption").css("opacity", non_english_fade_opacity);
                         }
 
                         const dataTags = $result.attr("data-tags") || "";
-                        
+
                         if (dataTags.includes("12227")) {
                             $result.find(".caption").append(`<img class="overlayFlag" src="` + flagEn + `">`);
                             $result.find(".cover > img, .cover > .caption").css("opacity", "1");
@@ -864,7 +914,7 @@ addFindAltButton();
                         let thumbnailReplacement;
                         const $img = $result.find(".cover > img");
                         const dataSrc = $img.attr("data-src");
-                        
+
                         if (dataSrc) {
                             thumbnailReplacement = dataSrc
                                 .replace(/\/\/.+?\.nhentai/g, "//i1.nhentai")  // Fixed CDN path
@@ -897,31 +947,31 @@ addFindAltButton();
                     if (!response.ok) {
                         throw new Error(`HTTP error! status: ${response.status}`);
                     }
-                    
+
                     const text = await response.text();
                     const parser = new DOMParser();
                     const doc = parser.parseFromString(text, 'text/html');
                     const foundElements = doc.querySelectorAll(".container > .gallery");
-                    
+
                     if (!foundElements || foundElements.length <= 0) {
                         alert("Error reading data");
                         return;
                     }
-                    
+
                     // Convert NodeList to jQuery collection for easier manipulation
                     const found = $(foundElements);
-                    
+
                     place.parent().find(".cover").remove();
                     try {
                         for (let i = 0; i < found.length; i++) {
                             const $item = $(found[i]);
-                            
+
                             if (partially_fade_all_non_english) {
                                 $item.find(".cover > img, .cover > .caption").css("opacity", non_english_fade_opacity);
                             }
 
                             const dataTags = $item.attr("data-tags") || "";
-                            
+
                             if (dataTags.includes("12227")) {
                                 $item.find(".caption").append(`<img class="overlayFlag" src="` + flagEn + `">`);
                                 $item.find(".cover > img, .cover > .caption").css("opacity", "1");
@@ -948,7 +998,7 @@ addFindAltButton();
                             let thumbnailReplacement;
                             const $img = $item.find(".cover > img");
                             const dataSrc = $img.attr("data-src");
-                            
+
                             if (dataSrc) {
                                 thumbnailReplacement = dataSrc
                                     .replace(/\/\/.+?\.nhentai/g, "//i1.nhentai")  // Fixed CDN path
@@ -994,10 +1044,10 @@ addFindAltButton();
             return url;
         }
 
-       async function GroupAltVersionsOnPage() {
-        // Check if the feature is enabled
-        const mangagroupingenabled = await GM.getValue('mangagroupingenabled', true);
-        if (!mangagroupingenabled) return;
+        async function GroupAltVersionsOnPage() {
+            // Check if the feature is enabled
+            const mangagroupingenabled = await GM.getValue('mangagroupingenabled', true);
+            if (!mangagroupingenabled) return;
             let i = 0;
             let found = $(".container > .gallery");
             while (!!found && i < found.length) {
@@ -1084,27 +1134,27 @@ addFindAltButton();
             $(".cover").parent().append("<div class='versionNextButton'>►</div>");
             $(".cover").parent().append("<div class='versionPrevButton'>◄</div>");
 
-            $(".findVersionButton").click(function(e) {
+            $(".findVersionButton").click(function (e) {
                 e.preventDefault();
                 AddAltVersionsToThis($(this));
                 updateMarkAsReadButtonPosition($(this).closest('.gallery')); // Pass the gallery context
             });
 
-//------------- UPD CSS BASED ON SETTINGS RQ -----------------------------
-                        // Function to update the position of the mark-as-read button
+            //------------- UPD CSS BASED ON SETTINGS RQ -----------------------------
+            // Function to update the position of the mark-as-read button
             async function updateMarkAsReadButtonPosition(galleryContext) {
                 const markAsReadButton = galleryContext.find('.mark-as-read-btn');
                 const showPageNumbersEnabled = await GM.getValue('showPageNumbersEnabled', true);
                 console.log(showPageNumbersEnabled);
                 if (showPageNumbersEnabled || $('.findVersionButton').length > 0) { // Check if find alt version button exists
-                    markAsReadButton.css('top', '40px'); 
+                    markAsReadButton.css('top', '40px');
                 } else {
                     markAsReadButton.css('top', '5px');
                 }
             }
 
             // Function to adjust the position of a specific element
-            setInterval(function() {
+            setInterval(function () {
                 const pageNumberDisplay = $('.page-number-display');
                 if (pageNumberDisplay.length > 0) {
                     $('.mark-as-read-btn').css('top', '40px');
@@ -1112,7 +1162,7 @@ addFindAltButton();
             }, 1000);
 
             // Function to adjust the position of tag warning badges
-            setInterval(function() {
+            setInterval(function () {
                 if ($('.findVersionButton').length > 0) {
                     $('.tag-warning-badge').css({
                         'bottom': '40px',
@@ -1121,11 +1171,11 @@ addFindAltButton();
                 }
             }, 100);
 
-//------------- UPD CSS BASED ON SETTINGS RQ -----------------------------
+            //------------- UPD CSS BASED ON SETTINGS RQ -----------------------------
 
             if (auto_group_on_page_comics) GroupAltVersionsOnPage();
 
-            $(".versionPrevButton").click(function(e) {
+            $(".versionPrevButton").click(function (e) {
                 e.preventDefault();
                 let toHide = $(this).parent().find(".cover").filter(":visible");
                 let toShow = toHide.prev();
@@ -1137,7 +1187,7 @@ addFindAltButton();
                 let n = $(this).parent().find(".numOfVersions");
                 n.text((Number(n.text().split("/")[0]) - 1) + "/" + n.text().split("/")[1]);
             });
-            $(".versionNextButton").click(function(e) {
+            $(".versionNextButton").click(function (e) {
                 e.preventDefault();
                 let toHide = $(this).parent().find(".cover").filter(":visible");
                 let toShow = toHide.next();
@@ -1213,7 +1263,7 @@ async function createBookmarkButton() {
     }
 
     // Handle click event for the bookmark button
-    bookmarkButton.click(async function() {
+    bookmarkButton.click(async function () {
         const bookmarkIcon = $(this).find('i.bookmark-icon');
         const bookmarkedPages = await GM.getValue('bookmarkedPages', []);
         const currentPage = window.location.href;
@@ -1391,7 +1441,7 @@ addReadMangaButton(); // Call the function to add the read manga button
 
 
 // Delete error message on unsupported bookmarks page
-(async function() {
+(async function () {
     if (window.location.href.includes('/bookmarks')) {
         // Remove not found heading
         const notFoundHeading = document.querySelector('h1');
@@ -1405,145 +1455,145 @@ addReadMangaButton(); // Call the function to add the read manga button
             notFoundMessage.remove();
         }
 
-// Function to fetch the title of a webpage with caching and retries
-async function fetchTitleWithCacheAndRetry(url, retries = 3) {
-    // Check if we have cached manga IDs for this bookmark
-    const mangaIds = await GM.getValue(`bookmark_manga_ids_${url}`, []);
+        // Function to fetch the title of a webpage with caching and retries
+        async function fetchTitleWithCacheAndRetry(url, retries = 3) {
+            // Check if we have cached manga IDs for this bookmark
+            const mangaIds = await GM.getValue(`bookmark_manga_ids_${url}`, []);
 
-    // If we have cached manga data, use it to construct the title
-    if (mangaIds.length > 0) {
-        // For bookmarks with multiple manga, we'll show a count
-        if (mangaIds.length > 1) {
-            let itemCount = mangaIds.length;
-            let itemSuffix = itemCount > 25 ? `+` : ``;
-            return `${url} (${itemCount}${itemSuffix} items)`;
-        }
-        // For a single manga, fetch its details
-        else {
-            const mangaId = mangaIds[0];
-            const mangaInfo = await GM.getValue(`manga_${mangaId}`);
+            // If we have cached manga data, use it to construct the title
+            if (mangaIds.length > 0) {
+                // For bookmarks with multiple manga, we'll show a count
+                if (mangaIds.length > 1) {
+                    let itemCount = mangaIds.length;
+                    let itemSuffix = itemCount > 25 ? `+` : ``;
+                    return `${url} (${itemCount}${itemSuffix} items)`;
+                }
+                // For a single manga, fetch its details
+                else {
+                    const mangaId = mangaIds[0];
+                    const mangaInfo = await GM.getValue(`manga_${mangaId}`);
 
-            if (mangaInfo && mangaInfo.title) {
-                return mangaInfo.title;
+                    if (mangaInfo && mangaInfo.title) {
+                        return mangaInfo.title;
+                    }
+                }
+            }
+
+            // If no cached data found, fetch the title directly
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const response = await fetch(url);
+                    if (response.status === 429) {
+                        // If we get a 429, wait for a bit before retrying
+                        await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+                        continue;
+                    }
+                    const text = await response.text();
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(text, 'text/html');
+                    let title = doc.querySelector('title').innerText;
+
+                    // Remove "» nhentai: hentai doujinshi and manga" from the title
+                    const unwantedPart = "» nhentai: hentai doujinshi and manga";
+                    if (title.includes(unwantedPart)) {
+                        title = title.replace(unwantedPart, '').trim();
+                    }
+
+                    // We no longer cache the title directly with the URL as the key
+                    // Instead, we'll create proper relationships when manga data is saved
+
+                    return title;
+                } catch (error) {
+                    console.error(`Error fetching title for: ${url}. Attempt ${i + 1} of ${retries}`, error);
+                    if (i === retries - 1) {
+                        return url; // Fallback to URL if all retries fail
+                    }
+                }
             }
         }
-    }
 
-    // If no cached data found, fetch the title directly
-    for (let i = 0; i < retries; i++) {
-        try {
-            const response = await fetch(url);
-            if (response.status === 429) {
-                // If we get a 429, wait for a bit before retrying
-                await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
-                continue;
-            }
-            const text = await response.text();
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(text, 'text/html');
-            let title = doc.querySelector('title').innerText;
+        // Function to display bookmarked pages with active loading for unfetched bookmarks
+        async function displayBookmarkedPages() {
+            let bookmarkedPages = await GM.getValue('bookmarkedPages', []);
+            let bookmarkedMangas = await GM.getValue('bookmarkedMangas', []);
+            const bookmarkArrangementType = await GM.getValue('bookmarkArrangementType', 'default');
 
-            // Remove "» nhentai: hentai doujinshi and manga" from the title
-            const unwantedPart = "» nhentai: hentai doujinshi and manga";
-            if (title.includes(unwantedPart)) {
-                title = title.replace(unwantedPart, '').trim();
-            }
+            if (Array.isArray(bookmarkedPages) && Array.isArray(bookmarkedMangas)) {
+                // Sort bookmarked mangas based on arrangement type
+                if (bookmarkArrangementType === 'alphabetical') {
+                    bookmarkedMangas.sort((a, b) => {
+                        const titleA = a.title ? a.title.toLowerCase() : '';
+                        const titleB = b.title ? b.title.toLowerCase() : '';
+                        return titleA.localeCompare(titleB);
+                    });
+                } else if (bookmarkArrangementType === 'reverse-alphabetical') {
+                    bookmarkedMangas.sort((a, b) => {
+                        const titleA = a.title ? a.title.toLowerCase() : '';
+                        const titleB = b.title ? b.title.toLowerCase() : '';
+                        return titleB.localeCompare(titleA);
+                    });
+                }
 
-            // We no longer cache the title directly with the URL as the key
-            // Instead, we'll create proper relationships when manga data is saved
+                // Get manga IDs for each bookmark page to sort by item count
+                const bookmarkItemCounts = {};
+                if (bookmarkArrangementType === 'most-items' || bookmarkArrangementType === 'least-items') {
+                    // We'll need to fetch the manga counts for each bookmark
+                    for (const page of bookmarkedPages) {
+                        const mangaIds = await GM.getValue(`bookmark_manga_ids_${page}`, []);
+                        bookmarkItemCounts[page] = mangaIds.length;
+                    }
 
-            return title;
-        } catch (error) {
-            console.error(`Error fetching title for: ${url}. Attempt ${i + 1} of ${retries}`, error);
-            if (i === retries - 1) {
-                return url; // Fallback to URL if all retries fail
-            }
-        }
-    }
-}
+                    // Sort bookmarked pages based on item count
+                    if (bookmarkArrangementType === 'most-items') {
+                        bookmarkedPages.sort((a, b) => bookmarkItemCounts[b] - bookmarkItemCounts[a]);
+                    } else if (bookmarkArrangementType === 'least-items') {
+                        bookmarkedPages.sort((a, b) => bookmarkItemCounts[a] - bookmarkItemCounts[b]);
+                    }
+                }
+                // Note: For default arrangement, we keep the original order (most recent first)
 
-// Function to display bookmarked pages with active loading for unfetched bookmarks
-async function displayBookmarkedPages() {
-    let bookmarkedPages = await GM.getValue('bookmarkedPages', []);
-    let bookmarkedMangas = await GM.getValue('bookmarkedMangas', []);
-    const bookmarkArrangementType = await GM.getValue('bookmarkArrangementType', 'default');
+                const bookmarksContainer = $('<div id="bookmarksContainer" class="container">');
 
-    if (Array.isArray(bookmarkedPages) && Array.isArray(bookmarkedMangas)) {
-        // Sort bookmarked mangas based on arrangement type
-        if (bookmarkArrangementType === 'alphabetical') {
-            bookmarkedMangas.sort((a, b) => {
-                const titleA = a.title ? a.title.toLowerCase() : '';
-                const titleB = b.title ? b.title.toLowerCase() : '';
-                return titleA.localeCompare(titleB);
-            });
-        } else if (bookmarkArrangementType === 'reverse-alphabetical') {
-            bookmarkedMangas.sort((a, b) => {
-                const titleA = a.title ? a.title.toLowerCase() : '';
-                const titleB = b.title ? b.title.toLowerCase() : '';
-                return titleB.localeCompare(titleA);
-            });
-        }
-        
-        // Get manga IDs for each bookmark page to sort by item count
-        const bookmarkItemCounts = {};
-        if (bookmarkArrangementType === 'most-items' || bookmarkArrangementType === 'least-items') {
-            // We'll need to fetch the manga counts for each bookmark
-            for (const page of bookmarkedPages) {
-                const mangaIds = await GM.getValue(`bookmark_manga_ids_${page}`, []);
-                bookmarkItemCounts[page] = mangaIds.length;
-            }
-            
-            // Sort bookmarked pages based on item count
-            if (bookmarkArrangementType === 'most-items') {
-                bookmarkedPages.sort((a, b) => bookmarkItemCounts[b] - bookmarkItemCounts[a]);
-            } else if (bookmarkArrangementType === 'least-items') {
-                bookmarkedPages.sort((a, b) => bookmarkItemCounts[a] - bookmarkItemCounts[b]);
-            }
-        }
-        // Note: For default arrangement, we keep the original order (most recent first)
+                // Create Tabs Navigation
+                const tabsNav = $('<div class="bookmarks-tabs">');
+                const pagesTabBtn = $('<button class="tab-btn active" data-tab="pages">Bookmarked Pages</button>');
+                const mangaTabBtn = $('<button class="tab-btn" data-tab="manga">Bookmarked Manga</button>');
+                tabsNav.append(pagesTabBtn, mangaTabBtn);
 
-        const bookmarksContainer = $('<div id="bookmarksContainer" class="container">');
-        
-        // Create Tabs Navigation
-        const tabsNav = $('<div class="bookmarks-tabs">');
-        const pagesTabBtn = $('<button class="tab-btn active" data-tab="pages">Bookmarked Pages</button>');
-        const mangaTabBtn = $('<button class="tab-btn" data-tab="manga">Bookmarked Manga</button>');
-        tabsNav.append(pagesTabBtn, mangaTabBtn);
+                // Create Pages Tab Content
+                const pagesTabContent = $('<div id="pages-tab" class="tab-content active">');
+                const bookmarksTitle = $('<h2 class="bookmarks-title">Bookmarked Pages</h2>');
+                const pageTitleInput = $('<input type="text" id="searchBookmarks" placeholder="Search pages..." class="search-input">');
+                const pageTagInput = $('<input type="text" id="searchPageTags" placeholder="Search page tags..." class="search-input">');
+                const bookmarksList = $('<ul class="bookmarks-list">');
+                pagesTabContent.append(bookmarksTitle, pageTitleInput, pageTagInput, bookmarksList);
 
-        // Create Pages Tab Content
-        const pagesTabContent = $('<div id="pages-tab" class="tab-content active">');
-        const bookmarksTitle = $('<h2 class="bookmarks-title">Bookmarked Pages</h2>');
-        const pageTitleInput = $('<input type="text" id="searchBookmarks" placeholder="Search pages..." class="search-input">');
-        const pageTagInput = $('<input type="text" id="searchPageTags" placeholder="Search page tags..." class="search-input">');
-        const bookmarksList = $('<ul class="bookmarks-list">');
-        pagesTabContent.append(bookmarksTitle, pageTitleInput, pageTagInput, bookmarksList);
+                // Create Manga Tab Content
+                const mangaTabContent = $('<div id="manga-tab" class="tab-content">');
+                const mangaBookmarksTitle = $('<h2 class="bookmarks-title">Bookmarked Manga</h2>');
+                const mangaTitleInput = $('<input type="text" id="searchMangaTitle" placeholder="Search manga title..." class="search-input">');
+                const mangaTagInput = $('<input type="text" id="searchMangaTags" placeholder="Search manga tags..." class="search-input">');
+                const mangaBookmarksList = $('<ul id="mangaBookmarksList" class="bookmarks-grid">');
+                mangaTabContent.append(mangaBookmarksTitle, mangaTitleInput, mangaTagInput, mangaBookmarksList);
 
-        // Create Manga Tab Content
-        const mangaTabContent = $('<div id="manga-tab" class="tab-content">');
-        const mangaBookmarksTitle = $('<h2 class="bookmarks-title">Bookmarked Manga</h2>');
-        const mangaTitleInput = $('<input type="text" id="searchMangaTitle" placeholder="Search manga title..." class="search-input">');
-        const mangaTagInput = $('<input type="text" id="searchMangaTags" placeholder="Search manga tags..." class="search-input">');
-        const mangaBookmarksList = $('<ul id="mangaBookmarksList" class="bookmarks-grid">');
-        mangaTabContent.append(mangaBookmarksTitle, mangaTitleInput, mangaTagInput, mangaBookmarksList);
+                bookmarksContainer.append(tabsNav, pagesTabContent, mangaTabContent);
+                $('body').append(bookmarksContainer);
 
-        bookmarksContainer.append(tabsNav, pagesTabContent, mangaTabContent);
-        $('body').append(bookmarksContainer);
+                // Tab Switching Logic
+                tabsNav.find('.tab-btn').on('click', function () {
+                    const tabId = $(this).data('tab');
 
-        // Tab Switching Logic
-        tabsNav.find('.tab-btn').on('click', function() {
-            const tabId = $(this).data('tab');
-            
-            // Update buttons
-            $('.tab-btn').removeClass('active');
-            $(this).addClass('active');
-            
-            // Update content
-            $('.tab-content').removeClass('active');
-            $(`#${tabId}-tab`).addClass('active');
-        });
+                    // Update buttons
+                    $('.tab-btn').removeClass('active');
+                    $(this).addClass('active');
 
-        // Add CSS styles
-        const styles = `
+                    // Update content
+                    $('.tab-content').removeClass('active');
+                    $(`#${tabId}-tab`).addClass('active');
+                });
+
+                // Add CSS styles
+                const styles = `
             /* Tab Styles */
             .bookmarks-tabs {
                 display: flex;
@@ -1723,258 +1773,249 @@ async function displayBookmarkedPages() {
             }
         `;
 
-        const styleSheet = document.createElement("style");
-        styleSheet.type = "text/css";
-        styleSheet.innerText = styles;
-        document.head.appendChild(styleSheet);
+                const styleSheet = document.createElement("style");
+                styleSheet.type = "text/css";
+                styleSheet.innerText = styles;
+                document.head.appendChild(styleSheet);
 
-// Fetch titles for each bookmark and update dynamically
-for (const page of bookmarkedPages) {
-    // Append a loading list item first
-    const listItem = $(`<li class="bookmark-list-item"><a href="${page}" class="bookmark-link">Loading...</a><button class="delete-button-pages">✖</button></li>`);
-    bookmarksList.append(listItem);
+                // Fetch titles for each bookmark and update dynamically
+                for (const page of bookmarkedPages) {
+                    // Append a loading list item first
+                    const listItem = $(`<li class="bookmark-list-item"><a href="${page}" class="bookmark-link">Loading...</a><button class="delete-button-pages">✖</button></li>`);
+                    bookmarksList.append(listItem);
 
-    // Using async IIFE to handle async operations in the loop
-    (async () => {
-        try {
-            // Get manga IDs associated with this bookmark
-            const mangaIds = await GM.getValue(`bookmark_manga_ids_${page}`, []);
+                    // Using async IIFE to handle async operations in the loop
+                    (async () => {
+                        try {
+                            // Get manga IDs associated with this bookmark
+                            const mangaIds = await GM.getValue(`bookmark_manga_ids_${page}`, []);
 
-            // Determine what to display based on manga IDs
-            let displayText;
+                            // Determine what to display based on manga IDs
+                            let displayText;
 
-            if (mangaIds.length > 0) {
-                // For single or multiple manga
-                const urlObj = new URL(page);
-                const pathName = urlObj.pathname;
-                const searchParams = urlObj.searchParams.get('q');
+                            if (mangaIds.length > 0) {
+                                // For single or multiple manga
+                                const urlObj = new URL(page);
+                                const pathName = urlObj.pathname;
+                                const searchParams = urlObj.searchParams.get('q');
 
-                let itemCount = mangaIds.length;
-                let itemSuffix = itemCount == 1 ? ' item' : ` items`;
-                let itemPlusSuffix = itemCount == 25 ? `+` : ``;
+                                let itemCount = mangaIds.length;
+                                let itemSuffix = itemCount == 1 ? ' item' : ` items`;
+                                let itemPlusSuffix = itemCount == 25 ? `+` : ``;
 
-                if (pathName.includes('/tag/')) {
-                    // For tag pages, extract the tag name
-                    const tagName = pathName.split('/tag/')[1].replace('/', '');
-                    displayText = `Tag: ${tagName} (${itemCount}${itemPlusSuffix}${itemSuffix})`;
-                } else if (pathName.includes('/artist/')) {
-                    // For artist pages, extract the artist name
-                    const artistName = pathName.split('/artist/')[1].replace('/', '');
-                    displayText = `Artist: ${artistName} (${itemCount}${itemPlusSuffix}${itemSuffix})`;
-                } else if (pathName.includes('/character/')) {
-                    // For character pages, extract the character name
-                    const characterName = pathName.split('/character/')[1].replace('/', '');
-                    displayText = `Character: ${characterName} (${itemCount}${itemPlusSuffix}${itemSuffix})`;
-                } else if (pathName.includes('/parody/')) {
-                    // For parody pages, extract the parody name
-                    const parodyName = pathName.split('/parody/')[1].replace('/', '');
-                    displayText = `Parody: ${parodyName} (${itemCount}${itemPlusSuffix}${itemSuffix})`;
-                } else if (pathName.includes('/group/')) {
-                    // For group pages, extract the group name
-                    const groupName = pathName.split('/group/')[1].replace('/', '');
-                    displayText = `Group: ${groupName} (${itemCount}${itemPlusSuffix}${itemSuffix})`;
-                } else if (searchParams) {
-                    // For search results
-                    displayText = `Search: ${searchParams} (${itemCount}${itemPlusSuffix}${itemSuffix})`;
-                } else {
-                    // Default display for other pages with manga
-                    displayText = `${page} (${itemCount}${itemPlusSuffix}${itemSuffix})`;
-                }
-            } else {
-                // If no manga IDs found, fetch title directly
-                displayText = await fetchTitleWithCacheAndRetry(page);
-            }
+                                if (pathName.includes('/tag/')) {
+                                    // For tag pages, extract the tag name
+                                    const tagName = pathName.split('/tag/')[1].replace('/', '');
+                                    displayText = `Tag: ${tagName} (${itemCount}${itemPlusSuffix}${itemSuffix})`;
+                                } else if (pathName.includes('/artist/')) {
+                                    // For artist pages, extract the artist name
+                                    const artistName = pathName.split('/artist/')[1].replace('/', '');
+                                    displayText = `Artist: ${artistName} (${itemCount}${itemPlusSuffix}${itemSuffix})`;
+                                } else if (pathName.includes('/character/')) {
+                                    // For character pages, extract the character name
+                                    const characterName = pathName.split('/character/')[1].replace('/', '');
+                                    displayText = `Character: ${characterName} (${itemCount}${itemPlusSuffix}${itemSuffix})`;
+                                } else if (pathName.includes('/parody/')) {
+                                    // For parody pages, extract the parody name
+                                    const parodyName = pathName.split('/parody/')[1].replace('/', '');
+                                    displayText = `Parody: ${parodyName} (${itemCount}${itemPlusSuffix}${itemSuffix})`;
+                                } else if (pathName.includes('/group/')) {
+                                    // For group pages, extract the group name
+                                    const groupName = pathName.split('/group/')[1].replace('/', '');
+                                    displayText = `Group: ${groupName} (${itemCount}${itemPlusSuffix}${itemSuffix})`;
+                                } else if (searchParams) {
+                                    // For search results
+                                    displayText = `Search: ${searchParams} (${itemCount}${itemPlusSuffix}${itemSuffix})`;
+                                } else {
+                                    // Default display for other pages with manga
+                                    displayText = `${page} (${itemCount}${itemPlusSuffix}${itemSuffix})`;
+                                }
+                            } else {
+                                // If no manga IDs found, fetch title directly
+                                displayText = await fetchTitleWithCacheAndRetry(page);
+                            }
 
-            // Update the list item with the fetched title/display text
-            const updatedListItem = $(`<li class="bookmark-list-item"><a href="${page}" class="bookmark-link">${displayText}</a><button class="delete-button-pages">✖</button></li>`);
-            listItem.replaceWith(updatedListItem);
+                            // Update the list item with the fetched title/display text
+                            const updatedListItem = $(`<li class="bookmark-list-item"><a href="${page}" class="bookmark-link">${displayText}</a><button class="delete-button-pages">✖</button></li>`);
+                            listItem.replaceWith(updatedListItem);
 
-            // Add delete functionality
-            updatedListItem.find('.delete-button-pages').click(async function() {
-                // Get the latest bookmarked pages to ensure we're working with current data
-                const currentBookmarkedPages = await GM.getValue('bookmarkedPages', []);
-                const updatedBookmarkedPages = currentBookmarkedPages.filter(p => p !== page);
-                await GM.setValue('bookmarkedPages', updatedBookmarkedPages);
-                
-                // Update the local bookmarkedPages variable to keep it in sync
-                bookmarkedPages = updatedBookmarkedPages;
+                            // Add delete functionality
+                            updatedListItem.find('.delete-button-pages').click(async function () {
+                                // Get the latest bookmarked pages to ensure we're working with current data
+                                const currentBookmarkedPages = await GM.getValue('bookmarkedPages', []);
+                                const updatedBookmarkedPages = currentBookmarkedPages.filter(p => p !== page);
+                                await GM.setValue('bookmarkedPages', updatedBookmarkedPages);
 
-                // Get the list of manga IDs for this bookmark
-                const bookmarkMangaIds = await GM.getValue(`bookmark_manga_ids_${page}`, []);
+                                // Update the local bookmarkedPages variable to keep it in sync
+                                bookmarkedPages = updatedBookmarkedPages;
 
-                // Delete the bookmark's manga ID list
-                await GM.deleteValue(`bookmark_manga_ids_${page}`);
+                                // Get the list of manga IDs for this bookmark
+                                const bookmarkMangaIds = await GM.getValue(`bookmark_manga_ids_${page}`, []);
 
-                // For each manga associated with this bookmark
-                const allKeys = await GM.listValues();
-                const mangaKeys = allKeys.filter(key => key.startsWith('manga_'));
+                                // Delete the bookmark's manga ID list
+                                await GM.deleteValue(`bookmark_manga_ids_${page}`);
 
-                for (const key of mangaKeys) {
-                    const mangaInfo = await GM.getValue(key);
+                                // For each manga associated with this bookmark
+                                const allKeys = await GM.listValues();
+                                const mangaKeys = allKeys.filter(key => key.startsWith('manga_'));
 
-                    // If this manga is associated with the deleted bookmark
-                    if (mangaInfo && mangaInfo.bookmarks && mangaInfo.bookmarks.includes(page)) {
-                        // Remove this bookmark from the manga's bookmarks list
-                        mangaInfo.bookmarks = mangaInfo.bookmarks.filter(b => b !== page);
+                                for (const key of mangaKeys) {
+                                    const mangaInfo = await GM.getValue(key);
 
-                        // If this manga is no longer in any bookmarks, delete it entirely
-                        if (mangaInfo.bookmarks.length === 0) {
-                            await GM.deleteValue(key);
-                            console.log(`Deleted orphaned manga: ${key}`);
-                        } else {
-                            // Otherwise, update the manga info with the bookmark removed
-                            await GM.setValue(key, mangaInfo);
-                            console.log(`Updated manga ${key}: removed bookmark reference`);
-                        }
-                    }
-                }
+                                    // If this manga is associated with the deleted bookmark
+                                    if (mangaInfo && mangaInfo.bookmarks && mangaInfo.bookmarks.includes(page)) {
+                                        // Remove this bookmark from the manga's bookmarks list
+                                        mangaInfo.bookmarks = mangaInfo.bookmarks.filter(b => b !== page);
 
-                updatedListItem.remove();
-                console.log(`Deleted bookmark: ${page} and cleaned up related manga data`);
+                                        // If this manga is no longer in any bookmarks, delete it entirely
+                                        if (mangaInfo.bookmarks.length === 0) {
+                                            await GM.deleteValue(key);
+                                            console.log(`Deleted orphaned manga: ${key}`);
+                                        } else {
+                                            // Otherwise, update the manga info with the bookmark removed
+                                            await GM.setValue(key, mangaInfo);
+                                            console.log(`Updated manga ${key}: removed bookmark reference`);
+                                        }
+                                    }
+                                }
 
-                const undoPopup = $(`
+                                updatedListItem.remove();
+                                console.log(`Deleted bookmark: ${page} and cleaned up related manga data`);
+
+                                const undoPopup = $(`
                     <div class="undo-popup">
                         <span>Bookmark deleted.</span>
                         <button class="undo-button">Undo</button>
                     </div>
                 `);
-                $('body').append(undoPopup);
+                                $('body').append(undoPopup);
 
-                const timeout = setTimeout(() => {
-                    undoPopup.remove();
-                }, 5000);
+                                const timeout = setTimeout(() => {
+                                    undoPopup.remove();
+                                }, 5000);
 
-                undoPopup.find('.undo-button').click(async function() {
-                    clearTimeout(timeout);
-                    const restoredBookmarkedPages = [...updatedBookmarkedPages, page];
-                    await GM.setValue('bookmarkedPages', restoredBookmarkedPages);
-                    undoPopup.remove();
-                    $('#bookmarksContainer').remove();
-                    displayBookmarkedPages();
-                });
-            });
-        } catch (error) {
-            console.error(`Error processing bookmark: ${page}`, error);
-            listItem.html(`<a href="${page}" class="bookmark-link">Failed to load</a><button class="delete-button-pages">✖</button>`);
-        }
-    })();
-}
-        // Modified version with better cover organization
-        for (const manga of bookmarkedMangas) {
-            const listItem = $(`<li class="bookmark-item"><a href="${manga.url}" class="bookmark-link">Loading...</a><button class="delete-button">✖</button></li>`);
-            mangaBookmarksList.append(listItem);
-
-            (async () => {  // Immediately invoked async function
-                const mangaBookMarkingType = await GM.getValue('mangaBookMarkingType', 'cover');
-                let title = manga.title;
-                let coverImage = manga.coverImageUrl;
-
-                if (!title || !coverImage) {
-                    try {
-                        const info = await fetchMangaInfoWithCacheAndRetry(manga.url);
-                        title = info.title;
-                    } catch (error) {
-                        console.error(`Error fetching info for: ${manga.url}`, error);
-                        listItem.html(`<span class="error-text">Failed to fetch data</span>`);
-                        return; // Stop processing this item if fetching fails
-                    }
-                }
-
-                // Fetch and store tags
-                let tags = await GM.getValue(`tags_${manga.url}`, null);
-                // Fallback: use readGalleriesCache by gallery id
-                if (!Array.isArray(tags) || tags.length === 0) {
-                    const idMatch = (manga.url || '').match(/\/g\/(\d+)\//);
-                    if (idMatch && idMatch[1]) {
-                        const cachedData = await GM.getValue('readGalleriesCache', {});
-                        const cachedInfo = cachedData[idMatch[1]];
-                        const cachedTags = cachedInfo && Array.isArray(cachedInfo.tags) ? cachedInfo.tags : [];
-                        if (cachedTags.length > 0) {
-                            tags = cachedTags;
+                                undoPopup.find('.undo-button').click(async function () {
+                                    clearTimeout(timeout);
+                                    const restoredBookmarkedPages = [...updatedBookmarkedPages, page];
+                                    await GM.setValue('bookmarkedPages', restoredBookmarkedPages);
+                                    undoPopup.remove();
+                                    $('#bookmarksContainer').remove();
+                                    displayBookmarkedPages();
+                                });
+                            });
+                        } catch (error) {
+                            console.error(`Error processing bookmark: ${page}`, error);
+                            listItem.html(`<a href="${page}" class="bookmark-link">Failed to load</a><button class="delete-button-pages">✖</button>`);
                         }
-                    }
+                    })();
                 }
-                if (!Array.isArray(tags) || tags.length === 0) {
-                    try {
-                        const response = await fetch(manga.url);
-                        const html = await response.text();
-                        const doc = new DOMParser().parseFromString(html, 'text/html');
-                        tags = Array.from(doc.querySelectorAll('#tags .tag')).map(tag => {
-                            // Remove popularity numbers and format the tag
-                            return tag.textContent.replace(/\d+K?$/, '').trim().replace(/\b\w/g, char => char.toUpperCase());
-                        });
-                        console.log(`Fetched tags for ${manga.url}:`, tags); // Log the fetched tags
-                        await GM.setValue(`tags_${manga.url}`, tags); // Save tags for future use
-                        await addKnownMultiwordTags(tags);
-                    } catch (error) {
-                        console.error(`Error fetching tags for: ${manga.url}`, error);
-                        tags = []; // Default to empty if fetch fails
-                    }
-                } else {
-                    console.log(`Retrieved cached tags for ${manga.url}:`, tags); // Log cached tags
-                    await addKnownMultiwordTags(tags);
-                }
+                // Modified version with better cover organization
+                for (const manga of bookmarkedMangas) {
+                    const listItem = $(`<li class="bookmark-item"><a href="${manga.url}" class="bookmark-link">Loading...</a><button class="delete-button">✖</button></li>`);
+                    mangaBookmarksList.append(listItem);
 
-                let content = "";
-                if (mangaBookMarkingType === 'cover') {
-                    content = `
+                    (async () => {  // Immediately invoked async function
+                        const mangaBookMarkingType = await GM.getValue('mangaBookMarkingType', 'cover');
+                        let title = manga.title;
+                        let coverImage = manga.coverImageUrl;
+
+                        if (!title || !coverImage) {
+                            try {
+                                const info = await fetchMangaInfoWithCacheAndRetry(manga.url);
+                                title = info.title;
+                            } catch (error) {
+                                console.error(`Error fetching info for: ${manga.url}`, error);
+                                listItem.html(`<span class="error-text">Failed to fetch data</span>`);
+                                return; // Stop processing this item if fetching fails
+                            }
+                        }
+
+                        // Fetch and store tags — stored inline on the manga object to avoid separate GM keys
+                        let tags = Array.isArray(manga.tags) ? manga.tags : [];
+                        if (tags.length === 0) {
+                            try {
+                                const response = await fetch(manga.url);
+                                const html = await response.text();
+                                const doc = new DOMParser().parseFromString(html, 'text/html');
+                                tags = Array.from(doc.querySelectorAll('#tags .tag')).map(tag => {
+                                    // Remove popularity numbers and format the tag
+                                    return tag.textContent.replace(/\d+K?$/, '').trim().replace(/\b\w/g, char => char.toUpperCase());
+                                });
+                                console.log(`Fetched tags for ${manga.url}:`, tags);
+                                // Save tags inline on the manga object in bookmarkedMangas
+                                manga.tags = tags;
+                                const updatedMangas = bookmarkedMangas.map(m => m.url === manga.url ? manga : m);
+                                await GM.setValue('bookmarkedMangas', updatedMangas);
+                                await addKnownMultiwordTags(tags);
+                            } catch (error) {
+                                console.error(`Error fetching tags for: ${manga.url}`, error);
+                                tags = []; // Default to empty if fetch fails
+                            }
+                        } else {
+                            console.log(`Retrieved cached tags for ${manga.url}:`, tags);
+                            await addKnownMultiwordTags(tags);
+                        }
+
+                        let content = "";
+                        if (mangaBookMarkingType === 'cover') {
+                            content = `
                         <div class="cover-container">
                             <img src="${coverImage}" alt="${title}" class="cover-image">
                             <div class="title-overlay">${title}</div>
                         </div>`;
-                } else if (mangaBookMarkingType === 'title') {
-                    content = `<span class="title-only">${title}</span>`;
-                } else if (mangaBookMarkingType === 'both') {
-                    content = `
+                        } else if (mangaBookMarkingType === 'title') {
+                            content = `<span class="title-only">${title}</span>`;
+                        } else if (mangaBookMarkingType === 'both') {
+                            content = `
                         <div class="cover-with-title">
                             <img src="${coverImage}" alt="${title}" class="cover-image-small">
                             <span class="title-text">${title}</span>
                         </div>`;
-                }
+                        }
 
-                const updatedListItem = $(`<li class="bookmark-item ${mangaBookMarkingType}-mode"><a href="${manga.url}" class="bookmark-link">${content}</a><button class="delete-button">✖</button></li>`);
-                listItem.replaceWith(updatedListItem);
+                        const updatedListItem = $(`<li class="bookmark-item ${mangaBookMarkingType}-mode"><a href="${manga.url}" class="bookmark-link">${content}</a><button class="delete-button">✖</button></li>`);
+                        listItem.replaceWith(updatedListItem);
 
-                // Add title attribute with tags for hover tooltip
-                const tooltipText = `${title}\n\nTags: ${tags.join(', ')}`;
-                const galleryCaptionTooltipsEnabled = await GM.getValue('galleryCaptionTooltipsEnabled', true);
-                if (galleryCaptionTooltipsEnabled) {
-                    updatedListItem.find('.bookmark-link').attr('title', tooltipText);
-                }
+                        // Add title attribute with tags for hover tooltip
+                        const tooltipText = `${title}\n\nTags: ${tags.join(', ')}`;
+                        const galleryCaptionTooltipsEnabled = await GM.getValue('galleryCaptionTooltipsEnabled', true);
+                        if (galleryCaptionTooltipsEnabled) {
+                            updatedListItem.find('.bookmark-link').attr('title', tooltipText);
+                        }
 
-                // Add delete functionality
-                updatedListItem.find('.delete-button').click(async function() {
-                    const updatedBookmarkedMangas = bookmarkedMangas.filter(m => m.url !== manga.url);
-                    await GM.setValue('bookmarkedMangas', updatedBookmarkedMangas);
-                    bookmarkedMangas = updatedBookmarkedMangas;
-                    updatedListItem.remove();
+                        // Add delete functionality
+                        updatedListItem.find('.delete-button').click(async function () {
+                            const updatedBookmarkedMangas = bookmarkedMangas.filter(m => m.url !== manga.url);
+                            await GM.setValue('bookmarkedMangas', updatedBookmarkedMangas);
+                            bookmarkedMangas = updatedBookmarkedMangas;
+                            updatedListItem.remove();
 
-                    const undoPopup = $(`
+                            const undoPopup = $(`
                         <div class="undo-popup">
                             <span>Bookmark deleted.</span>
                             <button class="undo-button">Undo</button>
                         </div>
                     `);
-                    $('body').append(undoPopup);
+                            $('body').append(undoPopup);
 
-                    const timeout = setTimeout(() => {
-                        undoPopup.remove();
-                    }, 5000);
+                            const timeout = setTimeout(() => {
+                                undoPopup.remove();
+                            }, 5000);
 
-                    undoPopup.find('.undo-button').click(async function() {
-                        clearTimeout(timeout);
-                        const restoredBookmarkedMangas = [...updatedBookmarkedMangas, manga];
-                        await GM.setValue('bookmarkedMangas', restoredBookmarkedMangas);
-                        undoPopup.remove();
-                        $('#bookmarksContainer').remove();
-                        displayBookmarkedPages();
-                    });
-                });
-            })(); // Execute the async function immediately
-        }
+                            undoPopup.find('.undo-button').click(async function () {
+                                clearTimeout(timeout);
+                                const restoredBookmarkedMangas = [...updatedBookmarkedMangas, manga];
+                                await GM.setValue('bookmarkedMangas', restoredBookmarkedMangas);
+                                undoPopup.remove();
+                                $('#bookmarksContainer').remove();
+                                displayBookmarkedPages();
+                            });
+                        });
+                    })(); // Execute the async function immediately
+                }
 
-        // Add this CSS to your styles
-        const additionalStyles = `
+                // Add this CSS to your styles
+                const additionalStyles = `
             #mangaBookmarksList {
                 display: grid;
                 grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
@@ -2204,135 +2245,135 @@ for (const page of bookmarkedPages) {
             }
         `;
 
-        // Add the CSS to the page
-        $('<style>').text(additionalStyles).appendTo('head');
+                // Add the CSS to the page
+                $('<style>').text(additionalStyles).appendTo('head');
 
 
 
-        // Modified search functionality to work with the new layout
-        pageTitleInput.on('input', filterPages);
-        pageTagInput.on('input', filterPages);
-        mangaTitleInput.on('input', filterManga);
-        mangaTagInput.on('input', filterManga);
+                // Modified search functionality to work with the new layout
+                pageTitleInput.on('input', filterPages);
+                pageTagInput.on('input', filterPages);
+                mangaTitleInput.on('input', filterManga);
+                mangaTagInput.on('input', filterManga);
 
-        function filterManga() {
-            const searchQuery = mangaTitleInput.val().toLowerCase();
-            const tagQueries = mangaTagInput.val().toLowerCase().trim().split(/,\s*|\s+/);
+                function filterManga() {
+                    const searchQuery = mangaTitleInput.val().toLowerCase();
+                    const tagQueries = mangaTagInput.val().toLowerCase().trim().split(/,\s*|\s+/);
 
-            mangaBookmarksList.children('li').each(async function () {
-                const $li = $(this);
-                const mangaUrl = $li.find('.bookmark-link').attr('href');
-                const tags = await GM.getValue(`tags_${mangaUrl}`, []);
+                    mangaBookmarksList.children('li').each(async function () {
+                        const $li = $(this);
+                        const mangaUrl = $li.find('.bookmark-link').attr('href');
+                        const tags = await GM.getValue(`tags_${mangaUrl}`, []);
 
-                const cleanedTags = tags.map(tag =>
-                    tag.replace(/\d+K?$/, '').trim().toLowerCase()
-                );
-
-                const textContent = $li.find('.bookmark-link').text().toLowerCase();
-                const imageSrc = $li.find('.bookmark-link img').attr('src') || '';
-
-                const searchMatch = textContent.includes(searchQuery) || imageSrc.toLowerCase().includes(searchQuery);
-                const tagMatch = (tagQueries.length === 1 && tagQueries[0] === "") ? true : tagQueries.every(query => {
-                    const queryWords = query.split(/\s+/);
-                    return cleanedTags.some(tag =>
-                        queryWords.every(word => tag.includes(word))
-                    );
-                });
-
-                $li.toggleClass('hidden', !(searchMatch && tagMatch));
-            });
-        }
-
-        function filterPages() {
-            const searchQuery = pageTitleInput.val().toLowerCase();
-            const tagQueries = pageTagInput.val().toLowerCase().trim().split(/,\s*|\s+/);
-
-            $('.bookmarks-list li').each(async function () {
-                const $li = $(this);
-                const bookmarkUrl = $li.find('.bookmark-link').attr('href');
-                let matchFound = false;
-
-                // Get all manga IDs associated with this bookmark
-                const mangaIds = await GM.getValue(`bookmark_manga_ids_${bookmarkUrl}`, []);
-
-                const searchContent = $li.find('.bookmark-link').text().toLowerCase();
-                const searchMatch = searchContent.includes(searchQuery);
-                const isTagQueryEmpty = (tagQueries.length === 1 && tagQueries[0] === "");
-
-                if (!mangaIds || mangaIds.length === 0) {
-                    // If no manga IDs, match only on title and if no tag query
-                    if (searchMatch && isTagQueryEmpty) {
-                        $li.toggleClass('hidden', false);
-                    } else {
-                        $li.toggleClass('hidden', true);
-                    }
-                    return;
-                }
-
-                // Check each manga in this bookmark for matching tags
-                for (const mangaId of mangaIds) {
-                    const mangaData = await GM.getValue(`manga_${mangaId}`, null);
-                    if (!mangaData || !mangaData.tags) continue;
-
-                    const cleanedTags = mangaData.tags.map(tag =>
-                        tag.replace(/\d+K?$/, '').trim().toLowerCase()
-                    );
-
-                    const tagMatch = isTagQueryEmpty ? true : tagQueries.every(query => {
-                        const queryWords = query.split(/\s+/);
-                        return cleanedTags.some(tag =>
-                            queryWords.every(word => tag.includes(word))
+                        const cleanedTags = tags.map(tag =>
+                            tag.replace(/\d+K?$/, '').trim().toLowerCase()
                         );
-                    });
 
-                    if (searchMatch && tagMatch) {
-                        matchFound = true;
-                        break;
-                    }
+                        const textContent = $li.find('.bookmark-link').text().toLowerCase();
+                        const imageSrc = $li.find('.bookmark-link img').attr('src') || '';
+
+                        const searchMatch = textContent.includes(searchQuery) || imageSrc.toLowerCase().includes(searchQuery);
+                        const tagMatch = (tagQueries.length === 1 && tagQueries[0] === "") ? true : tagQueries.every(query => {
+                            const queryWords = query.split(/\s+/);
+                            return cleanedTags.some(tag =>
+                                queryWords.every(word => tag.includes(word))
+                            );
+                        });
+
+                        $li.toggleClass('hidden', !(searchMatch && tagMatch));
+                    });
                 }
 
-                $li.toggleClass('hidden', !matchFound);
-            });
+                function filterPages() {
+                    const searchQuery = pageTitleInput.val().toLowerCase();
+                    const tagQueries = pageTagInput.val().toLowerCase().trim().split(/,\s*|\s+/);
+
+                    $('.bookmarks-list li').each(async function () {
+                        const $li = $(this);
+                        const bookmarkUrl = $li.find('.bookmark-link').attr('href');
+                        let matchFound = false;
+
+                        // Get all manga IDs associated with this bookmark
+                        const mangaIds = await GM.getValue(`bookmark_manga_ids_${bookmarkUrl}`, []);
+
+                        const searchContent = $li.find('.bookmark-link').text().toLowerCase();
+                        const searchMatch = searchContent.includes(searchQuery);
+                        const isTagQueryEmpty = (tagQueries.length === 1 && tagQueries[0] === "");
+
+                        if (!mangaIds || mangaIds.length === 0) {
+                            // If no manga IDs, match only on title and if no tag query
+                            if (searchMatch && isTagQueryEmpty) {
+                                $li.toggleClass('hidden', false);
+                            } else {
+                                $li.toggleClass('hidden', true);
+                            }
+                            return;
+                        }
+
+                        // Check each manga in this bookmark for matching tags
+                        for (const mangaId of mangaIds) {
+                            const mangaData = await GM.getValue(`manga_${mangaId}`, null);
+                            if (!mangaData || !mangaData.tags) continue;
+
+                            const cleanedTags = mangaData.tags.map(tag =>
+                                tag.replace(/\d+K?$/, '').trim().toLowerCase()
+                            );
+
+                            const tagMatch = isTagQueryEmpty ? true : tagQueries.every(query => {
+                                const queryWords = query.split(/\s+/);
+                                return cleanedTags.some(tag =>
+                                    queryWords.every(word => tag.includes(word))
+                                );
+                            });
+
+                            if (searchMatch && tagMatch) {
+                                matchFound = true;
+                                break;
+                            }
+                        }
+
+                        $li.toggleClass('hidden', !matchFound);
+                    });
+                }
+
+            } else {
+                console.error('Bookmarked pages or mangas is not an array');
+            }
         }
 
-    } else {
-        console.error('Bookmarked pages or mangas is not an array');
+
+
+
+
+        // Function to fetch manga info (title and cover image) with cache and retry
+        async function fetchMangaInfoWithCacheAndRetry(manga) {
+            const cacheKey = `manga-info-${manga}`;
+            const cachedInfo = await GM.getValue(cacheKey);
+            if (cachedInfo) {
+                return cachedInfo;
+            }
+
+            try {
+                const response = await fetch(manga);
+                const html = await response.text();
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const title = doc.querySelector('h1.title').textContent;
+                const coverImage = doc.querySelector('#cover img').src;
+                const info = { title, coverImage };
+                await GM.setValue(cacheKey, info);
+                return info;
+            } catch (error) {
+                console.error(`Error fetching manga info for: ${manga}`, error);
+                throw error;
+            }
+        }
+
+        // Call the function to display bookmarked pages with active loading
+        displayBookmarkedPages();
+
+
     }
-}
-
-
-
-
-
-// Function to fetch manga info (title and cover image) with cache and retry
-async function fetchMangaInfoWithCacheAndRetry(manga) {
-    const cacheKey = `manga-info-${manga}`;
-    const cachedInfo = await GM.getValue(cacheKey);
-    if (cachedInfo) {
-        return cachedInfo;
-    }
-
-    try {
-        const response = await fetch(manga);
-        const html = await response.text();
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(html, 'text/html');
-        const title = doc.querySelector('h1.title').textContent;
-        const coverImage = doc.querySelector('#cover img').src;
-        const info = { title, coverImage };
-        await GM.setValue(cacheKey, info);
-        return info;
-    } catch (error) {
-        console.error(`Error fetching manga info for: ${manga}`, error);
-        throw error;
-    }
-}
-
-// Call the function to display bookmarked pages with active loading
-displayBookmarkedPages();
-
-
-}
 })();
 // ------------------------  *Bookmarks**  ------------------
 
@@ -2350,7 +2391,7 @@ var siteSearchLink = '<div class="sort-type"><a href="https://nhentai.net/search
 var favSearchBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites/?q=language%3A%22english%22+' + searchQuery + '"><i class="fa fa-flag"></i> ENG</a>';
 var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites/?q=language%3A%22english%22+"><i class="fa fa-flag"></i> ENG</a>';
 
-(async function() {
+(async function () {
     const englishFilterEnabled = await GM.getValue('englishFilterEnabled', true);
 
     if (englishFilterEnabled) {
@@ -2386,7 +2427,7 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
 
 
 //------------------------  **Nhentai Auto Login**  --------------------------
-(async function() {
+(async function () {
     const autoLoginEnabled = await GM.getValue('autoLoginEnabled', true);
     const email = await GM.getValue('email');
     const password = await GM.getValue('password');
@@ -2413,10 +2454,10 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
 
 //----------------------------**Settings**-----------------------------
 
-    // Function to add the settings button to the menu
-    function addSettingsButton() {
-        // Create the settings button
-        const settingsButtonHtml = `
+// Function to add the settings button to the menu
+function addSettingsButton() {
+    // Create the settings button
+    const settingsButtonHtml = `
           <li>
             <a href="/settings/">
               <i class="fa fa-cog"></i>
@@ -2424,34 +2465,34 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
             </a>
           </li>
         `;
-        const settingsButton = $(settingsButtonHtml);
+    const settingsButton = $(settingsButtonHtml);
 
-        // Append the settings button to the dropdown menu and the left menu
-        const dropdownMenu = $('ul.dropdown-menu');
-        dropdownMenu.append(settingsButton);
+    // Append the settings button to the dropdown menu and the left menu
+    const dropdownMenu = $('ul.dropdown-menu');
+    dropdownMenu.append(settingsButton);
 
-        const menu = $('ul.menu.left');
-        menu.append(settingsButton);
+    const menu = $('ul.menu.left');
+    menu.append(settingsButton);
+}
+
+// Call the function to add the settings button
+addSettingsButton();
+
+// Handle settings page
+if (window.location.href.includes('/settings')) {
+    // Remove 404 Not Found elements
+    const notFoundHeading = document.querySelector('h1');
+    if (notFoundHeading && notFoundHeading.textContent === '404 – Not Found') {
+        notFoundHeading.remove();
     }
 
-    // Call the function to add the settings button
-    addSettingsButton();
+    const notFoundMessage = document.querySelector('p');
+    if (notFoundMessage && notFoundMessage.textContent === "Looks like what you're looking for isn't here.") {
+        notFoundMessage.remove();
+    }
 
-    // Handle settings page
-    if (window.location.href.includes('/settings')) {
-        // Remove 404 Not Found elements
-        const notFoundHeading = document.querySelector('h1');
-        if (notFoundHeading && notFoundHeading.textContent === '404 – Not Found') {
-            notFoundHeading.remove();
-        }
-
-        const notFoundMessage = document.querySelector('p');
-        if (notFoundMessage && notFoundMessage.textContent === "Looks like what you're looking for isn't here.") {
-            notFoundMessage.remove();
-        }
-
-// Add settings form and random hentai preferences
-const settingsHtml = `
+    // Add settings form and random hentai preferences
+    const settingsHtml = `
 <style>
     /* Modern Settings UI */
     :root {
@@ -3570,1396 +3611,1398 @@ const settingsHtml = `
 </div>
 `;
 
-// Append settings form to the container
-$('div.container').append(settingsHtml);
+    // Append settings form to the container
+    $('div.container').append(settingsHtml);
 
-const settingsLastTabKey = 'settingsLastTab';
+    const settingsLastTabKey = 'settingsLastTab';
 
-function setActiveSettingsTab(requestedTab) {
-    const fallbackTab = 'general';
-    const tab = String(requestedTab || '').trim() || fallbackTab;
-    const $navItem = $(`.settings-nav .nav-item[data-tab="${tab}"]`);
-    const $tabContent = $(`#tab-${tab}`);
-    const resolvedTab = ($navItem.length && $tabContent.length) ? tab : fallbackTab;
+    function setActiveSettingsTab(requestedTab) {
+        const fallbackTab = 'general';
+        const tab = String(requestedTab || '').trim() || fallbackTab;
+        const $navItem = $(`.settings-nav .nav-item[data-tab="${tab}"]`);
+        const $tabContent = $(`#tab-${tab}`);
+        const resolvedTab = ($navItem.length && $tabContent.length) ? tab : fallbackTab;
 
-    $('.settings-nav .nav-item').removeClass('active');
-    $(`.settings-nav .nav-item[data-tab="${resolvedTab}"]`).addClass('active');
-    $('.tab-content').removeClass('active');
-    $(`#tab-${resolvedTab}`).addClass('active');
+        $('.settings-nav .nav-item').removeClass('active');
+        $(`.settings-nav .nav-item[data-tab="${resolvedTab}"]`).addClass('active');
+        $('.tab-content').removeClass('active');
+        $(`#tab-${resolvedTab}`).addClass('active');
 
-    return resolvedTab;
-}
+        return resolvedTab;
+    }
 
-$(document).ready(function() {
-    $('.settings-nav .nav-item').on('click', async function() {
-        const target = $(this).data('tab');
-        const resolvedTab = setActiveSettingsTab(target);
-        if (!$('.settings-wrapper').hasClass('classic-mode')) {
-            await GM.setValue(settingsLastTabKey, resolvedTab);
-        }
-    });
-});
-
-
-
-
-
-
-        // Nhentai Plus+.user.js (2441-2516)
-        // Load settings
-        (async function() {
-            const findSimilarEnabled = await GM.getValue('findSimilarEnabled', true);
-            const englishFilterEnabled = await GM.getValue('englishFilterEnabled', true);
-            const autoLoginEnabled = await GM.getValue('autoLoginEnabled', true);
-            const email = await GM.getValue('email', '');
-            const password = await GM.getValue('password', '');
-            const findAltmangaEnabled = await GM.getValue('findAltmangaEnabled', true);
-            const bookmarksEnabled = await GM.getValue('bookmarksEnabled', true);
-            const language = await GM.getValue('randomPrefLanguage', '');
-            const tags = await GM.getValue('randomPrefTags', []);
-            const pagesMin = await GM.getValue('randomPrefPagesMin', '');
-            const pagesMax = await GM.getValue('randomPrefPagesMax', '');
-            const matchAllTags = await GM.getValue('matchAllTags', true);
-            const blacklistedTags = await GM.getValue('blacklistedTags', []);
-            const mustAddTagsEnabled = await GM.getValue('mustAddTagsEnabled', false);
-            const mustAddTags = (await GM.getValue('mustAddTags', [])).map(tag => tag.toLowerCase());
-            const smartTagEnabled = await GM.getValue('smartTagEnabled', false);
-            const findAltMangaThumbnailEnabled = await GM.getValue('findAltMangaThumbnailEnabled', true);
-            const openInNewTabEnabled = await GM.getValue('openInNewTabEnabled', true);
-            const mangaBookMarkingButtonEnabled = await GM.getValue('mangaBookMarkingButtonEnabled', true);
-            const shareButtonEnabled = await GM.getValue('shareButtonEnabled', true);
-            const receiveSharesEnabled = await GM.getValue('receiveSharesEnabled', true);
-            const receivePopupsEnabled = await GM.getValue('receivePopupsEnabled', true);
-            const inboxAutoRemoveRead = await GM.getValue('inboxAutoRemoveRead', false);
-            let inboxPollIntervalMin = await GM.getValue('inboxPollIntervalMin', null);
-            if (inboxPollIntervalMin === null) {
-                const legacySec = await GM.getValue('inboxPollIntervalSec', null);
-                inboxPollIntervalMin = legacySec != null ? Math.max(1, Math.round(Number(legacySec) / 60)) : 5;
-                await GM.setValue('inboxPollIntervalMin', inboxPollIntervalMin);
-            }
-            const mangaBookMarkingType = await GM.getValue('mangaBookMarkingType', 'cover');
-            const bookmarkArrangementType = await GM.getValue('bookmarkArrangementType', 'default');
-            const monthFilterEnabled = await GM.getValue('monthFilterEnabled', true);
-            const tooltipsEnabled = await GM.getValue('tooltipsEnabled', true);
-            const galleryCaptionTooltipsEnabled = await GM.getValue('galleryCaptionTooltipsEnabled', true);
-            const mangagroupingenabled = await GM.getValue('mangagroupingenabled', true);
-            const maxMangaPerBookmark = await GM.getValue('maxMangaPerBookmark', 5);
-            const openInNewTabType = await GM.getValue('openInNewTabType', 'background');
-            const offlineFavoritingEnabled = await GM.getValue('offlineFavoritingEnabled', true);
-            const offlineFavoritesPageEnabled = await GM.getValue('offlineFavoritesPageEnabled', true);
-            const readMangaPageEnabled = await GM.getValue('readMangaPageEnabled', true);
-            const maxReadMangaDisplay = await GM.getValue('maxReadMangaDisplay', 100);
-            const quickNutPageEnabled = await GM.getValue('quickNutPageEnabled', true);
-            const quickNutEnglishOnlyEnabled = await GM.getValue('quickNutEnglishOnlyEnabled', true);
-            const quickNutSkipReadEnabled = await GM.getValue('quickNutSkipReadEnabled', true);
-            const quickNutRefreshMode = await GM.getValue('quickNutRefreshMode', 'daily');
-            const quickNutCustomMinutes = await GM.getValue('quickNutCustomMinutes', 1440);
-            const nfmPageEnabled = await GM.getValue('nfmPageEnabled', true);
-
-            // Online Data Sync settings
-            const publicSyncEnabled = await GM.getValue('publicSyncEnabled', false);
-            const privateSyncEnabled = await GM.getValue('privateSyncEnabled', false);
-            const privateStorageUrl = await GM.getValue('privateStorageUrl', '');
-            const privateApiKey = await GM.getValue('privateApiKey', '');
-            const autoSyncEnabled = await GM.getValue('autoSyncEnabled', false);
-            const syncInterval = await GM.getValue('syncInterval', 30);
-            const userUUID = await syncSystem.getUserUUID();
-            const lastSyncUpload = await GM.getValue('lastSyncUpload', null);
-            const lastSyncDownload = await GM.getValue('lastSyncDownload', null);
-            const bookmarksPageEnabled = await GM.getValue('bookmarksPageEnabled', true);
-            const replaceRelatedWithBookmarks = await GM.getValue('replaceRelatedWithBookmarks', true);
-            const enableRelatedFlipButton = await GM.getValue('enableRelatedFlipButton', true);
-            const twitterButtonEnabled = await GM.getValue('twitterButtonEnabled', true);
-            const enableRandomButton = await GM.getValue('enableRandomButton', true);
-            const randomOpenType = await GM.getValue('randomOpenType', 'new-tab');
-            const profileButtonEnabled = await GM.getValue('profileButtonEnabled', true);
-            const infoButtonEnabled = await GM.getValue('infoButtonEnabled', true);
-            const logoutButtonEnabled = await GM.getValue('logoutButtonEnabled', true);
-            const bookmarkLinkEnabled = await GM.getValue('bookmarkLinkEnabled', true);
-            const findSimilarType = await GM.getValue('findSimilarType', 'immediately');
-            const showNonEnglish = await GM.getValue('showNonEnglish', 'show');
-            const showPageNumbersEnabled = await GM.getValue('showPageNumbersEnabled', true);
-            const useClassicLayout = await GM.getValue('useClassicLayout', false);
-
-            // New Fade & Read settings
-            const markAsReadEnabled = await GM.getValue('markAsReadEnabled', true);
-            const autoMarkReadEnabled = await GM.getValue('autoMarkReadEnabled', true);
-            const hideBlacklistEnabled = await GM.getValue('hideBlacklistEnabled', true);
-            const autoHideBlacklistedTagsEnabled = await GM.getValue('autoHideBlacklistedTagsEnabled', false);
-            const nonEnglishOpacity = await GM.getValue('nonEnglishOpacity', 0.2);
-            const readGalleriesOpacity = await GM.getValue('readGalleriesOpacity', 0.6);
-
-            // New Tag Management settings
-            const tagWarningEnabled = await GM.getValue('tagWarningEnabled', true);
-            const blacklistTagsList = await GM.getValue('blacklistTagsList', ['scat', 'guro', 'vore', 'ryona', 'snuff']);
-            const warningTagsList = await GM.getValue('warningTagsList', ['ntr', 'netorare', 'cheating', 'ugly bastard', 'mind break']);
-            const favoriteTagsList = await GM.getValue('favoriteTagsList', []);
-            const smartTagOverrides = await GM.getValue('smartTagOverrides', {});
-
-
-            $('#findSimilarEnabled').prop('checked', findSimilarEnabled);
-            $('#find-similar-options').toggle(findSimilarEnabled);
-            $('#showNonEnglishSelect').val(showNonEnglish);
-            $('#showPageNumbersEnabled').prop('checked', showPageNumbersEnabled);
-            $('#useClassicLayout').prop('checked', useClassicLayout);
-            if (useClassicLayout) {
-                $('.settings-wrapper').addClass('classic-mode');
-            } else {
-                const savedTab = await GM.getValue(settingsLastTabKey, 'general');
-                const resolvedTab = setActiveSettingsTab(savedTab);
+    $(document).ready(function () {
+        $('.settings-nav .nav-item').on('click', async function () {
+            const target = $(this).data('tab');
+            const resolvedTab = setActiveSettingsTab(target);
+            if (!$('.settings-wrapper').hasClass('classic-mode')) {
                 await GM.setValue(settingsLastTabKey, resolvedTab);
             }
+        });
+    });
 
-            $('#englishFilterEnabled').prop('checked', englishFilterEnabled);
-            $('#autoLoginEnabled').prop('checked', autoLoginEnabled);
-            $('#email').val(email);
-            $('#password').val(password);
-            $('#findAltmangaEnabled').prop('checked', findAltmangaEnabled);
-            $('#bookmarksEnabled').prop('checked', bookmarksEnabled);
-            $('#pref-language').val(language);
-            $('#pref-tags').val(tags.join(', '));
-            $('#pref-pages-min').val(pagesMin);
-            $('#pref-pages-max').val(pagesMax);
-            $('#autoLoginCredentials').toggle(autoLoginEnabled);
-            $('#matchAllTags').prop('checked', matchAllTags);
-            $('#blacklisted-tags').val(blacklistedTags.join(', '));
-            $('#mustAddTagsEnabled').prop('checked', mustAddTagsEnabled);
-            $('#must-add-tags').val(mustAddTags.join(', '));
-            $('#must-add-tags').prop('disabled', !mustAddTagsEnabled);
-            $('#smartTagEnabled').prop('checked', smartTagEnabled);
 
-            $('#mustAddTagsEnabled').on('change', function() {
-                $('#must-add-tags').prop('disabled', !$(this).is(':checked'));
-            });
-            $('#findAltMangaThumbnailEnabled').prop('checked', findAltMangaThumbnailEnabled);
-            $('#openInNewTabEnabled').prop('checked', openInNewTabEnabled);
-            $('#mangaBookMarkingButtonEnabled').prop('checked', mangaBookMarkingButtonEnabled);
-            $('#shareButtonEnabled').prop('checked', shareButtonEnabled);
-            $('#receiveSharesEnabled').prop('checked', receiveSharesEnabled);
-            $('#receivePopupsEnabled').prop('checked', receivePopupsEnabled);
-            $('#inboxAutoRemoveRead').prop('checked', inboxAutoRemoveRead);
-            $('#inboxPollIntervalMin').val(inboxPollIntervalMin);
-            $('#monthFilterEnabled').prop('checked', monthFilterEnabled);
-            $('#tooltipsEnabled').prop('checked', tooltipsEnabled);
-            $('#galleryCaptionTooltipsEnabled').prop('checked', galleryCaptionTooltipsEnabled);
-            $('#mangagroupingenabled').prop('checked', mangagroupingenabled);
-            $('#max-manga-per-bookmark-slider').val(maxMangaPerBookmark);
-            $('#offlineFavoritingEnabled').prop('checked', offlineFavoritingEnabled);
-            $('#offlineFavoritesPageEnabled').prop('checked', offlineFavoritesPageEnabled);
-            $('#readMangaPageEnabled').prop('checked', readMangaPageEnabled);
-            
-            // Initialize Read Manga Page options
-            $('#max-read-manga-display-slider').val(maxReadMangaDisplay);
-            $('#max-read-manga-display-value').text(maxReadMangaDisplay);
-            $('#read-manga-page-options').toggle(readMangaPageEnabled);
-            $('#quickNutPageEnabled').prop('checked', quickNutPageEnabled);
-            $('#quick-nut-page-options').toggle(quickNutPageEnabled);
-            $('#quickNutEnglishOnlyEnabled').prop('checked', quickNutEnglishOnlyEnabled);
-            $('#quickNutSkipReadEnabled').prop('checked', quickNutSkipReadEnabled);
-            $('#quickNutRefreshMode').val(quickNutRefreshMode);
-            $('#quickNutCustomMinutes').val(quickNutCustomMinutes);
-            $('#quickNutCustomMinutesContainer').toggle(quickNutRefreshMode === 'custom');
-            
-            $('#nfmPageEnabled').prop('checked', nfmPageEnabled);
-            $('#bookmarksPageEnabled').prop('checked', bookmarksPageEnabled);
-            $('#replaceRelatedWithBookmarks').prop('checked', replaceRelatedWithBookmarks);
-            $('#enableRelatedFlipButton').prop('checked', enableRelatedFlipButton);
-            $('#twitterButtonEnabled').prop('checked', twitterButtonEnabled);
-            $('#enableRandomButton').prop('checked', enableRandomButton);
-            $('#random-open-in-new-tab').prop('checked', randomOpenType === 'new-tab');
-            $('#random-open-in-current-tab').prop('checked', randomOpenType === 'current-tab');
-            $('#profileButtonEnabled').prop('checked', profileButtonEnabled);
-            $('#infoButtonEnabled').prop('checked', infoButtonEnabled);
-            $('#logoutButtonEnabled').prop('checked', logoutButtonEnabled);
-            $('#bookmarkLinkEnabled').prop('checked', bookmarkLinkEnabled);
-            $('#open-immediately').prop('checked', findSimilarType === 'immediately');
-            $('#input-tags').prop('checked', findSimilarType === 'input-tags');
 
-            // Populate new Fade & Read settings
-            $('#markAsReadEnabled').prop('checked', markAsReadEnabled);
-            $('#autoMarkReadEnabled').prop('checked', autoMarkReadEnabled);
-            $('#hideBlacklistEnabled').prop('checked', hideBlacklistEnabled);
-            $('#autoHideBlacklistedTagsEnabled').prop('checked', autoHideBlacklistedTagsEnabled);
-            $('#nonEnglishOpacity').val(nonEnglishOpacity);
-            $('#nonEnglishOpacityValue').text(nonEnglishOpacity);
-            $('#readGalleriesOpacity').val(readGalleriesOpacity);
-            $('#readGalleriesOpacityValue').text(readGalleriesOpacity);
 
-            // Populate new Tag Management settings
-            $('#tagWarningEnabled').prop('checked', tagWarningEnabled);
-            $('#blacklistTags').val(blacklistTagsList.join(', '));
-            $('#warningTags').val(warningTagsList.join(', '));
-            $('#favoriteTags').val(favoriteTagsList.join(', '));
-            if (typeof renderOverridesList === 'function') {
-                renderOverridesList(smartTagOverrides);
-            }
 
-            // Populate sync settings
 
-            // Inbox settings expand/collapse
-            const inboxSettingsExpanded = await GM.getValue('inboxSettingsExpanded', false);
-            $('#inbox-settings-content').toggle(inboxSettingsExpanded);
-            $('#inbox-settings h3').toggleClass('expanded', inboxSettingsExpanded);
-            $('#inbox-settings h3').click(async function() {
-                const isExpanded = $('#inbox-settings-content').is(':visible');
-                $('#inbox-settings-content').slideToggle();
-                await GM.setValue('inboxSettingsExpanded', !isExpanded);
-            });
+    // Nhentai Plus+.user.js (2441-2516)
+    // Load settings
+    (async function () {
+        const findSimilarEnabled = await GM.getValue('findSimilarEnabled', true);
+        const englishFilterEnabled = await GM.getValue('englishFilterEnabled', true);
+        const autoLoginEnabled = await GM.getValue('autoLoginEnabled', true);
+        const email = await GM.getValue('email', '');
+        const password = await GM.getValue('password', '');
+        const findAltmangaEnabled = await GM.getValue('findAltmangaEnabled', true);
+        const bookmarksEnabled = await GM.getValue('bookmarksEnabled', true);
+        const language = await GM.getValue('randomPrefLanguage', '');
+        const tags = await GM.getValue('randomPrefTags', []);
+        const pagesMin = await GM.getValue('randomPrefPagesMin', '');
+        const pagesMax = await GM.getValue('randomPrefPagesMax', '');
+        const matchAllTags = await GM.getValue('matchAllTags', true);
+        const blacklistedTags = await GM.getValue('blacklistedTags', []);
+        const mustAddTagsEnabled = await GM.getValue('mustAddTagsEnabled', false);
+        const mustAddTags = (await GM.getValue('mustAddTags', [])).map(tag => tag.toLowerCase());
+        const smartTagEnabled = await GM.getValue('smartTagEnabled', false);
+        const findAltMangaThumbnailEnabled = await GM.getValue('findAltMangaThumbnailEnabled', true);
+        const openInNewTabEnabled = await GM.getValue('openInNewTabEnabled', true);
+        const mangaBookMarkingButtonEnabled = await GM.getValue('mangaBookMarkingButtonEnabled', true);
+        const shareButtonEnabled = await GM.getValue('shareButtonEnabled', true);
+        const receiveSharesEnabled = await GM.getValue('receiveSharesEnabled', true);
+        const receivePopupsEnabled = await GM.getValue('receivePopupsEnabled', true);
+        const inboxAutoRemoveRead = await GM.getValue('inboxAutoRemoveRead', false);
+        let inboxPollIntervalMin = await GM.getValue('inboxPollIntervalMin', null);
+        if (inboxPollIntervalMin === null) {
+            const legacySec = await GM.getValue('inboxPollIntervalSec', null);
+            inboxPollIntervalMin = legacySec != null ? Math.max(1, Math.round(Number(legacySec) / 60)) : 5;
+            await GM.setValue('inboxPollIntervalMin', inboxPollIntervalMin);
+        }
+        const mangaBookMarkingType = await GM.getValue('mangaBookMarkingType', 'cover');
+        const bookmarkArrangementType = await GM.getValue('bookmarkArrangementType', 'default');
+        const monthFilterEnabled = await GM.getValue('monthFilterEnabled', true);
+        const tooltipsEnabled = await GM.getValue('tooltipsEnabled', true);
+        const galleryCaptionTooltipsEnabled = await GM.getValue('galleryCaptionTooltipsEnabled', true);
+        const mangagroupingenabled = await GM.getValue('mangagroupingenabled', true);
+        const maxMangaPerBookmark = await GM.getValue('maxMangaPerBookmark', 5);
+        const openInNewTabType = await GM.getValue('openInNewTabType', 'background');
+        const offlineFavoritingEnabled = await GM.getValue('offlineFavoritingEnabled', true);
+        const offlineFavoritesPageEnabled = await GM.getValue('offlineFavoritesPageEnabled', true);
+        const readMangaPageEnabled = await GM.getValue('readMangaPageEnabled', true);
+        const maxReadMangaDisplay = await GM.getValue('maxReadMangaDisplay', 100);
+        const quickNutPageEnabled = await GM.getValue('quickNutPageEnabled', true);
+        const quickNutEnglishOnlyEnabled = await GM.getValue('quickNutEnglishOnlyEnabled', true);
+        const quickNutSkipReadEnabled = await GM.getValue('quickNutSkipReadEnabled', true);
+        const quickNutRefreshMode = await GM.getValue('quickNutRefreshMode', 'daily');
+        const quickNutCustomMinutes = await GM.getValue('quickNutCustomMinutes', 1440);
+        const nfmPageEnabled = await GM.getValue('nfmPageEnabled', true);
 
-            // Render existing inbox messages
-            await renderInboxList();
+        // Online Data Sync settings
+        const publicSyncEnabled = await GM.getValue('publicSyncEnabled', false);
+        const privateSyncEnabled = await GM.getValue('privateSyncEnabled', false);
+        const privateStorageUrl = await GM.getValue('privateStorageUrl', '');
+        const privateApiKey = await GM.getValue('privateApiKey', '');
+        const autoSyncEnabled = await GM.getValue('autoSyncEnabled', false);
+        const syncInterval = await GM.getValue('syncInterval', 30);
+        const userUUID = await syncSystem.getUserUUID();
+        const lastSyncUpload = await GM.getValue('lastSyncUpload', null);
+        const lastSyncDownload = await GM.getValue('lastSyncDownload', null);
+        const bookmarksPageEnabled = await GM.getValue('bookmarksPageEnabled', true);
+        const replaceRelatedWithBookmarks = await GM.getValue('replaceRelatedWithBookmarks', true);
+        const enableRelatedFlipButton = await GM.getValue('enableRelatedFlipButton', true);
+        const twitterButtonEnabled = await GM.getValue('twitterButtonEnabled', true);
+        const enableRandomButton = await GM.getValue('enableRandomButton', true);
+        const randomOpenType = await GM.getValue('randomOpenType', 'new-tab');
+        const profileButtonEnabled = await GM.getValue('profileButtonEnabled', true);
+        const infoButtonEnabled = await GM.getValue('infoButtonEnabled', true);
+        const logoutButtonEnabled = await GM.getValue('logoutButtonEnabled', true);
+        const bookmarkLinkEnabled = await GM.getValue('bookmarkLinkEnabled', true);
+        const findSimilarType = await GM.getValue('findSimilarType', 'immediately');
+        const showNonEnglish = await GM.getValue('showNonEnglish', 'show');
+        const showPageNumbersEnabled = await GM.getValue('showPageNumbersEnabled', true);
+        const useClassicLayout = await GM.getValue('useClassicLayout', false);
 
-            // Manual Inbox check
-            $('#checkInboxNow').on('click', async function() {
-                try {
-                    const showPopups = $('#receivePopupsEnabled').prop('checked');
-                    const messages = await fetchInboxOnce(true);
-                    if (messages && messages.length) {
-                        await appendToInbox(messages);
-                        await renderInboxList();
-                        if (showPopups) {
-                            for (const msg of messages) {
-                                const galleryUrl = msg?.url || (msg?.id ? `https://nhentai.net/g/${msg.id}/` : '');
-                                const content = `
+        // New Fade & Read settings
+        const markAsReadEnabled = await GM.getValue('markAsReadEnabled', true);
+        const autoMarkReadEnabled = await GM.getValue('autoMarkReadEnabled', true);
+        const hideBlacklistEnabled = await GM.getValue('hideBlacklistEnabled', true);
+        const autoHideBlacklistedTagsEnabled = await GM.getValue('autoHideBlacklistedTagsEnabled', false);
+        const nonEnglishOpacity = await GM.getValue('nonEnglishOpacity', 0.2);
+        const readGalleriesOpacity = await GM.getValue('readGalleriesOpacity', 0.6);
+
+        // New Tag Management settings
+        const tagWarningEnabled = await GM.getValue('tagWarningEnabled', true);
+        const blacklistTagsList = await GM.getValue('blacklistTagsList', ['scat', 'guro', 'vore', 'ryona', 'snuff']);
+        const warningTagsList = await GM.getValue('warningTagsList', ['ntr', 'netorare', 'cheating', 'ugly bastard', 'mind break']);
+        const favoriteTagsList = await GM.getValue('favoriteTagsList', []);
+        const smartTagOverrides = await GM.getValue('smartTagOverrides', {});
+
+
+        $('#findSimilarEnabled').prop('checked', findSimilarEnabled);
+        $('#find-similar-options').toggle(findSimilarEnabled);
+        $('#showNonEnglishSelect').val(showNonEnglish);
+        $('#showPageNumbersEnabled').prop('checked', showPageNumbersEnabled);
+        $('#useClassicLayout').prop('checked', useClassicLayout);
+        if (useClassicLayout) {
+            $('.settings-wrapper').addClass('classic-mode');
+        } else {
+            const savedTab = await GM.getValue(settingsLastTabKey, 'general');
+            const resolvedTab = setActiveSettingsTab(savedTab);
+            await GM.setValue(settingsLastTabKey, resolvedTab);
+        }
+
+        $('#englishFilterEnabled').prop('checked', englishFilterEnabled);
+        $('#autoLoginEnabled').prop('checked', autoLoginEnabled);
+        $('#email').val(email);
+        $('#password').val(password);
+        $('#findAltmangaEnabled').prop('checked', findAltmangaEnabled);
+        $('#bookmarksEnabled').prop('checked', bookmarksEnabled);
+        $('#pref-language').val(language);
+        $('#pref-tags').val(tags.join(', '));
+        $('#pref-pages-min').val(pagesMin);
+        $('#pref-pages-max').val(pagesMax);
+        $('#autoLoginCredentials').toggle(autoLoginEnabled);
+        $('#matchAllTags').prop('checked', matchAllTags);
+        $('#blacklisted-tags').val(blacklistedTags.join(', '));
+        $('#mustAddTagsEnabled').prop('checked', mustAddTagsEnabled);
+        $('#must-add-tags').val(mustAddTags.join(', '));
+        $('#must-add-tags').prop('disabled', !mustAddTagsEnabled);
+        $('#smartTagEnabled').prop('checked', smartTagEnabled);
+
+        $('#mustAddTagsEnabled').on('change', function () {
+            $('#must-add-tags').prop('disabled', !$(this).is(':checked'));
+        });
+        $('#findAltMangaThumbnailEnabled').prop('checked', findAltMangaThumbnailEnabled);
+        $('#openInNewTabEnabled').prop('checked', openInNewTabEnabled);
+        $('#mangaBookMarkingButtonEnabled').prop('checked', mangaBookMarkingButtonEnabled);
+        $('#shareButtonEnabled').prop('checked', shareButtonEnabled);
+        $('#receiveSharesEnabled').prop('checked', receiveSharesEnabled);
+        $('#receivePopupsEnabled').prop('checked', receivePopupsEnabled);
+        $('#inboxAutoRemoveRead').prop('checked', inboxAutoRemoveRead);
+        $('#inboxPollIntervalMin').val(inboxPollIntervalMin);
+        $('#monthFilterEnabled').prop('checked', monthFilterEnabled);
+        $('#tooltipsEnabled').prop('checked', tooltipsEnabled);
+        $('#galleryCaptionTooltipsEnabled').prop('checked', galleryCaptionTooltipsEnabled);
+        $('#mangagroupingenabled').prop('checked', mangagroupingenabled);
+        $('#max-manga-per-bookmark-slider').val(maxMangaPerBookmark);
+        $('#offlineFavoritingEnabled').prop('checked', offlineFavoritingEnabled);
+        $('#offlineFavoritesPageEnabled').prop('checked', offlineFavoritesPageEnabled);
+        $('#readMangaPageEnabled').prop('checked', readMangaPageEnabled);
+
+        // Initialize Read Manga Page options
+        $('#max-read-manga-display-slider').val(maxReadMangaDisplay);
+        $('#max-read-manga-display-value').text(maxReadMangaDisplay);
+        $('#read-manga-page-options').toggle(readMangaPageEnabled);
+        $('#quickNutPageEnabled').prop('checked', quickNutPageEnabled);
+        $('#quick-nut-page-options').toggle(quickNutPageEnabled);
+        $('#quickNutEnglishOnlyEnabled').prop('checked', quickNutEnglishOnlyEnabled);
+        $('#quickNutSkipReadEnabled').prop('checked', quickNutSkipReadEnabled);
+        $('#quickNutRefreshMode').val(quickNutRefreshMode);
+        $('#quickNutCustomMinutes').val(quickNutCustomMinutes);
+        $('#quickNutCustomMinutesContainer').toggle(quickNutRefreshMode === 'custom');
+
+        $('#nfmPageEnabled').prop('checked', nfmPageEnabled);
+        $('#bookmarksPageEnabled').prop('checked', bookmarksPageEnabled);
+        $('#replaceRelatedWithBookmarks').prop('checked', replaceRelatedWithBookmarks);
+        $('#enableRelatedFlipButton').prop('checked', enableRelatedFlipButton);
+        $('#twitterButtonEnabled').prop('checked', twitterButtonEnabled);
+        $('#enableRandomButton').prop('checked', enableRandomButton);
+        $('#random-open-in-new-tab').prop('checked', randomOpenType === 'new-tab');
+        $('#random-open-in-current-tab').prop('checked', randomOpenType === 'current-tab');
+        $('#profileButtonEnabled').prop('checked', profileButtonEnabled);
+        $('#infoButtonEnabled').prop('checked', infoButtonEnabled);
+        $('#logoutButtonEnabled').prop('checked', logoutButtonEnabled);
+        $('#bookmarkLinkEnabled').prop('checked', bookmarkLinkEnabled);
+        $('#open-immediately').prop('checked', findSimilarType === 'immediately');
+        $('#input-tags').prop('checked', findSimilarType === 'input-tags');
+
+        // Populate new Fade & Read settings
+        $('#markAsReadEnabled').prop('checked', markAsReadEnabled);
+        $('#autoMarkReadEnabled').prop('checked', autoMarkReadEnabled);
+        $('#hideBlacklistEnabled').prop('checked', hideBlacklistEnabled);
+        $('#autoHideBlacklistedTagsEnabled').prop('checked', autoHideBlacklistedTagsEnabled);
+        $('#nonEnglishOpacity').val(nonEnglishOpacity);
+        $('#nonEnglishOpacityValue').text(nonEnglishOpacity);
+        $('#readGalleriesOpacity').val(readGalleriesOpacity);
+        $('#readGalleriesOpacityValue').text(readGalleriesOpacity);
+
+        // Populate new Tag Management settings
+        $('#tagWarningEnabled').prop('checked', tagWarningEnabled);
+        $('#blacklistTags').val(blacklistTagsList.join(', '));
+        $('#warningTags').val(warningTagsList.join(', '));
+        $('#favoriteTags').val(favoriteTagsList.join(', '));
+        if (typeof renderOverridesList === 'function') {
+            renderOverridesList(smartTagOverrides);
+        }
+
+        // Populate sync settings
+
+        // Inbox settings expand/collapse
+        const inboxSettingsExpanded = await GM.getValue('inboxSettingsExpanded', false);
+        $('#inbox-settings-content').toggle(inboxSettingsExpanded);
+        $('#inbox-settings h3').toggleClass('expanded', inboxSettingsExpanded);
+        $('#inbox-settings h3').click(async function () {
+            const isExpanded = $('#inbox-settings-content').is(':visible');
+            $('#inbox-settings-content').slideToggle();
+            await GM.setValue('inboxSettingsExpanded', !isExpanded);
+        });
+
+        // Render existing inbox messages
+        await renderInboxList();
+
+        // Manual Inbox check
+        $('#checkInboxNow').on('click', async function () {
+            try {
+                const showPopups = $('#receivePopupsEnabled').prop('checked');
+                const messages = await fetchInboxOnce(true);
+                if (messages && messages.length) {
+                    await appendToInbox(messages);
+                    await renderInboxList();
+                    if (showPopups) {
+                        for (const msg of messages) {
+                            const galleryUrl = msg?.url || (msg?.id ? `https://nhentai.net/g/${msg.id}/` : '');
+                            const content = `
                                     <div style="text-align:left">
                                       <div style="font-weight:600;margin-bottom:6px;">A gallery was shared with you</div>
                                       <div style="font-size:12px;color:#666;margin-bottom:6px;">From UUID: ${msg?.fromUUID || 'Unknown'}</div>
                                     </div>
                                 `;
-                                showPopup(content, {
-                                    buttons: [
-                                        { text: 'Open', callback: () => {
+                            showPopup(content, {
+                                buttons: [
+                                    {
+                                        text: 'Open', callback: () => {
                                             if (!galleryUrl) return;
                                             const popup = window.open(galleryUrl, '_blank');
                                             if (!popup) window.location.href = galleryUrl;
-                                        } },
-                                        { text: 'Dismiss', callback: () => {} }
-                                    ],
-                                    timeout: 0
-                                });
-                            }
+                                        }
+                                    },
+                                    { text: 'Dismiss', callback: () => { } }
+                                ],
+                                timeout: 0
+                            });
                         }
-                    } else {
-                        showPopup('Inbox is up to date.', { timeout: 2000 });
                     }
-                    // Update last poll timestamp to prevent immediate auto-poll after manual check
-                    await GM.setValue('lastInboxPollTS', Date.now());
-                } catch (err) {
-                    showPopup(`Inbox check failed: ${err?.message || err}`, { timeout: 3000 });
+                } else {
+                    showPopup('Inbox is up to date.', { timeout: 2000 });
                 }
-            });
+                // Update last poll timestamp to prevent immediate auto-poll after manual check
+                await GM.setValue('lastInboxPollTS', Date.now());
+            } catch (err) {
+                showPopup(`Inbox check failed: ${err?.message || err}`, { timeout: 3000 });
+            }
+        });
 
-            // Clear Inbox button with confirmation
-            $('#clearInbox').on('click', async function() {
-                const content = `
+        // Clear Inbox button with confirmation
+        $('#clearInbox').on('click', async function () {
+            const content = `
                     <div style="text-align:left">
                       <div style="font-weight:600;margin-bottom:6px;">Clear Inbox</div>
                       <div style="font-size:12px;color:#666;">Are you sure you want to clear all inbox messages locally?</div>
                     </div>
                 `;
-                showPopup(content, {
-                    buttons: [
-                        {
-                            text: 'Clear',
-                            callback: async () => {
-                                await GM.setValue('inboxMessages', []);
-                                await renderInboxList();
-                                showPopup('Inbox cleared.', { timeout: 1500 });
-                            }
-                        },
-                        { text: 'Cancel', callback: () => {} }
-                    ],
-                    timeout: 0
+            showPopup(content, {
+                buttons: [
+                    {
+                        text: 'Clear',
+                        callback: async () => {
+                            await GM.setValue('inboxMessages', []);
+                            await renderInboxList();
+                            showPopup('Inbox cleared.', { timeout: 1500 });
+                        }
+                    },
+                    { text: 'Cancel', callback: () => { } }
+                ],
+                timeout: 0
+            });
+        });
+        $('#publicSyncEnabled').prop('checked', publicSyncEnabled);
+        $('#privateSyncEnabled').prop('checked', privateSyncEnabled);
+        $('#privateStorageUrl').val(privateStorageUrl);
+        $('#privateApiKey').val(privateApiKey);
+        $('#autoSyncEnabled').prop('checked', autoSyncEnabled);
+        $('#syncInterval').val(syncInterval);
+        $('#userUUID').val(userUUID);
+
+        // Update sync status displays
+        $('#public-last-sync').text(lastSyncUpload ? new Date(lastSyncUpload).toLocaleString() : 'Never');
+        $('#private-last-sync').text(lastSyncDownload ? new Date(lastSyncDownload).toLocaleString() : 'Never');
+
+        // Update autosync status display
+        const lastAutoSync = await GM.getValue('lastAutoSync', null);
+        $('#auto-sync-status').text(lastAutoSync ? `Last auto sync: ${new Date(lastAutoSync).toLocaleString()}` : 'No automatic syncs yet');
+
+        // Show/hide sync options based on enabled state
+        $('#public-sync-options').toggle(publicSyncEnabled);
+        $('#private-sync-options').toggle(privateSyncEnabled);
+
+        // Initialize AutoSync Manager
+        await autoSyncManager.initialize();
+
+        // Add event handlers for sync functionality
+        $('#publicSyncEnabled').on('change', function () {
+            $('#public-sync-options').toggle($(this).prop('checked'));
+        });
+
+        $('#privateSyncEnabled').on('change', function () {
+            $('#private-sync-options').toggle($(this).prop('checked'));
+        });
+
+        // Save private storage credentials when they change (even when hidden)
+        $('#privateStorageUrl').on('input blur', async function () {
+            const url = $(this).val();
+            await GM.setValue('privateStorageUrl', url);
+        });
+
+        $('#privateApiKey').on('input blur', async function () {
+            const apiKey = $(this).val();
+            await GM.setValue('privateApiKey', apiKey);
+        });
+
+        let originalUUID = null; // Store the original UUID when editing starts
+
+        $('#edit-uuid').on('click', async function () {
+            const isReadonly = $('#userUUID').prop('readonly');
+
+            if (isReadonly) {
+                // Store the original UUID when editing begins
+                originalUUID = $('#userUUID').val();
+                // Enable editing
+                $('#userUUID').prop('readonly', false).css({
+                    'background': '#333',
+                    'color': '#fff',
+                    'border': '1px solid #666'
                 });
-            });
-            $('#publicSyncEnabled').prop('checked', publicSyncEnabled);
-            $('#privateSyncEnabled').prop('checked', privateSyncEnabled);
-            $('#privateStorageUrl').val(privateStorageUrl);
-            $('#privateApiKey').val(privateApiKey);
-            $('#autoSyncEnabled').prop('checked', autoSyncEnabled);
-            $('#syncInterval').val(syncInterval);
-            $('#userUUID').val(userUUID);
+                $('#edit-uuid').text('Save');
+                $('#uuid-edit-warning').show();
+                $('#regenerate-uuid').prop('disabled', true);
+            } else {
+                // Save the edited UUID
+                const newUUID = $('#userUUID').val().trim().toUpperCase();
 
-            // Update sync status displays
-            $('#public-last-sync').text(lastSyncUpload ? new Date(lastSyncUpload).toLocaleString() : 'Never');
-            $('#private-last-sync').text(lastSyncDownload ? new Date(lastSyncDownload).toLocaleString() : 'Never');
+                // Validate UUID format (5 alphanumeric characters)
+                if (!/^[A-Z0-9]{5}$/.test(newUUID)) {
+                    alert('UUID must be exactly 5 alphanumeric characters (A-Z, 0-9)');
+                    $('#userUUID').val(originalUUID);
+                    return;
+                }
 
-            // Update autosync status display
-            const lastAutoSync = await GM.getValue('lastAutoSync', null);
-            $('#auto-sync-status').text(lastAutoSync ? `Last auto sync: ${new Date(lastAutoSync).toLocaleString()}` : 'No automatic syncs yet');
+                if (newUUID !== originalUUID) {
+                    const confirmChange = confirm(
+                        `Are you sure you want to change your UUID from "${originalUUID}" to "${newUUID}"?\n\n` +
+                        'This will affect which data you can access from cloud storage. ' +
+                        'Make sure this is the correct UUID for your data.'
+                    );
 
-            // Show/hide sync options based on enabled state
-            $('#public-sync-options').toggle(publicSyncEnabled);
-            $('#private-sync-options').toggle(privateSyncEnabled);
-
-            // Initialize AutoSync Manager
-            await autoSyncManager.initialize();
-
-            // Add event handlers for sync functionality
-            $('#publicSyncEnabled').on('change', function() {
-                $('#public-sync-options').toggle($(this).prop('checked'));
-            });
-
-            $('#privateSyncEnabled').on('change', function() {
-                $('#private-sync-options').toggle($(this).prop('checked'));
-            });
-
-            // Save private storage credentials when they change (even when hidden)
-            $('#privateStorageUrl').on('input blur', async function() {
-                const url = $(this).val();
-                await GM.setValue('privateStorageUrl', url);
-            });
-
-            $('#privateApiKey').on('input blur', async function() {
-                const apiKey = $(this).val();
-                await GM.setValue('privateApiKey', apiKey);
-            });
-
-            let originalUUID = null; // Store the original UUID when editing starts
-            
-            $('#edit-uuid').on('click', async function() {
-                const isReadonly = $('#userUUID').prop('readonly');
-
-                if (isReadonly) {
-                    // Store the original UUID when editing begins
-                    originalUUID = $('#userUUID').val();
-                    // Enable editing
-                    $('#userUUID').prop('readonly', false).css({
-                        'background': '#333',
-                        'color': '#fff',
-                        'border': '1px solid #666'
-                    });
-                    $('#edit-uuid').text('Save');
-                    $('#uuid-edit-warning').show();
-                    $('#regenerate-uuid').prop('disabled', true);
-                } else {
-                    // Save the edited UUID
-                    const newUUID = $('#userUUID').val().trim().toUpperCase();
-
-                    // Validate UUID format (5 alphanumeric characters)
-                    if (!/^[A-Z0-9]{5}$/.test(newUUID)) {
-                        alert('UUID must be exactly 5 alphanumeric characters (A-Z, 0-9)');
+                    if (!confirmChange) {
                         $('#userUUID').val(originalUUID);
                         return;
                     }
 
-                    if (newUUID !== originalUUID) {
-                        const confirmChange = confirm(
-                            `Are you sure you want to change your UUID from "${originalUUID}" to "${newUUID}"?\n\n` +
-                            'This will affect which data you can access from cloud storage. ' +
-                            'Make sure this is the correct UUID for your data.'
-                        );
-
-                        if (!confirmChange) {
-                            $('#userUUID').val(originalUUID);
-                            return;
-                        }
-
-                        await GM.setValue('userUUID', newUUID);
-                        // Force update the syncSystem's cached UUID
-                        syncSystem.cachedUUID = newUUID;
-                        showPopup('UUID updated successfully!');
-                    } else {
-                        // Even if UUID is the same, ensure it's saved to storage
-                        await GM.setValue('userUUID', newUUID);
-                        // Force update the syncSystem's cached UUID
-                        syncSystem.cachedUUID = newUUID;
-                        showPopup('UUID saved successfully!');
-                    }
-
-                    // Disable editing
-                    $('#userUUID').prop('readonly', true).css({
-                        'background': '#222',
-                        'color': '#ccc',
-                        'border': '1px solid #333'
-                    });
-                    $('#edit-uuid').text('Edit');
-                    $('#uuid-edit-warning').hide();
-                    $('#regenerate-uuid').prop('disabled', false);
-                }
-            });
-
-            $('#regenerate-uuid').on('click', async function() {
-                if (confirm('Are you sure you want to regenerate your UUID? This will create a new unique identifier and you may lose access to your existing cloud data.')) {
-                    const newUUID = syncSystem.generateUUID();
                     await GM.setValue('userUUID', newUUID);
                     // Force update the syncSystem's cached UUID
                     syncSystem.cachedUUID = newUUID;
-                    $('#userUUID').val(newUUID);
-                    showPopup('UUID regenerated successfully!');
+                    showPopup('UUID updated successfully!');
+                } else {
+                    // Even if UUID is the same, ensure it's saved to storage
+                    await GM.setValue('userUUID', newUUID);
+                    // Force update the syncSystem's cached UUID
+                    syncSystem.cachedUUID = newUUID;
+                    showPopup('UUID saved successfully!');
                 }
-            });
 
-            $('#browse-users').on('click', async function() {
+                // Disable editing
+                $('#userUUID').prop('readonly', true).css({
+                    'background': '#222',
+                    'color': '#ccc',
+                    'border': '1px solid #333'
+                });
+                $('#edit-uuid').text('Edit');
+                $('#uuid-edit-warning').hide();
+                $('#regenerate-uuid').prop('disabled', false);
+            }
+        });
+
+        $('#regenerate-uuid').on('click', async function () {
+            if (confirm('Are you sure you want to regenerate your UUID? This will create a new unique identifier and you may lose access to your existing cloud data.')) {
+                const newUUID = syncSystem.generateUUID();
+                await GM.setValue('userUUID', newUUID);
+                // Force update the syncSystem's cached UUID
+                syncSystem.cachedUUID = newUUID;
+                $('#userUUID').val(newUUID);
+                showPopup('UUID regenerated successfully!');
+            }
+        });
+
+        $('#browse-users').on('click', async function () {
+            try {
+                $('#browse-users').prop('disabled', true).text('Loading...');
+
+                // Only work with private sync
+                if (!$('#privateSyncEnabled').prop('checked')) {
+                    showPopup('Browse Users is only available for Private Sync. Please enable Private Sync first.');
+                    return;
+                }
+
+                const url = $('#privateStorageUrl').val();
+                const apiKey = $('#privateApiKey').val();
+
+                if (!url || !apiKey) {
+                    showPopup('Please enter both Storage URL and API Key for Private Sync to browse users.');
+                    return;
+                }
+
+                let allData = null;
                 try {
-                    $('#browse-users').prop('disabled', true).text('Loading...');
+                    allData = await syncSystem.providers.jsonstorage.download({ url, apiKey });
+                } catch (error) {
+                    showPopup(`Error accessing private storage: ${error.message}`);
+                    return;
+                }
 
-                    // Only work with private sync
-                    if (!$('#privateSyncEnabled').prop('checked')) {
-                        showPopup('Browse Users is only available for Private Sync. Please enable Private Sync first.');
-                        return;
-                    }
+                if (!allData) {
+                    showPopup('No data found in private storage.');
+                    return;
+                }
 
-                    const url = $('#privateStorageUrl').val();
-                    const apiKey = $('#privateApiKey').val();
+                // Display available users
+                let usersList = '';
+                const currentUUID = $('#userUUID').val();
 
-                    if (!url || !apiKey) {
-                        showPopup('Please enter both Storage URL and API Key for Private Sync to browse users.');
-                        return;
-                    }
+                if (allData.users) {
+                    // Multi-user format
+                    Object.keys(allData.users).forEach(uuid => {
+                        const userData = allData.users[uuid];
+                        const isCurrent = uuid === currentUUID;
+                        const lastSync = new Date(userData.timestamp).toLocaleString();
+                        const version = userData.version || 'Unknown';
 
-                    let allData = null;
-                    try {
-                        allData = await syncSystem.providers.jsonstorage.download({ url, apiKey });
-                    } catch (error) {
-                        showPopup(`Error accessing private storage: ${error.message}`);
-                        return;
-                    }
-
-                    if (!allData) {
-                        showPopup('No data found in private storage.');
-                        return;
-                    }
-
-                    // Display available users
-                    let usersList = '';
-                    const currentUUID = $('#userUUID').val();
-
-                    if (allData.users) {
-                        // Multi-user format
-                        Object.keys(allData.users).forEach(uuid => {
-                            const userData = allData.users[uuid];
-                            const isCurrent = uuid === currentUUID;
-                            const lastSync = new Date(userData.timestamp).toLocaleString();
-                            const version = userData.version || 'Unknown';
-
-                            usersList += `
+                        usersList += `
                                 <div style="margin: 5px 0; padding: 8px; background: ${isCurrent ? '#2d5a2d' : '#444'}; border-radius: 3px; cursor: pointer;"
                                      onclick="selectUUID('${uuid}')">
                                     <strong>${uuid}</strong> ${isCurrent ? '(Current)' : ''}
                                     <br><small>Version: ${version} | Last sync: ${lastSync}</small>
                                 </div>
                             `;
-                        });
-                    } else if (allData.userUUID) {
-                        // Old single-user format
-                        const isCurrent = allData.userUUID === currentUUID;
-                        const lastSync = new Date(allData.timestamp).toLocaleString();
-                        const version = allData.version || 'Unknown';
+                    });
+                } else if (allData.userUUID) {
+                    // Old single-user format
+                    const isCurrent = allData.userUUID === currentUUID;
+                    const lastSync = new Date(allData.timestamp).toLocaleString();
+                    const version = allData.version || 'Unknown';
 
-                        usersList = `
+                    usersList = `
                             <div style="margin: 5px 0; padding: 8px; background: ${isCurrent ? '#2d5a2d' : '#444'}; border-radius: 3px; cursor: pointer;"
                                  onclick="selectUUID('${allData.userUUID}')">
                                 <strong>${allData.userUUID}</strong> ${isCurrent ? '(Current)' : ''}
                                 <br><small>Version: ${version} | Last sync: ${lastSync}</small>
                             </div>
                         `;
-                    }
-
-                    $('#users-list').html(`<p><strong>Source:</strong> Private Sync</p>` + usersList);
-                    $('#available-users').show();
-
-                } catch (error) {
-                    console.error('Error browsing users:', error);
-                    showPopup(`Error browsing users: ${error.message}`);
-                } finally {
-                    $('#browse-users').prop('disabled', false).text('Browse Users');
                 }
-            });
 
-            $('#close-users-list').on('click', function() {
-                $('#available-users').hide();
-            });
+                $('#users-list').html(`<p><strong>Source:</strong> Private Sync</p>` + usersList);
+                $('#available-users').show();
 
-            // Global function to select UUID from the users list
-            window.selectUUID = async function(uuid) {
-                if (confirm(`Switch to UUID "${uuid}"? This will change your current UUID and affect which data you can access.`)) {
-                    $('#userUUID').val(uuid);
-                    await GM.setValue('userUUID', uuid);
-                    // Force update the syncSystem's cached UUID
-                    syncSystem.cachedUUID = uuid;
-                    $('#available-users').hide();
-                    showPopup(`UUID changed to ${uuid}`);
-                }
-            };
-
-            // Manual autosync trigger
-            $('#trigger-auto-sync').on('click', async function() {
-                const button = $(this);
-                const originalText = button.text();
-
-                try {
-                    button.prop('disabled', true).text('Syncing...');
-                    await autoSyncManager.performAutoSync();
-
-                    // Update status display
-                    const lastAutoSync = await GM.getValue('lastAutoSync', null);
-                    $('#auto-sync-status').text(lastAutoSync ? `Last auto sync: ${new Date(lastAutoSync).toLocaleString()}` : 'No automatic syncs yet');
-
-                    showPopup('Manual autosync completed successfully!');
-                } catch (error) {
-                    console.error('Manual autosync failed:', error);
-                    showPopup(`Manual autosync failed: ${error.message}`);
-                } finally {
-                    button.prop('disabled', false).text(originalText);
-                }
-            });
-
-            // Public sync handlers
-            $('#public-sync-upload').on('click', async function() {
-                await handleSyncOperation('upload', 'public');
-            });
-
-            $('#public-sync-download').on('click', async function() {
-                await handleSyncOperation('download', 'public');
-            });
-
-            // Private sync handlers
-            $('#private-sync-upload').on('click', async function() {
-                await handleSyncOperation('upload', 'private');
-            });
-
-            $('#private-sync-download').on('click', async function() {
-                await handleSyncOperation('download', 'private');
-            });
-
-            // Sync operation handler
-            async function handleSyncOperation(operation, syncType) {
-                const statusElement = $(`#${syncType}-sync-status`);
-                const lastSyncElement = $(`#${syncType}-last-sync`);
-
-                try {
-                    // Disable buttons and show loading
-                    $(`#${syncType}-sync-upload, #${syncType}-sync-download`).prop('disabled', true);
-                    statusElement.removeClass('success error').addClass('loading').text('Processing...');
-
-                    let config;
-                    if (syncType === 'public') {
-                        config = syncSystem.publicConfig;
-                    } else {
-                        const url = $('#privateStorageUrl').val();
-                        const apiKey = $('#privateApiKey').val();
-
-                        if (!url || !apiKey) {
-                            throw new Error('Please enter both Storage URL and API Key for private sync');
-                        }
-
-                        config = { url, apiKey };
-                    }
-
-                    if (operation === 'upload') {
-                        await syncSystem.uploadData('jsonstorage', config);
-                        statusElement.removeClass('loading error').addClass('success').text('Upload successful!');
-                        lastSyncElement.text(new Date().toLocaleString());
-                        showPopup('Data uploaded successfully! Your data has been saved to the cloud.');
-                    } else {
-                        const result = await syncSystem.downloadData('jsonstorage', config);
-                        statusElement.removeClass('loading error').addClass('success').text('Download successful!');
-                        lastSyncElement.text(new Date().toLocaleString());
-
-                        let message = `Data downloaded successfully! Applied ${result.appliedCount} settings.`;
-                        // if (result.allUsers && result.allUsers.length > 1) {
-                        //     message += `\n\nAvailable user UUIDs in cloud storage: ${result.allUsers.join(', ')}`;
-                        // }
-
-                        showPopup(message);
-
-                        // Refresh the page to apply downloaded settings
-                        setTimeout(() => {
-                            if (confirm('Settings have been updated. Refresh the page to see changes?')) {
-                                location.reload();
-                            }
-                        }, 2000);
-                    }
-
-                } catch (error) {
-                    console.error('Sync operation failed:', error);
-                    statusElement.removeClass('loading success').addClass('error').text(`Error: ${error.message}`);
-                    showPopup(`Sync failed: ${error.message}`);
-                } finally {
-                    // Re-enable buttons
-                    $(`#${syncType}-sync-upload, #${syncType}-sync-download`).prop('disabled', false);
-
-                    // Clear status after 5 seconds
-                    setTimeout(() => {
-                        statusElement.removeClass('success error loading').text('');
-                    }, 5000);
-                }
+            } catch (error) {
+                console.error('Error browsing users:', error);
+                showPopup(`Error browsing users: ${error.message}`);
+            } finally {
+                $('#browse-users').prop('disabled', false).text('Browse Users');
             }
+        });
+
+        $('#close-users-list').on('click', function () {
+            $('#available-users').hide();
+        });
+
+        // Global function to select UUID from the users list
+        window.selectUUID = async function (uuid) {
+            if (confirm(`Switch to UUID "${uuid}"? This will change your current UUID and affect which data you can access.`)) {
+                $('#userUUID').val(uuid);
+                await GM.setValue('userUUID', uuid);
+                // Force update the syncSystem's cached UUID
+                syncSystem.cachedUUID = uuid;
+                $('#available-users').hide();
+                showPopup(`UUID changed to ${uuid}`);
+            }
+        };
+
+        // Manual autosync trigger
+        $('#trigger-auto-sync').on('click', async function () {
+            const button = $(this);
+            const originalText = button.text();
+
+            try {
+                button.prop('disabled', true).text('Syncing...');
+                await autoSyncManager.performAutoSync();
+
+                // Update status display
+                const lastAutoSync = await GM.getValue('lastAutoSync', null);
+                $('#auto-sync-status').text(lastAutoSync ? `Last auto sync: ${new Date(lastAutoSync).toLocaleString()}` : 'No automatic syncs yet');
+
+                showPopup('Manual autosync completed successfully!');
+            } catch (error) {
+                console.error('Manual autosync failed:', error);
+                showPopup(`Manual autosync failed: ${error.message}`);
+            } finally {
+                button.prop('disabled', false).text(originalText);
+            }
+        });
+
+        // Public sync handlers
+        $('#public-sync-upload').on('click', async function () {
+            await handleSyncOperation('upload', 'public');
+        });
+
+        $('#public-sync-download').on('click', async function () {
+            await handleSyncOperation('download', 'public');
+        });
+
+        // Private sync handlers
+        $('#private-sync-upload').on('click', async function () {
+            await handleSyncOperation('upload', 'private');
+        });
+
+        $('#private-sync-download').on('click', async function () {
+            await handleSyncOperation('download', 'private');
+        });
+
+        // Sync operation handler
+        async function handleSyncOperation(operation, syncType) {
+            const statusElement = $(`#${syncType}-sync-status`);
+            const lastSyncElement = $(`#${syncType}-last-sync`);
+
+            try {
+                // Disable buttons and show loading
+                $(`#${syncType}-sync-upload, #${syncType}-sync-download`).prop('disabled', true);
+                statusElement.removeClass('success error').addClass('loading').text('Processing...');
+
+                let config;
+                if (syncType === 'public') {
+                    config = syncSystem.publicConfig;
+                } else {
+                    const url = $('#privateStorageUrl').val();
+                    const apiKey = $('#privateApiKey').val();
+
+                    if (!url || !apiKey) {
+                        throw new Error('Please enter both Storage URL and API Key for private sync');
+                    }
+
+                    config = { url, apiKey };
+                }
+
+                if (operation === 'upload') {
+                    await syncSystem.uploadData('jsonstorage', config);
+                    statusElement.removeClass('loading error').addClass('success').text('Upload successful!');
+                    lastSyncElement.text(new Date().toLocaleString());
+                    showPopup('Data uploaded successfully! Your data has been saved to the cloud.');
+                } else {
+                    const result = await syncSystem.downloadData('jsonstorage', config);
+                    statusElement.removeClass('loading error').addClass('success').text('Download successful!');
+                    lastSyncElement.text(new Date().toLocaleString());
+
+                    let message = `Data downloaded successfully! Applied ${result.appliedCount} settings.`;
+                    // if (result.allUsers && result.allUsers.length > 1) {
+                    //     message += `\n\nAvailable user UUIDs in cloud storage: ${result.allUsers.join(', ')}`;
+                    // }
+
+                    showPopup(message);
+
+                    // Refresh the page to apply downloaded settings
+                    setTimeout(() => {
+                        if (confirm('Settings have been updated. Refresh the page to see changes?')) {
+                            location.reload();
+                        }
+                    }, 2000);
+                }
+
+            } catch (error) {
+                console.error('Sync operation failed:', error);
+                statusElement.removeClass('loading success').addClass('error').text(`Error: ${error.message}`);
+                showPopup(`Sync failed: ${error.message}`);
+            } finally {
+                // Re-enable buttons
+                $(`#${syncType}-sync-upload, #${syncType}-sync-download`).prop('disabled', false);
+
+                // Clear status after 5 seconds
+                setTimeout(() => {
+                    statusElement.removeClass('success error loading').text('');
+                }, 5000);
+            }
+        }
 
 
 
 
 
-// Nhentai Plus+.user.js (2522-2535)
-// Initialize the visibility of the find-similar-options div based on the initial state of the findSimilarEnabled checkbox
-$('#find-similar-options').toggle(findSimilarEnabled);
+        // Nhentai Plus+.user.js (2522-2535)
+        // Initialize the visibility of the find-similar-options div based on the initial state of the findSimilarEnabled checkbox
+        $('#find-similar-options').toggle(findSimilarEnabled);
 
-// Add event listener to toggle the find-similar-options div when the findSimilarEnabled checkbox is changed
-$('#findSimilarEnabled').on('change', function() {
-    const isChecked = $(this).is(':checked');
-    $('#find-similar-options').toggle(isChecked);
-});
+        // Add event listener to toggle the find-similar-options div when the findSimilarEnabled checkbox is changed
+        $('#findSimilarEnabled').on('change', function () {
+            const isChecked = $(this).is(':checked');
+            $('#find-similar-options').toggle(isChecked);
+        });
 
         // Toggle auto login credentials
-        $('#autoLoginEnabled').on('change', function() {
+        $('#autoLoginEnabled').on('change', function () {
             $('#autoLoginCredentials').toggle(this.checked);
         });
 
 
 
-            // Add expand/collapse functionality for new page management section
-            // Add expand/collapse functionality for new page management section
-            const pageManagementExpanded = await GM.getValue('pageManagementExpanded', false);
-            $('#page-management-content').toggle(pageManagementExpanded);
-            $('#page-management h3').toggleClass('expanded', pageManagementExpanded);
-            $('#page-management h3').click(async function() {
-                const isExpanded = $(this).hasClass('expanded');
-                $(this).toggleClass('expanded', !isExpanded);
-                $('#page-management-content').slideToggle();
-                await GM.setValue('pageManagementExpanded', !isExpanded);
-            });
+        // Add expand/collapse functionality for new page management section
+        // Add expand/collapse functionality for new page management section
+        const pageManagementExpanded = await GM.getValue('pageManagementExpanded', false);
+        $('#page-management-content').toggle(pageManagementExpanded);
+        $('#page-management h3').toggleClass('expanded', pageManagementExpanded);
+        $('#page-management h3').click(async function () {
+            const isExpanded = $(this).hasClass('expanded');
+            $(this).toggleClass('expanded', !isExpanded);
+            $('#page-management-content').slideToggle();
+            await GM.setValue('pageManagementExpanded', !isExpanded);
+        });
 
-            // Add expand/collapse functionality for Random Hentai Preferences section
-            const randomSettingsExpanded = await GM.getValue('randomSettingsExpanded', false);
-            $('#random-settings-content').toggle(randomSettingsExpanded);
-            $('#random-settings h3').toggleClass('expanded', randomSettingsExpanded);
-            $('#random-settings h3').click(async function() {
-                const isExpanded = $(this).hasClass('expanded');
-                $(this).toggleClass('expanded', !isExpanded);
-                $('#random-settings-content').slideToggle();
-                await GM.setValue('randomSettingsExpanded', !isExpanded);
-            });
+        // Add expand/collapse functionality for Random Hentai Preferences section
+        const randomSettingsExpanded = await GM.getValue('randomSettingsExpanded', false);
+        $('#random-settings-content').toggle(randomSettingsExpanded);
+        $('#random-settings h3').toggleClass('expanded', randomSettingsExpanded);
+        $('#random-settings h3').click(async function () {
+            const isExpanded = $(this).hasClass('expanded');
+            $(this).toggleClass('expanded', !isExpanded);
+            $('#random-settings-content').slideToggle();
+            await GM.setValue('randomSettingsExpanded', !isExpanded);
+        });
 
-            // Add expand/collapse functionality for Online Data Sync section
-            const onlineSyncExpanded = await GM.getValue('onlineSyncExpanded', true);
-            $('#online-sync-settings-content').toggle(onlineSyncExpanded);
-            $('#online-sync-header').toggleClass('expanded', onlineSyncExpanded);
+        // Add expand/collapse functionality for Online Data Sync section
+        const onlineSyncExpanded = await GM.getValue('onlineSyncExpanded', true);
+        $('#online-sync-settings-content').toggle(onlineSyncExpanded);
+        $('#online-sync-header').toggleClass('expanded', onlineSyncExpanded);
+        $('#online-sync-header i')
+            .toggleClass('fa-chevron-down', !onlineSyncExpanded)
+            .toggleClass('fa-chevron-up', onlineSyncExpanded);
+        $('#online-sync-header').off('click').on('click', async function () {
+            const isExpanded = $(this).hasClass('expanded');
+            $(this).toggleClass('expanded', !isExpanded);
+            $('#online-sync-settings-content').slideToggle();
             $('#online-sync-header i')
-                .toggleClass('fa-chevron-down', !onlineSyncExpanded)
-                .toggleClass('fa-chevron-up', onlineSyncExpanded);
-            $('#online-sync-header').off('click').on('click', async function() {
-                const isExpanded = $(this).hasClass('expanded');
-                $(this).toggleClass('expanded', !isExpanded);
-                $('#online-sync-settings-content').slideToggle();
-                $('#online-sync-header i')
-                    .toggleClass('fa-chevron-down', isExpanded)
-                    .toggleClass('fa-chevron-up', !isExpanded);
-                await GM.setValue('onlineSyncExpanded', !isExpanded);
-            });
+                .toggleClass('fa-chevron-down', isExpanded)
+                .toggleClass('fa-chevron-up', !isExpanded);
+            await GM.setValue('onlineSyncExpanded', !isExpanded);
+        });
 
 
-                // Show or hide the random options based on the enableRandomButton value
-            if (enableRandomButton) {
+        // Show or hide the random options based on the enableRandomButton value
+        if (enableRandomButton) {
+            $('#random-options').show();
+        } else {
+            $('#random-options').hide();
+        }
+
+        // Add an event listener to the enableRandomButton to show or hide the random options
+        $('#enableRandomButton').on('change', function () {
+            if ($(this).is(':checked')) {
                 $('#random-options').show();
             } else {
                 $('#random-options').hide();
             }
-
-            // Add an event listener to the enableRandomButton to show or hide the random options
-            $('#enableRandomButton').on('change', function() {
-                if ($(this).is(':checked')) {
-                    $('#random-options').show();
-                } else {
-                    $('#random-options').hide();
-                }
-            });
+        });
 
 
-            $('#max-manga-per-bookmark-slider').on('input', function() {
-                const value = parseInt($(this).val());
-                $('#max-manga-per-bookmark-on-mobile-value').text(value);
-                //GM.setValue('maxMangaPerBookmark', value);
-              });
+        $('#max-manga-per-bookmark-slider').on('input', function () {
+            const value = parseInt($(this).val());
+            $('#max-manga-per-bookmark-on-mobile-value').text(value);
+            //GM.setValue('maxMangaPerBookmark', value);
+        });
 
-              (async function() {
-                const maxMangaPerBookmark = await GM.getValue('maxMangaPerBookmark', 5);
-                $('#max-manga-per-bookmark-slider').val(maxMangaPerBookmark);
-                $('#max-manga-per-bookmark-on-mobile-value').text(maxMangaPerBookmark);
-              })();
+        (async function () {
+            const maxMangaPerBookmark = await GM.getValue('maxMangaPerBookmark', 5);
+            $('#max-manga-per-bookmark-slider').val(maxMangaPerBookmark);
+            $('#max-manga-per-bookmark-on-mobile-value').text(maxMangaPerBookmark);
+        })();
 
-            $('.tooltip').toggle(tooltipsEnabled);
-            $('#tooltipsEnabled').on('change', function() {
-                $('.tooltip').toggle(this.checked);
-            });
+        $('.tooltip').toggle(tooltipsEnabled);
+        $('#tooltipsEnabled').on('change', function () {
+            $('.tooltip').toggle(this.checked);
+        });
 
-            // Toggle gallery caption tooltips
-            const toggleGalleryCaptionTooltips = (enabled) => {
-                $('.gallery .caption[title]').toggleClass('tooltip-enabled', enabled);
-            };
-            toggleGalleryCaptionTooltips(galleryCaptionTooltipsEnabled);
-            $('#galleryCaptionTooltipsEnabled').on('change', function() {
-                toggleGalleryCaptionTooltips(this.checked);
-            });
+        // Toggle gallery caption tooltips
+        const toggleGalleryCaptionTooltips = (enabled) => {
+            $('.gallery .caption[title]').toggleClass('tooltip-enabled', enabled);
+        };
+        toggleGalleryCaptionTooltips(galleryCaptionTooltipsEnabled);
+        $('#galleryCaptionTooltipsEnabled').on('change', function () {
+            toggleGalleryCaptionTooltips(this.checked);
+        });
 
-            if (findAltMangaThumbnailEnabled){
+        if (findAltMangaThumbnailEnabled) {
+            $('#find-Alt-Manga-Thumbnail-options').show();
+
+        }
+        $('#findAltMangaThumbnailEnabled').on('change', function () {
+            if ($(this).prop('checked')) {
                 $('#find-Alt-Manga-Thumbnail-options').show();
-
+            } else {
+                $('#find-Alt-Manga-Thumbnail-options').hide();
             }
-            $('#findAltMangaThumbnailEnabled').on('change', function() {
-                if ($(this).prop('checked')) {
-                    $('#find-Alt-Manga-Thumbnail-options').show();
-                } else {
-                    $('#find-Alt-Manga-Thumbnail-options').hide();
-                }
-            });
-            if(bookmarksPageEnabled){
+        });
+        if (bookmarksPageEnabled) {
 
+            $('#bookmark-page-options').show();
+        }
+
+        $('#bookmarksPageEnabled').on('change', function () {
+            if ($(this).prop('checked')) {
                 $('#bookmark-page-options').show();
+            } else {
+                $('#bookmark-page-options').hide();
             }
+        });
 
-            $('#bookmarksPageEnabled').on('change', function() {
-                if ($(this).prop('checked')) {
-                    $('#bookmark-page-options').show();
-                } else {
-                    $('#bookmark-page-options').hide();
-                }
-            });
+        // Show/hide flip button setting based on related bookmarks setting
+        if ($('#replaceRelatedWithBookmarks').prop('checked')) {
+            $('#enableRelatedFlipButton').closest('label').show();
+        } else {
+            $('#enableRelatedFlipButton').closest('label').hide();
+        }
 
-            // Show/hide flip button setting based on related bookmarks setting
-            if ($('#replaceRelatedWithBookmarks').prop('checked')) {
+        // Add event listener to toggle flip button setting visibility 
+        $('#replaceRelatedWithBookmarks').on('change', function () {
+            if ($(this).prop('checked')) {
                 $('#enableRelatedFlipButton').closest('label').show();
             } else {
                 $('#enableRelatedFlipButton').closest('label').hide();
             }
-
-            // Add event listener to toggle flip button setting visibility 
-            $('#replaceRelatedWithBookmarks').on('change', function() {
-                if ($(this).prop('checked')) {
-                    $('#enableRelatedFlipButton').closest('label').show();
-                } else {
-                    $('#enableRelatedFlipButton').closest('label').hide();
-                }
-            });
-
-            if (mangaBookMarkingButtonEnabled) {
-                $('#manga-bookmarking-options').show();
-            }
-
-            if (mangaBookMarkingType === 'cover') {
-                $('#manga-bookmarking-cover').prop('checked', true);
-            } else if (mangaBookMarkingType === 'title') {
-                $('#manga-bookmarking-title').prop('checked', true);
-            } else if (mangaBookMarkingType === 'both') {
-                $('#manga-bookmarking-both').prop('checked', true);
-            }
-
-            // Initialize bookmark arrangement dropdown
-            $('#bookmark-arrangement-type').val(bookmarkArrangementType);
-
-            $('#mangaBookMarkingButtonEnabled').on('change', function() {
-                if ($(this).prop('checked')) {
-                    $('#manga-bookmarking-options').show();
-                } else {
-                    $('#manga-bookmarking-options').hide();
-                }
-            });
-            
-            // Add event listener for Read Manga Page options
-            $('#readMangaPageEnabled').on('change', function() {
-                $('#read-manga-page-options').toggle($(this).is(':checked'));
-            });
-            
-            // Update the display value for the max read manga slider
-            $('#max-read-manga-display-slider').on('input', function() {
-                const value = parseInt($(this).val());
-                $('#max-read-manga-display-value').text(value);
-            });
-
-            $('#quickNutPageEnabled').on('change', function() {
-                $('#quick-nut-page-options').toggle($(this).is(':checked'));
-            });
-
-            $('#quickNutRefreshMode').on('change', function() {
-                const v = $(this).val();
-                $('#quickNutCustomMinutesContainer').toggle(v === 'custom');
-            });
-
-            $('#showNonEnglishSelect').on('change', async () => {
-                const showNonEnglish = $('#showNonEnglishSelect').val();
-                await GM.setValue('showNonEnglish', showNonEnglish);
-                applyNonEnglishStyles();
-            });
-
-            // Event handlers for new Fade & Read settings
-            $('#fade-read-settings h3').on('click', function() {
-                $('#fade-read-settings-content').toggle();
-                $(this).toggleClass('expanded');
-            });
-
-            $('#nonEnglishOpacity').on('input', function() {
-                const value = parseFloat($(this).val());
-                $('#nonEnglishOpacityValue').text(value);
-            });
-
-            $('#readGalleriesOpacity').on('input', function() {
-                const value = parseFloat($(this).val());
-                $('#readGalleriesOpacityValue').text(value);
-            });
-
-            $('#resetFadeSettings').on('click', function() {
-                $('#nonEnglishOpacity').val(0.2);
-                $('#nonEnglishOpacityValue').text('0.2');
-                $('#readGalleriesOpacity').val(0.6);
-                $('#readGalleriesOpacityValue').text('0.6');
-                $('#markAsReadEnabled').prop('checked', true);
-                $('#autoMarkReadEnabled').prop('checked', true);
-                $('#hideBlacklistEnabled').prop('checked', true);
-                $('#autoHideBlacklistedTagsEnabled').prop('checked', false);
-            });
-
-            // Clear hidden manga list
-            $('#clearHiddenManga').on('click', async function() {
-                if (confirm('Clear all hidden/blacklisted manga?')) {
-                    await GM.setValue('hiddenGalleries', []);
-                    await GM.setValue('hiddenGalleryTitles', {});
-                    try {
-                        if (typeof hideBlacklistSystem !== 'undefined' && hideBlacklistSystem) {
-                            hideBlacklistSystem.hiddenGalleries = new Set();
-                            hideBlacklistSystem.applyHiddenFilter && hideBlacklistSystem.applyHiddenFilter();
-                        }
-                    } catch (_) { /* ignore */ }
-                    if (typeof updateHiddenCount === 'function') updateHiddenCount();
-                    alert('Hidden manga list cleared.');
-                }
-            });
-
-            // Manage hidden manga (compact modal)
-            async function updateHiddenCount() {
-                try {
-                    const ids = await GM.getValue('hiddenGalleries', []);
-                    const count = Array.isArray(ids) ? ids.length : 0;
-                    $('#hiddenMangaCount').text(count ? `(${count})` : '');
-                } catch (_) {
-                    $('#hiddenMangaCount').text('');
-                }
-            }
-
-            function cleanPrettyTitle(raw) {
-                let t = String(raw || '');
-                // Remove any parenthetical or bracketed qualifiers
-                t = t.replace(/\([^)]*\)/g, '').replace(/\[[^\]]*\]/g, '');
-                // Collapse whitespace
-                t = t.replace(/\s+/g, ' ').trim();
-                return t;
-            }
-
-            async function fetchGalleryPrettyTitle(id) {
-                try {
-                    const url = `${location.origin}/g/${id}/`;
-                    const res = await fetch(url, { credentials: 'include' });
-                    if (!res || !res.ok) return null;
-                    const html = await res.text();
-                    const doc = new DOMParser().parseFromString(html, 'text/html');
-                    const prettyEl = doc.querySelector('h1.title .pretty');
-                    if (!prettyEl) return null;
-                    const cleaned = cleanPrettyTitle(prettyEl.textContent || '');
-                    return cleaned || null;
-                } catch (_) {
-                    return null;
-                }
-            }
-
-            function renderHiddenRows(entries, titlesMap) {
-                const listEl = document.getElementById('hiddenMangaList');
-                if (!listEl) return;
-                listEl.innerHTML = '';
-                if (!entries || entries.length === 0) {
-                    listEl.innerHTML = '<p style="font-size:12px;color:#888;">No hidden manga.</p>';
-                    return;
-                }
-                entries.forEach(({ id, title }) => {
-                    const row = document.createElement('div');
-                    row.className = 'row';
-                    const nameLink = document.createElement('a');
-                    nameLink.className = 'item-title';
-                    nameLink.href = `/g/${id}/`;
-                    nameLink.target = '_blank';
-                    nameLink.rel = 'noopener noreferrer';
-                    nameLink.textContent = (title && String(title).trim()) ? String(title).trim() : 'Loading…';
-                    const idSpan = document.createElement('span');
-                    idSpan.className = 'item-id';
-                    idSpan.textContent = `ID: ${id}`;
-                    const actions = document.createElement('div');
-                    actions.className = 'actions';
-                    const btn = document.createElement('button');
-                    btn.className = 'unhide-item';
-                    btn.setAttribute('data-id', String(id));
-                    btn.textContent = 'Unhide';
-                    actions.appendChild(btn);
-                    row.appendChild(nameLink);
-                    row.appendChild(idSpan);
-                    row.appendChild(actions);
-                    listEl.appendChild(row);
-
-                    // Fetch and fill pretty title
-                    (async () => {
-                        const fetched = await fetchGalleryPrettyTitle(id);
-                        const finalTitle = (fetched && fetched.trim())
-                            ? fetched.trim()
-                            : ((title && String(title).trim()) ? String(title).trim() : String(id));
-                        nameLink.textContent = finalTitle;
-                        // Persist fetched title to storage map for future
-                        try {
-                            if (titlesMap) {
-                                titlesMap[String(id)] = finalTitle;
-                                await GM.setValue('hiddenGalleryTitles', titlesMap);
-                            }
-                        } catch (_) { /* ignore */ }
-                    })();
-                });
-            }
-
-            $('#manageHiddenManga').on('click', async function() {
-                try {
-                    const ids = await GM.getValue('hiddenGalleries', []);
-                    const titlesMap = await GM.getValue('hiddenGalleryTitles', {});
-                    const entries = (Array.isArray(ids) ? ids : []).map(id => ({ id: String(id), title: titlesMap && titlesMap[String(id)] }));
-                    renderHiddenRows(entries, titlesMap);
-                } catch (_) {
-                    renderHiddenRows([], {});
-                }
-                $('#hiddenMangaModal').css('display', 'flex');
-            });
-
-            $('#closeHiddenMangaModal').on('click', function() {
-                $('#hiddenMangaModal').hide();
-            });
-
-            $('#hiddenMangaModal').on('click', function(e) {
-                if (e.target && e.target.id === 'hiddenMangaModal') {
-                    $('#hiddenMangaModal').hide();
-                }
-            });
-
-            // Delegate unhide actions inside modal
-            $('#hiddenMangaList').on('click', '.unhide-item', async function() {
-                const id = String($(this).data('id'));
-                try {
-                    if (typeof hideBlacklistSystem !== 'undefined' && hideBlacklistSystem && typeof hideBlacklistSystem.unhideGallery === 'function') {
-                        await hideBlacklistSystem.unhideGallery(id);
-                        hideBlacklistSystem.applyHiddenFilter && hideBlacklistSystem.applyHiddenFilter();
-                    } else {
-                        let ids = await GM.getValue('hiddenGalleries', []);
-                        ids = (Array.isArray(ids) ? ids : []).filter(x => String(x) !== id);
-                        await GM.setValue('hiddenGalleries', ids);
-                    }
-                    let titlesMap = await GM.getValue('hiddenGalleryTitles', {});
-                    if (titlesMap && titlesMap[id]) {
-                        delete titlesMap[id];
-                        await GM.setValue('hiddenGalleryTitles', titlesMap);
-                    }
-                } catch (_) { /* ignore */ }
-                // Update UI
-                $(this).closest('.row').remove();
-                if ($('#hiddenMangaList .row').length === 0) {
-                    $('#hiddenMangaList').html('<p style="font-size:12px;color:#888;">No hidden manga.</p>');
-                }
-                updateHiddenCount();
-            });
-
-            // Initialize count indicator
-            updateHiddenCount();
-
-            // Event handlers for new Tag Management settings
-            $('#tag-management-settings h3').on('click', function() {
-                $('#tag-management-settings-content').toggle();
-                $(this).toggleClass('expanded');
-            });
-
-            // Open Tag Management modal
-            $('#toggleTagLists').on('click', function() {
-                $('#tagManagementModal').css('display', 'flex');
-            });
-
-            // Close Tag Management modal
-            $('#closeTagManagementModal').on('click', function() {
-                $('#tagManagementModal').hide();
-            });
-
-            $('#tagManagementModal').on('click', function(e) {
-                if (e.target && e.target.id === 'tagManagementModal') {
-                    $('#tagManagementModal').hide();
-                }
-            });
-
-            $('#clearFavoriteTags').on('click', async function() {
-                if (confirm('Are you sure you want to clear all favorite tags?')) {
-                    await GM.setValue('favoriteTagsList', []);
-                    $('#favoriteTags').val('');
-                }
-            });
-
-            $('#resetTagSettings').on('click', function() {
-                $('#blacklistTags').val('scat, guro, vore, ryona, snuff');
-                $('#warningTags').val('ntr, netorare, cheating, ugly bastard, mind break');
-                $('#tagWarningEnabled').prop('checked', true);
-            });
-
-            // Smart Tag Overrides management
-            async function getOverrides() {
-                try { return await GM.getValue('smartTagOverrides', {}); } catch (_) { return {}; }
-            }
-            async function setOverrides(obj) {
-                await GM.setValue('smartTagOverrides', obj || {});
-            }
-            function renderOverridesList(overrides) {
-                const container = document.getElementById('overrides-list');
-                if (!container) return;
-                container.innerHTML = '';
-                const entries = Object.entries(overrides || {}).sort((a,b)=>a[0].localeCompare(b[0]));
-                if (entries.length === 0) {
-                    container.innerHTML = '<p style="font-size:12px; color:#888;">No overrides set yet.</p>';
-                    return;
-                }
-                entries.forEach(([name, type]) => {
-                    const row = document.createElement('div');
-                    row.className = 'override-row';
-                    row.style.display = 'flex';
-                    row.style.alignItems = 'center';
-                    row.style.gap = '8px';
-                    row.style.margin = '6px 0';
-
-                    const nameSpan = document.createElement('span');
-                    nameSpan.textContent = name;
-                    nameSpan.style.flex = '1';
-
-                    const sel = document.createElement('select');
-                    ['artist','group','parody','character','tag'].forEach(opt => {
-                        const o = document.createElement('option');
-                        o.value = opt; o.textContent = opt; if (opt === type) o.selected = true; sel.appendChild(o);
-                    });
-                    sel.addEventListener('change', async () => {
-                        const ov = await getOverrides();
-                        ov[name] = sel.value;
-                        await setOverrides(ov);
-                    });
-
-                    const del = document.createElement('button');
-                    del.className = 'btn-secondary action-btn-danger';
-                    del.textContent = 'Remove';
-                    del.addEventListener('click', async () => {
-                        const ov = await getOverrides();
-                        delete ov[name];
-                        await setOverrides(ov);
-                        renderOverridesList(ov);
-                    });
-
-                    row.appendChild(nameSpan);
-                    row.appendChild(sel);
-                    row.appendChild(del);
-                    container.appendChild(row);
-                });
-            }
-
-            const addBtn = document.getElementById('add-override-btn');
-            if (addBtn) {
-                addBtn.addEventListener('click', async () => {
-                    const nameInput = document.getElementById('override-name-input');
-                    const typeSelect = document.getElementById('override-type-select');
-                    const rawName = (nameInput?.value || '').trim();
-                    const type = typeSelect?.value || 'tag';
-                    if (!rawName) return;
-                    // Normalize like taxonomyManager
-                    const name = String(rawName).toLowerCase().replace(/-/g,' ').trim();
-                    const ov = await getOverrides();
-                    ov[name] = type;
-                    await setOverrides(ov);
-                    renderOverridesList(ov);
-                    nameInput.value = '';
-                });
-            }
-
-// Check if openInNewTabEnabled is true, if not, hide the options
-if (openInNewTabEnabled) {
-  $('#open-in-New-Tab-options').show();
-}
-
-// Add event listeners to the radio buttons
-$('#open-in-new-tab-background').change(function() {
-  if (this.checked) {
-    GM.setValue('openInNewTabType', 'background');
-  }
-});
-
-$('#open-in-new-tab-foreground').change(function() {
-  if (this.checked) {
-    GM.setValue('openInNewTabType', 'foreground');
-  }
-});
-
-// Initialize the radio buttons based on the stored value
-if (openInNewTabType === 'background') {
-  $('#open-in-new-tab-background').prop('checked', true);
-} else {
-  $('#open-in-new-tab-foreground').prop('checked', true);
-}
-
-// Update the openInNewTabEnabled value in storage when the checkbox is changed
-$('#openInNewTabEnabled').change(function() {
-  const openInNewTabEnabled = this.checked;
-  GM.setValue('openInNewTabEnabled', openInNewTabEnabled);
-  if (!openInNewTabEnabled) {
-    GM.setValue('openInNewTabType', null);
-  }
-  $('#open-in-New-Tab-options').toggle(openInNewTabEnabled);
-});
-        })();
-
-        // Save settings
-        $('#settingsForm').on('submit', async function(event) {
-            event.preventDefault();
-
-            const findSimilarEnabled = $('#findSimilarEnabled').prop('checked');
-            const englishFilterEnabled = $('#englishFilterEnabled').prop('checked');
-            const autoLoginEnabled = $('#autoLoginEnabled').prop('checked');
-            const email = $('#email').val();
-            const password = $('#password').val();
-            const findAltmangaEnabled = $('#findAltmangaEnabled').prop('checked');
-            const bookmarksEnabled = $('#bookmarksEnabled').prop('checked');
-            const language = $('#pref-language').val();
-            let tags = $('#pref-tags').val().split(',').map(tag => tag.trim());
-            tags = tags.map(tag => tag.replace(/-/g, ' ')); // Replace hyphens with spaces
-            let blacklistedTags = $('#blacklisted-tags').val().split(',').map(tag => tag.trim());
-            blacklistedTags = blacklistedTags.map(tag => tag.replace(/-/g, ' ')); // Replace hyphens with spaces
-            const mustAddTagsEnabled = $('#mustAddTagsEnabled').is(':checked');
-            const smartTagEnabled = $('#smartTagEnabled').is(':checked');
-            let mustAddTags = [];
-            if (mustAddTagsEnabled) {
-                mustAddTags = $('#must-add-tags').val().split(',').map(tag => tag.trim());
-                mustAddTags = mustAddTags.map(tag => tag.replace(/-/g, ' ')); // Replace hyphens with spaces
-            }
-            const pagesMin = $('#pref-pages-min').val();
-            const pagesMax = $('#pref-pages-max').val();
-            const matchAllTags = $('#matchAllTags').prop('checked');
-            const findAltMangaThumbnailEnabled = $('#findAltMangaThumbnailEnabled').prop('checked');
-            const openInNewTabEnabled = $('#openInNewTabEnabled').prop('checked');
-            const mangaBookMarkingButtonEnabled = $('#mangaBookMarkingButtonEnabled').prop('checked');
-            const shareButtonEnabled = $('#shareButtonEnabled').prop('checked');
-            const receiveSharesEnabled = $('#receiveSharesEnabled').prop('checked');
-            const receivePopupsEnabled = $('#receivePopupsEnabled').prop('checked');
-            const inboxAutoRemoveRead = $('#inboxAutoRemoveRead').prop('checked');
-            const inboxPollIntervalMin = parseInt($('#inboxPollIntervalMin').val(), 10) || 5;
-            const mangaBookMarkingType = $('input[name="manga-bookmarking-type"]:checked').val();
-            const bookmarkArrangementType = $('#bookmark-arrangement-type').val();
-            const monthFilterEnabled = $('#monthFilterEnabled').prop('checked');
-            const tooltipsEnabled = $('#tooltipsEnabled').prop('checked');
-            const galleryCaptionTooltipsEnabled = $('#galleryCaptionTooltipsEnabled').prop('checked');
-            const mangagroupingenabled = $('#mangagroupingenabled').prop('checked');
-            const maxMangaPerBookmark = parseInt($('#max-manga-per-bookmark-slider').val());
-            const openInNewTabType = $('input[name="open-in-new-tab"]:checked').val();
-            const offlineFavoritingEnabled = $('#offlineFavoritingEnabled').prop('checked');
-            const offlineFavoritesPageEnabled = $('#offlineFavoritesPageEnabled').prop('checked');
-            const readMangaPageEnabled = $('#readMangaPageEnabled').prop('checked');
-            const maxReadMangaDisplay = parseInt($('#max-read-manga-display-slider').val());
-            const quickNutPageEnabled = $('#quickNutPageEnabled').prop('checked');
-            const quickNutEnglishOnlyEnabled = $('#quickNutEnglishOnlyEnabled').prop('checked');
-            const quickNutSkipReadEnabled = $('#quickNutSkipReadEnabled').prop('checked');
-            const quickNutRefreshMode = $('#quickNutRefreshMode').val();
-            const quickNutCustomMinutes = parseInt($('#quickNutCustomMinutes').val()) || 1440;
-            const nfmPageEnabled = $('#nfmPageEnabled').prop('checked');
-            const bookmarksPageEnabled = $('#bookmarksPageEnabled').prop('checked');
-            const replaceRelatedWithBookmarks = $('#replaceRelatedWithBookmarks').prop('checked');
-            const enableRelatedFlipButton = $('#enableRelatedFlipButton').prop('checked');
-            const twitterButtonEnabled = $('#twitterButtonEnabled').prop('checked');
-            const enableRandomButton = $('#enableRandomButton').prop('checked');
-            const randomOpenType = $('input[name="random-open-type"]:checked').val();
-            const profileButtonEnabled = $('#profileButtonEnabled').prop('checked');
-            const infoButtonEnabled = $('#infoButtonEnabled').prop('checked');
-            const logoutButtonEnabled = $('#logoutButtonEnabled').prop('checked');
-            const bookmarkLinkEnabled = $('#bookmarkLinkEnabled').prop('checked');
-            const findSimilarType = $('input[name="find-similar-type"]:checked').val();
-            const showNonEnglish = $('#showNonEnglishSelect').val();
-            const showPageNumbersEnabled = $('#showPageNumbersEnabled').prop('checked');
-            const useClassicLayout = $('#useClassicLayout').prop('checked');
-
-            // Collect new Fade & Read settings
-            const markAsReadEnabled = $('#markAsReadEnabled').prop('checked');
-            const autoMarkReadEnabled = $('#autoMarkReadEnabled').prop('checked');
-            const hideBlacklistEnabled = $('#hideBlacklistEnabled').prop('checked');
-            const autoHideBlacklistedTagsEnabled = $('#autoHideBlacklistedTagsEnabled').prop('checked');
-            const nonEnglishOpacity = parseFloat($('#nonEnglishOpacity').val());
-            const readGalleriesOpacity = parseFloat($('#readGalleriesOpacity').val());
-
-            // Collect new Tag Management settings
-            const tagWarningEnabled = $('#tagWarningEnabled').prop('checked');
-            let blacklistTagsList = $('#blacklistTags').val().split(',').map(tag => tag.trim().toLowerCase()).filter(tag => tag);
-            let warningTagsList = $('#warningTags').val().split(',').map(tag => tag.trim().toLowerCase()).filter(tag => tag);
-            let favoriteTagsList = $('#favoriteTags').val().split(',').map(tag => tag.trim().toLowerCase()).filter(tag => tag);
-
-            // Collect sync settings
-            const publicSyncEnabledForm = $('#publicSyncEnabled').prop('checked');
-            const privateSyncEnabledForm = $('#privateSyncEnabled').prop('checked');
-            const privateStorageUrlForm = $('#privateStorageUrl').val();
-            const privateApiKeyForm = $('#privateApiKey').val();
-            const autoSyncEnabledForm = $('#autoSyncEnabled').prop('checked');
-            const syncIntervalForm = parseInt($('#syncInterval').val());
-
-
-
-
-
-
-
-
-            await GM.setValue('showNonEnglish', showNonEnglish);
-            await GM.setValue('showPageNumbersEnabled', showPageNumbersEnabled);
-            await GM.setValue('useClassicLayout', useClassicLayout);
-            await GM.setValue('findSimilarEnabled', findSimilarEnabled);
-            await GM.setValue('englishFilterEnabled', englishFilterEnabled);
-            await GM.setValue('autoLoginEnabled', autoLoginEnabled);
-            await GM.setValue('email', email);
-            await GM.setValue('password', password);
-            await GM.setValue('findAltmangaEnabled', findAltmangaEnabled);
-            await GM.setValue('bookmarksEnabled', bookmarksEnabled);
-            await GM.setValue('randomPrefLanguage', language);
-            await GM.setValue('blacklistedTags', blacklistedTags);
-            await GM.setValue('mustAddTagsEnabled', mustAddTagsEnabled);
-            await GM.setValue('mustAddTags', mustAddTags);
-            await GM.setValue('smartTagEnabled', smartTagEnabled);
-            await GM.setValue('randomPrefTags', tags);
-            await GM.setValue('randomPrefPagesMin', pagesMin);
-            await GM.setValue('randomPrefPagesMax', pagesMax);
-            await GM.setValue('matchAllTags', matchAllTags);
-            await GM.setValue('findAltMangaThumbnailEnabled', findAltMangaThumbnailEnabled);
-            await GM.setValue('openInNewTabEnabled', openInNewTabEnabled);
-            await GM.setValue('mangaBookMarkingButtonEnabled', mangaBookMarkingButtonEnabled);
-            await GM.setValue('shareButtonEnabled', shareButtonEnabled);
-            await GM.setValue('receiveSharesEnabled', receiveSharesEnabled);
-            await GM.setValue('receivePopupsEnabled', receivePopupsEnabled);
-            await GM.setValue('inboxAutoRemoveRead', inboxAutoRemoveRead);
-            await GM.setValue('inboxPollIntervalMin', inboxPollIntervalMin);
-            await GM.setValue('mangaBookMarkingType', mangaBookMarkingType);
-            await GM.setValue('bookmarkArrangementType', bookmarkArrangementType);
-            await GM.setValue('monthFilterEnabled', monthFilterEnabled);
-            await GM.setValue('tooltipsEnabled', tooltipsEnabled);
-            await GM.setValue('galleryCaptionTooltipsEnabled', galleryCaptionTooltipsEnabled);
-            await GM.setValue('mangagroupingenabled', mangagroupingenabled);
-            await GM.setValue('maxMangaPerBookmark', maxMangaPerBookmark);
-            await GM.setValue('openInNewTabType', openInNewTabType);
-            await GM.setValue('offlineFavoritingEnabled', offlineFavoritingEnabled);
-            await GM.setValue('offlineFavoritesPageEnabled', offlineFavoritesPageEnabled);
-            await GM.setValue('readMangaPageEnabled', readMangaPageEnabled);
-            await GM.setValue('maxReadMangaDisplay', maxReadMangaDisplay);
-            await GM.setValue('quickNutPageEnabled', quickNutPageEnabled);
-            await GM.setValue('quickNutEnglishOnlyEnabled', quickNutEnglishOnlyEnabled);
-            await GM.setValue('quickNutSkipReadEnabled', quickNutSkipReadEnabled);
-            await GM.setValue('quickNutRefreshMode', quickNutRefreshMode);
-            await GM.setValue('quickNutCustomMinutes', quickNutCustomMinutes);
-            await GM.setValue('nfmPageEnabled', nfmPageEnabled);
-            await GM.setValue('bookmarksPageEnabled', bookmarksPageEnabled);
-            await GM.setValue('replaceRelatedWithBookmarks', replaceRelatedWithBookmarks);
-            await GM.setValue('enableRelatedFlipButton', enableRelatedFlipButton);
-            await GM.setValue('twitterButtonEnabled', twitterButtonEnabled);
-            await GM.setValue('enableRandomButton', enableRandomButton);
-            await GM.setValue('randomOpenType', randomOpenType);
-            await GM.setValue('profileButtonEnabled', profileButtonEnabled);
-            await GM.setValue('infoButtonEnabled', infoButtonEnabled);
-            await GM.setValue('logoutButtonEnabled', logoutButtonEnabled);
-            await GM.setValue('bookmarkLinkEnabled', bookmarkLinkEnabled);
-            await GM.setValue('findSimilarType', findSimilarType);
-
-            // Save new Fade & Read settings
-            await GM.setValue('markAsReadEnabled', markAsReadEnabled);
-            await GM.setValue('autoMarkReadEnabled', autoMarkReadEnabled);
-            await GM.setValue('hideBlacklistEnabled', hideBlacklistEnabled);
-            await GM.setValue('autoHideBlacklistedTagsEnabled', autoHideBlacklistedTagsEnabled);
-            await GM.setValue('nonEnglishOpacity', nonEnglishOpacity);
-            await GM.setValue('readGalleriesOpacity', readGalleriesOpacity);
-
-            // Save new Tag Management settings
-            await GM.setValue('tagWarningEnabled', tagWarningEnabled);
-            await GM.setValue('blacklistTagsList', blacklistTagsList);
-            await GM.setValue('warningTagsList', warningTagsList);
-            await GM.setValue('favoriteTagsList', favoriteTagsList);
-
-            // Save sync settings
-            await GM.setValue('publicSyncEnabled', publicSyncEnabledForm);
-            await GM.setValue('privateSyncEnabled', privateSyncEnabledForm);
-            await GM.setValue('privateStorageUrl', privateStorageUrlForm);
-            await GM.setValue('privateApiKey', privateApiKeyForm);
-            await GM.setValue('autoSyncEnabled', autoSyncEnabledForm);
-            await GM.setValue('syncInterval', syncIntervalForm);
-
-            // Update AutoSync Manager with new settings
-            await autoSyncManager.updateSettings(autoSyncEnabledForm, syncIntervalForm);
-
-
-
-
-
-
-
-
-
-    // Show custom popup instead of alert
-    showPopup('Settings saved!');
         });
 
+        if (mangaBookMarkingButtonEnabled) {
+            $('#manga-bookmarking-options').show();
+        }
+
+        if (mangaBookMarkingType === 'cover') {
+            $('#manga-bookmarking-cover').prop('checked', true);
+        } else if (mangaBookMarkingType === 'title') {
+            $('#manga-bookmarking-title').prop('checked', true);
+        } else if (mangaBookMarkingType === 'both') {
+            $('#manga-bookmarking-both').prop('checked', true);
+        }
+
+        // Initialize bookmark arrangement dropdown
+        $('#bookmark-arrangement-type').val(bookmarkArrangementType);
+
+        $('#mangaBookMarkingButtonEnabled').on('change', function () {
+            if ($(this).prop('checked')) {
+                $('#manga-bookmarking-options').show();
+            } else {
+                $('#manga-bookmarking-options').hide();
+            }
+        });
+
+        // Add event listener for Read Manga Page options
+        $('#readMangaPageEnabled').on('change', function () {
+            $('#read-manga-page-options').toggle($(this).is(':checked'));
+        });
+
+        // Update the display value for the max read manga slider
+        $('#max-read-manga-display-slider').on('input', function () {
+            const value = parseInt($(this).val());
+            $('#max-read-manga-display-value').text(value);
+        });
+
+        $('#quickNutPageEnabled').on('change', function () {
+            $('#quick-nut-page-options').toggle($(this).is(':checked'));
+        });
+
+        $('#quickNutRefreshMode').on('change', function () {
+            const v = $(this).val();
+            $('#quickNutCustomMinutesContainer').toggle(v === 'custom');
+        });
+
+        $('#showNonEnglishSelect').on('change', async () => {
+            const showNonEnglish = $('#showNonEnglishSelect').val();
+            await GM.setValue('showNonEnglish', showNonEnglish);
+            applyNonEnglishStyles();
+        });
+
+        // Event handlers for new Fade & Read settings
+        $('#fade-read-settings h3').on('click', function () {
+            $('#fade-read-settings-content').toggle();
+            $(this).toggleClass('expanded');
+        });
+
+        $('#nonEnglishOpacity').on('input', function () {
+            const value = parseFloat($(this).val());
+            $('#nonEnglishOpacityValue').text(value);
+        });
+
+        $('#readGalleriesOpacity').on('input', function () {
+            const value = parseFloat($(this).val());
+            $('#readGalleriesOpacityValue').text(value);
+        });
+
+        $('#resetFadeSettings').on('click', function () {
+            $('#nonEnglishOpacity').val(0.2);
+            $('#nonEnglishOpacityValue').text('0.2');
+            $('#readGalleriesOpacity').val(0.6);
+            $('#readGalleriesOpacityValue').text('0.6');
+            $('#markAsReadEnabled').prop('checked', true);
+            $('#autoMarkReadEnabled').prop('checked', true);
+            $('#hideBlacklistEnabled').prop('checked', true);
+            $('#autoHideBlacklistedTagsEnabled').prop('checked', false);
+        });
+
+        // Clear hidden manga list
+        $('#clearHiddenManga').on('click', async function () {
+            if (confirm('Clear all hidden/blacklisted manga?')) {
+                await GM.setValue('hiddenGalleries', []);
+                await GM.setValue('hiddenGalleryTitles', {});
+                try {
+                    if (typeof hideBlacklistSystem !== 'undefined' && hideBlacklistSystem) {
+                        hideBlacklistSystem.hiddenGalleries = new Set();
+                        hideBlacklistSystem.applyHiddenFilter && hideBlacklistSystem.applyHiddenFilter();
+                    }
+                } catch (_) { /* ignore */ }
+                if (typeof updateHiddenCount === 'function') updateHiddenCount();
+                alert('Hidden manga list cleared.');
+            }
+        });
+
+        // Manage hidden manga (compact modal)
+        async function updateHiddenCount() {
+            try {
+                const ids = await GM.getValue('hiddenGalleries', []);
+                const count = Array.isArray(ids) ? ids.length : 0;
+                $('#hiddenMangaCount').text(count ? `(${count})` : '');
+            } catch (_) {
+                $('#hiddenMangaCount').text('');
+            }
+        }
+
+        function cleanPrettyTitle(raw) {
+            let t = String(raw || '');
+            // Remove any parenthetical or bracketed qualifiers
+            t = t.replace(/\([^)]*\)/g, '').replace(/\[[^\]]*\]/g, '');
+            // Collapse whitespace
+            t = t.replace(/\s+/g, ' ').trim();
+            return t;
+        }
+
+        async function fetchGalleryPrettyTitle(id) {
+            try {
+                const url = `${location.origin}/g/${id}/`;
+                const res = await fetch(url, { credentials: 'include' });
+                if (!res || !res.ok) return null;
+                const html = await res.text();
+                const doc = new DOMParser().parseFromString(html, 'text/html');
+                const prettyEl = doc.querySelector('h1.title .pretty');
+                if (!prettyEl) return null;
+                const cleaned = cleanPrettyTitle(prettyEl.textContent || '');
+                return cleaned || null;
+            } catch (_) {
+                return null;
+            }
+        }
+
+        function renderHiddenRows(entries, titlesMap) {
+            const listEl = document.getElementById('hiddenMangaList');
+            if (!listEl) return;
+            listEl.innerHTML = '';
+            if (!entries || entries.length === 0) {
+                listEl.innerHTML = '<p style="font-size:12px;color:#888;">No hidden manga.</p>';
+                return;
+            }
+            entries.forEach(({ id, title }) => {
+                const row = document.createElement('div');
+                row.className = 'row';
+                const nameLink = document.createElement('a');
+                nameLink.className = 'item-title';
+                nameLink.href = `/g/${id}/`;
+                nameLink.target = '_blank';
+                nameLink.rel = 'noopener noreferrer';
+                nameLink.textContent = (title && String(title).trim()) ? String(title).trim() : 'Loading…';
+                const idSpan = document.createElement('span');
+                idSpan.className = 'item-id';
+                idSpan.textContent = `ID: ${id}`;
+                const actions = document.createElement('div');
+                actions.className = 'actions';
+                const btn = document.createElement('button');
+                btn.className = 'unhide-item';
+                btn.setAttribute('data-id', String(id));
+                btn.textContent = 'Unhide';
+                actions.appendChild(btn);
+                row.appendChild(nameLink);
+                row.appendChild(idSpan);
+                row.appendChild(actions);
+                listEl.appendChild(row);
+
+                // Fetch and fill pretty title
+                (async () => {
+                    const fetched = await fetchGalleryPrettyTitle(id);
+                    const finalTitle = (fetched && fetched.trim())
+                        ? fetched.trim()
+                        : ((title && String(title).trim()) ? String(title).trim() : String(id));
+                    nameLink.textContent = finalTitle;
+                    // Persist fetched title to storage map for future
+                    try {
+                        if (titlesMap) {
+                            titlesMap[String(id)] = finalTitle;
+                            await GM.setValue('hiddenGalleryTitles', titlesMap);
+                        }
+                    } catch (_) { /* ignore */ }
+                })();
+            });
+        }
+
+        $('#manageHiddenManga').on('click', async function () {
+            try {
+                const ids = await GM.getValue('hiddenGalleries', []);
+                const titlesMap = await GM.getValue('hiddenGalleryTitles', {});
+                const entries = (Array.isArray(ids) ? ids : []).map(id => ({ id: String(id), title: titlesMap && titlesMap[String(id)] }));
+                renderHiddenRows(entries, titlesMap);
+            } catch (_) {
+                renderHiddenRows([], {});
+            }
+            $('#hiddenMangaModal').css('display', 'flex');
+        });
+
+        $('#closeHiddenMangaModal').on('click', function () {
+            $('#hiddenMangaModal').hide();
+        });
+
+        $('#hiddenMangaModal').on('click', function (e) {
+            if (e.target && e.target.id === 'hiddenMangaModal') {
+                $('#hiddenMangaModal').hide();
+            }
+        });
+
+        // Delegate unhide actions inside modal
+        $('#hiddenMangaList').on('click', '.unhide-item', async function () {
+            const id = String($(this).data('id'));
+            try {
+                if (typeof hideBlacklistSystem !== 'undefined' && hideBlacklistSystem && typeof hideBlacklistSystem.unhideGallery === 'function') {
+                    await hideBlacklistSystem.unhideGallery(id);
+                    hideBlacklistSystem.applyHiddenFilter && hideBlacklistSystem.applyHiddenFilter();
+                } else {
+                    let ids = await GM.getValue('hiddenGalleries', []);
+                    ids = (Array.isArray(ids) ? ids : []).filter(x => String(x) !== id);
+                    await GM.setValue('hiddenGalleries', ids);
+                }
+                let titlesMap = await GM.getValue('hiddenGalleryTitles', {});
+                if (titlesMap && titlesMap[id]) {
+                    delete titlesMap[id];
+                    await GM.setValue('hiddenGalleryTitles', titlesMap);
+                }
+            } catch (_) { /* ignore */ }
+            // Update UI
+            $(this).closest('.row').remove();
+            if ($('#hiddenMangaList .row').length === 0) {
+                $('#hiddenMangaList').html('<p style="font-size:12px;color:#888;">No hidden manga.</p>');
+            }
+            updateHiddenCount();
+        });
+
+        // Initialize count indicator
+        updateHiddenCount();
+
+        // Event handlers for new Tag Management settings
+        $('#tag-management-settings h3').on('click', function () {
+            $('#tag-management-settings-content').toggle();
+            $(this).toggleClass('expanded');
+        });
+
+        // Open Tag Management modal
+        $('#toggleTagLists').on('click', function () {
+            $('#tagManagementModal').css('display', 'flex');
+        });
+
+        // Close Tag Management modal
+        $('#closeTagManagementModal').on('click', function () {
+            $('#tagManagementModal').hide();
+        });
+
+        $('#tagManagementModal').on('click', function (e) {
+            if (e.target && e.target.id === 'tagManagementModal') {
+                $('#tagManagementModal').hide();
+            }
+        });
+
+        $('#clearFavoriteTags').on('click', async function () {
+            if (confirm('Are you sure you want to clear all favorite tags?')) {
+                await GM.setValue('favoriteTagsList', []);
+                $('#favoriteTags').val('');
+            }
+        });
+
+        $('#resetTagSettings').on('click', function () {
+            $('#blacklistTags').val('scat, guro, vore, ryona, snuff');
+            $('#warningTags').val('ntr, netorare, cheating, ugly bastard, mind break');
+            $('#tagWarningEnabled').prop('checked', true);
+        });
+
+        // Smart Tag Overrides management
+        async function getOverrides() {
+            try { return await GM.getValue('smartTagOverrides', {}); } catch (_) { return {}; }
+        }
+        async function setOverrides(obj) {
+            await GM.setValue('smartTagOverrides', obj || {});
+        }
+        function renderOverridesList(overrides) {
+            const container = document.getElementById('overrides-list');
+            if (!container) return;
+            container.innerHTML = '';
+            const entries = Object.entries(overrides || {}).sort((a, b) => a[0].localeCompare(b[0]));
+            if (entries.length === 0) {
+                container.innerHTML = '<p style="font-size:12px; color:#888;">No overrides set yet.</p>';
+                return;
+            }
+            entries.forEach(([name, type]) => {
+                const row = document.createElement('div');
+                row.className = 'override-row';
+                row.style.display = 'flex';
+                row.style.alignItems = 'center';
+                row.style.gap = '8px';
+                row.style.margin = '6px 0';
+
+                const nameSpan = document.createElement('span');
+                nameSpan.textContent = name;
+                nameSpan.style.flex = '1';
+
+                const sel = document.createElement('select');
+                ['artist', 'group', 'parody', 'character', 'tag'].forEach(opt => {
+                    const o = document.createElement('option');
+                    o.value = opt; o.textContent = opt; if (opt === type) o.selected = true; sel.appendChild(o);
+                });
+                sel.addEventListener('change', async () => {
+                    const ov = await getOverrides();
+                    ov[name] = sel.value;
+                    await setOverrides(ov);
+                });
+
+                const del = document.createElement('button');
+                del.className = 'btn-secondary action-btn-danger';
+                del.textContent = 'Remove';
+                del.addEventListener('click', async () => {
+                    const ov = await getOverrides();
+                    delete ov[name];
+                    await setOverrides(ov);
+                    renderOverridesList(ov);
+                });
+
+                row.appendChild(nameSpan);
+                row.appendChild(sel);
+                row.appendChild(del);
+                container.appendChild(row);
+            });
+        }
+
+        const addBtn = document.getElementById('add-override-btn');
+        if (addBtn) {
+            addBtn.addEventListener('click', async () => {
+                const nameInput = document.getElementById('override-name-input');
+                const typeSelect = document.getElementById('override-type-select');
+                const rawName = (nameInput?.value || '').trim();
+                const type = typeSelect?.value || 'tag';
+                if (!rawName) return;
+                // Normalize like taxonomyManager
+                const name = String(rawName).toLowerCase().replace(/-/g, ' ').trim();
+                const ov = await getOverrides();
+                ov[name] = type;
+                await setOverrides(ov);
+                renderOverridesList(ov);
+                nameInput.value = '';
+            });
+        }
+
+        // Check if openInNewTabEnabled is true, if not, hide the options
+        if (openInNewTabEnabled) {
+            $('#open-in-New-Tab-options').show();
+        }
+
+        // Add event listeners to the radio buttons
+        $('#open-in-new-tab-background').change(function () {
+            if (this.checked) {
+                GM.setValue('openInNewTabType', 'background');
+            }
+        });
+
+        $('#open-in-new-tab-foreground').change(function () {
+            if (this.checked) {
+                GM.setValue('openInNewTabType', 'foreground');
+            }
+        });
+
+        // Initialize the radio buttons based on the stored value
+        if (openInNewTabType === 'background') {
+            $('#open-in-new-tab-background').prop('checked', true);
+        } else {
+            $('#open-in-new-tab-foreground').prop('checked', true);
+        }
+
+        // Update the openInNewTabEnabled value in storage when the checkbox is changed
+        $('#openInNewTabEnabled').change(function () {
+            const openInNewTabEnabled = this.checked;
+            GM.setValue('openInNewTabEnabled', openInNewTabEnabled);
+            if (!openInNewTabEnabled) {
+                GM.setValue('openInNewTabType', null);
+            }
+            $('#open-in-New-Tab-options').toggle(openInNewTabEnabled);
+        });
+    })();
+
+    // Save settings
+    $('#settingsForm').on('submit', async function (event) {
+        event.preventDefault();
+
+        const findSimilarEnabled = $('#findSimilarEnabled').prop('checked');
+        const englishFilterEnabled = $('#englishFilterEnabled').prop('checked');
+        const autoLoginEnabled = $('#autoLoginEnabled').prop('checked');
+        const email = $('#email').val();
+        const password = $('#password').val();
+        const findAltmangaEnabled = $('#findAltmangaEnabled').prop('checked');
+        const bookmarksEnabled = $('#bookmarksEnabled').prop('checked');
+        const language = $('#pref-language').val();
+        let tags = $('#pref-tags').val().split(',').map(tag => tag.trim());
+        tags = tags.map(tag => tag.replace(/-/g, ' ')); // Replace hyphens with spaces
+        let blacklistedTags = $('#blacklisted-tags').val().split(',').map(tag => tag.trim());
+        blacklistedTags = blacklistedTags.map(tag => tag.replace(/-/g, ' ')); // Replace hyphens with spaces
+        const mustAddTagsEnabled = $('#mustAddTagsEnabled').is(':checked');
+        const smartTagEnabled = $('#smartTagEnabled').is(':checked');
+        let mustAddTags = [];
+        if (mustAddTagsEnabled) {
+            mustAddTags = $('#must-add-tags').val().split(',').map(tag => tag.trim());
+            mustAddTags = mustAddTags.map(tag => tag.replace(/-/g, ' ')); // Replace hyphens with spaces
+        }
+        const pagesMin = $('#pref-pages-min').val();
+        const pagesMax = $('#pref-pages-max').val();
+        const matchAllTags = $('#matchAllTags').prop('checked');
+        const findAltMangaThumbnailEnabled = $('#findAltMangaThumbnailEnabled').prop('checked');
+        const openInNewTabEnabled = $('#openInNewTabEnabled').prop('checked');
+        const mangaBookMarkingButtonEnabled = $('#mangaBookMarkingButtonEnabled').prop('checked');
+        const shareButtonEnabled = $('#shareButtonEnabled').prop('checked');
+        const receiveSharesEnabled = $('#receiveSharesEnabled').prop('checked');
+        const receivePopupsEnabled = $('#receivePopupsEnabled').prop('checked');
+        const inboxAutoRemoveRead = $('#inboxAutoRemoveRead').prop('checked');
+        const inboxPollIntervalMin = parseInt($('#inboxPollIntervalMin').val(), 10) || 5;
+        const mangaBookMarkingType = $('input[name="manga-bookmarking-type"]:checked').val();
+        const bookmarkArrangementType = $('#bookmark-arrangement-type').val();
+        const monthFilterEnabled = $('#monthFilterEnabled').prop('checked');
+        const tooltipsEnabled = $('#tooltipsEnabled').prop('checked');
+        const galleryCaptionTooltipsEnabled = $('#galleryCaptionTooltipsEnabled').prop('checked');
+        const mangagroupingenabled = $('#mangagroupingenabled').prop('checked');
+        const maxMangaPerBookmark = parseInt($('#max-manga-per-bookmark-slider').val());
+        const openInNewTabType = $('input[name="open-in-new-tab"]:checked').val();
+        const offlineFavoritingEnabled = $('#offlineFavoritingEnabled').prop('checked');
+        const offlineFavoritesPageEnabled = $('#offlineFavoritesPageEnabled').prop('checked');
+        const readMangaPageEnabled = $('#readMangaPageEnabled').prop('checked');
+        const maxReadMangaDisplay = parseInt($('#max-read-manga-display-slider').val());
+        const quickNutPageEnabled = $('#quickNutPageEnabled').prop('checked');
+        const quickNutEnglishOnlyEnabled = $('#quickNutEnglishOnlyEnabled').prop('checked');
+        const quickNutSkipReadEnabled = $('#quickNutSkipReadEnabled').prop('checked');
+        const quickNutRefreshMode = $('#quickNutRefreshMode').val();
+        const quickNutCustomMinutes = parseInt($('#quickNutCustomMinutes').val()) || 1440;
+        const nfmPageEnabled = $('#nfmPageEnabled').prop('checked');
+        const bookmarksPageEnabled = $('#bookmarksPageEnabled').prop('checked');
+        const replaceRelatedWithBookmarks = $('#replaceRelatedWithBookmarks').prop('checked');
+        const enableRelatedFlipButton = $('#enableRelatedFlipButton').prop('checked');
+        const twitterButtonEnabled = $('#twitterButtonEnabled').prop('checked');
+        const enableRandomButton = $('#enableRandomButton').prop('checked');
+        const randomOpenType = $('input[name="random-open-type"]:checked').val();
+        const profileButtonEnabled = $('#profileButtonEnabled').prop('checked');
+        const infoButtonEnabled = $('#infoButtonEnabled').prop('checked');
+        const logoutButtonEnabled = $('#logoutButtonEnabled').prop('checked');
+        const bookmarkLinkEnabled = $('#bookmarkLinkEnabled').prop('checked');
+        const findSimilarType = $('input[name="find-similar-type"]:checked').val();
+        const showNonEnglish = $('#showNonEnglishSelect').val();
+        const showPageNumbersEnabled = $('#showPageNumbersEnabled').prop('checked');
+        const useClassicLayout = $('#useClassicLayout').prop('checked');
+
+        // Collect new Fade & Read settings
+        const markAsReadEnabled = $('#markAsReadEnabled').prop('checked');
+        const autoMarkReadEnabled = $('#autoMarkReadEnabled').prop('checked');
+        const hideBlacklistEnabled = $('#hideBlacklistEnabled').prop('checked');
+        const autoHideBlacklistedTagsEnabled = $('#autoHideBlacklistedTagsEnabled').prop('checked');
+        const nonEnglishOpacity = parseFloat($('#nonEnglishOpacity').val());
+        const readGalleriesOpacity = parseFloat($('#readGalleriesOpacity').val());
+
+        // Collect new Tag Management settings
+        const tagWarningEnabled = $('#tagWarningEnabled').prop('checked');
+        let blacklistTagsList = $('#blacklistTags').val().split(',').map(tag => tag.trim().toLowerCase()).filter(tag => tag);
+        let warningTagsList = $('#warningTags').val().split(',').map(tag => tag.trim().toLowerCase()).filter(tag => tag);
+        let favoriteTagsList = $('#favoriteTags').val().split(',').map(tag => tag.trim().toLowerCase()).filter(tag => tag);
+
+        // Collect sync settings
+        const publicSyncEnabledForm = $('#publicSyncEnabled').prop('checked');
+        const privateSyncEnabledForm = $('#privateSyncEnabled').prop('checked');
+        const privateStorageUrlForm = $('#privateStorageUrl').val();
+        const privateApiKeyForm = $('#privateApiKey').val();
+        const autoSyncEnabledForm = $('#autoSyncEnabled').prop('checked');
+        const syncIntervalForm = parseInt($('#syncInterval').val());
 
 
 
 
 
-  // Import Bookmarked Pages
-  async function importBookmarkedPages(file) {
-    try {
-      const reader = new FileReader();
-      const fileContent = await new Promise((resolve, reject) => {
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = () => reject(reader.error);
-        reader.readAsText(file);
-      });
 
-      const importedBookmarks = JSON.parse(fileContent);
-      if (!Array.isArray(importedBookmarks)) {
-        throw new Error('Invalid file format');
-      }
 
-      const existingBookmarks = await GM.getValue('bookmarkedPages', []);
-      const mergedBookmarks = [...new Set([...existingBookmarks, ...importedBookmarks])]; // Merge without duplicates
-      await GM.setValue('bookmarkedPages', mergedBookmarks);
-      alert('Bookmarks imported successfully!');
-    } catch (error) {
-      alert(`Failed to import bookmarks: ${error.message}`);
+
+        await GM.setValue('showNonEnglish', showNonEnglish);
+        await GM.setValue('showPageNumbersEnabled', showPageNumbersEnabled);
+        await GM.setValue('useClassicLayout', useClassicLayout);
+        await GM.setValue('findSimilarEnabled', findSimilarEnabled);
+        await GM.setValue('englishFilterEnabled', englishFilterEnabled);
+        await GM.setValue('autoLoginEnabled', autoLoginEnabled);
+        await GM.setValue('email', email);
+        await GM.setValue('password', password);
+        await GM.setValue('findAltmangaEnabled', findAltmangaEnabled);
+        await GM.setValue('bookmarksEnabled', bookmarksEnabled);
+        await GM.setValue('randomPrefLanguage', language);
+        await GM.setValue('blacklistedTags', blacklistedTags);
+        await GM.setValue('mustAddTagsEnabled', mustAddTagsEnabled);
+        await GM.setValue('mustAddTags', mustAddTags);
+        await GM.setValue('smartTagEnabled', smartTagEnabled);
+        await GM.setValue('randomPrefTags', tags);
+        await GM.setValue('randomPrefPagesMin', pagesMin);
+        await GM.setValue('randomPrefPagesMax', pagesMax);
+        await GM.setValue('matchAllTags', matchAllTags);
+        await GM.setValue('findAltMangaThumbnailEnabled', findAltMangaThumbnailEnabled);
+        await GM.setValue('openInNewTabEnabled', openInNewTabEnabled);
+        await GM.setValue('mangaBookMarkingButtonEnabled', mangaBookMarkingButtonEnabled);
+        await GM.setValue('shareButtonEnabled', shareButtonEnabled);
+        await GM.setValue('receiveSharesEnabled', receiveSharesEnabled);
+        await GM.setValue('receivePopupsEnabled', receivePopupsEnabled);
+        await GM.setValue('inboxAutoRemoveRead', inboxAutoRemoveRead);
+        await GM.setValue('inboxPollIntervalMin', inboxPollIntervalMin);
+        await GM.setValue('mangaBookMarkingType', mangaBookMarkingType);
+        await GM.setValue('bookmarkArrangementType', bookmarkArrangementType);
+        await GM.setValue('monthFilterEnabled', monthFilterEnabled);
+        await GM.setValue('tooltipsEnabled', tooltipsEnabled);
+        await GM.setValue('galleryCaptionTooltipsEnabled', galleryCaptionTooltipsEnabled);
+        await GM.setValue('mangagroupingenabled', mangagroupingenabled);
+        await GM.setValue('maxMangaPerBookmark', maxMangaPerBookmark);
+        await GM.setValue('openInNewTabType', openInNewTabType);
+        await GM.setValue('offlineFavoritingEnabled', offlineFavoritingEnabled);
+        await GM.setValue('offlineFavoritesPageEnabled', offlineFavoritesPageEnabled);
+        await GM.setValue('readMangaPageEnabled', readMangaPageEnabled);
+        await GM.setValue('maxReadMangaDisplay', maxReadMangaDisplay);
+        await GM.setValue('quickNutPageEnabled', quickNutPageEnabled);
+        await GM.setValue('quickNutEnglishOnlyEnabled', quickNutEnglishOnlyEnabled);
+        await GM.setValue('quickNutSkipReadEnabled', quickNutSkipReadEnabled);
+        await GM.setValue('quickNutRefreshMode', quickNutRefreshMode);
+        await GM.setValue('quickNutCustomMinutes', quickNutCustomMinutes);
+        await GM.setValue('nfmPageEnabled', nfmPageEnabled);
+        await GM.setValue('bookmarksPageEnabled', bookmarksPageEnabled);
+        await GM.setValue('replaceRelatedWithBookmarks', replaceRelatedWithBookmarks);
+        await GM.setValue('enableRelatedFlipButton', enableRelatedFlipButton);
+        await GM.setValue('twitterButtonEnabled', twitterButtonEnabled);
+        await GM.setValue('enableRandomButton', enableRandomButton);
+        await GM.setValue('randomOpenType', randomOpenType);
+        await GM.setValue('profileButtonEnabled', profileButtonEnabled);
+        await GM.setValue('infoButtonEnabled', infoButtonEnabled);
+        await GM.setValue('logoutButtonEnabled', logoutButtonEnabled);
+        await GM.setValue('bookmarkLinkEnabled', bookmarkLinkEnabled);
+        await GM.setValue('findSimilarType', findSimilarType);
+
+        // Save new Fade & Read settings
+        await GM.setValue('markAsReadEnabled', markAsReadEnabled);
+        await GM.setValue('autoMarkReadEnabled', autoMarkReadEnabled);
+        await GM.setValue('hideBlacklistEnabled', hideBlacklistEnabled);
+        await GM.setValue('autoHideBlacklistedTagsEnabled', autoHideBlacklistedTagsEnabled);
+        await GM.setValue('nonEnglishOpacity', nonEnglishOpacity);
+        await GM.setValue('readGalleriesOpacity', readGalleriesOpacity);
+
+        // Save new Tag Management settings
+        await GM.setValue('tagWarningEnabled', tagWarningEnabled);
+        await GM.setValue('blacklistTagsList', blacklistTagsList);
+        await GM.setValue('warningTagsList', warningTagsList);
+        await GM.setValue('favoriteTagsList', favoriteTagsList);
+
+        // Save sync settings
+        await GM.setValue('publicSyncEnabled', publicSyncEnabledForm);
+        await GM.setValue('privateSyncEnabled', privateSyncEnabledForm);
+        await GM.setValue('privateStorageUrl', privateStorageUrlForm);
+        await GM.setValue('privateApiKey', privateApiKeyForm);
+        await GM.setValue('autoSyncEnabled', autoSyncEnabledForm);
+        await GM.setValue('syncInterval', syncIntervalForm);
+
+        // Update AutoSync Manager with new settings
+        await autoSyncManager.updateSettings(autoSyncEnabledForm, syncIntervalForm);
+
+
+
+
+
+
+
+
+
+        // Show custom popup instead of alert
+        showPopup('Settings saved!');
+    });
+
+
+
+
+
+
+    // Import Bookmarked Pages
+    async function importBookmarkedPages(file) {
+        try {
+            const reader = new FileReader();
+            const fileContent = await new Promise((resolve, reject) => {
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = () => reject(reader.error);
+                reader.readAsText(file);
+            });
+
+            const importedBookmarks = JSON.parse(fileContent);
+            if (!Array.isArray(importedBookmarks)) {
+                throw new Error('Invalid file format');
+            }
+
+            const existingBookmarks = await GM.getValue('bookmarkedPages', []);
+            const mergedBookmarks = [...new Set([...existingBookmarks, ...importedBookmarks])]; // Merge without duplicates
+            await GM.setValue('bookmarkedPages', mergedBookmarks);
+            alert('Bookmarks imported successfully!');
+        } catch (error) {
+            alert(`Failed to import bookmarks: ${error.message}`);
+        }
     }
-  }
 
 
     // Add event listeners to buttons on the settings page
     function setupBookmarkButtons() {
-      // Export Button
-      document.getElementById('exportBookmarks').addEventListener('click', exportBookmarkedPages);
+        // Export Button
+        document.getElementById('exportBookmarks').addEventListener('click', exportBookmarkedPages);
 
-      // Import Button
-      document.getElementById('importBookmarks').addEventListener('click', () => {
-        document.getElementById('importBookmarksFile').click();
-      });
+        // Import Button
+        document.getElementById('importBookmarks').addEventListener('click', () => {
+            document.getElementById('importBookmarksFile').click();
+        });
 
-      // Handle file selection for import
-      document.getElementById('importBookmarksFile').addEventListener('change', (event) => {
-        const file = event.target.files[0];
-        if (file) {
-          importBookmarkedPages(file);
-        }
-      });
+        // Handle file selection for import
+        document.getElementById('importBookmarksFile').addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                importBookmarkedPages(file);
+            }
+        });
     }
 
 
     // Call this function after settings form is rendered
     setupBookmarkButtons();
 
-//------------------------------------------------ Advanced Settings Management Functions---------------------------------------------------------
+    //------------------------------------------------ Advanced Settings Management Functions---------------------------------------------------------
 
     // Toggle advanced settings section (Storage Explorer)
     const advancedHeader = document.getElementById('storage-explorer-header');
     const advancedContent = document.getElementById('advanced-settings-content');
 
     if (advancedHeader && advancedContent) {
-        advancedHeader.addEventListener('click', function() {
+        advancedHeader.addEventListener('click', function () {
             const isHidden = advancedContent.style.display === 'none';
             advancedContent.style.display = isHidden ? 'block' : 'none';
-            
+
             // Toggle chevron icon
             const icon = advancedHeader.querySelector('i');
             if (icon) {
@@ -4981,11 +5024,11 @@ $('#openInNewTabEnabled').change(function() {
     const cancelEditBtn = document.getElementById('cancel-edit');
     const saveEditBtn = document.getElementById('save-edit');
 
-    cancelEditBtn.addEventListener('click', function() {
+    cancelEditBtn.addEventListener('click', function () {
         editModal.style.display = 'none';
     });
 
-    saveEditBtn.addEventListener('click', function() {
+    saveEditBtn.addEventListener('click', function () {
         const keyName = document.getElementById('editing-key-name').dataset.key;
         const newValue = document.getElementById('edit-value-textarea').value;
 
@@ -5008,414 +5051,414 @@ $('#openInNewTabEnabled').change(function() {
         }
     });
 
-// Function to refresh storage data with mobile-friendly layout
-function refreshStorageData() {
-    const keysList = document.getElementById('storage-keys-list');
-    keysList.innerHTML = '<p>Loading storage data...</p>';
+    // Function to refresh storage data with mobile-friendly layout
+    function refreshStorageData() {
+        const keysList = document.getElementById('storage-keys-list');
+        keysList.innerHTML = '<p>Loading storage data...</p>';
 
-    // Use GM.listValues() to get all keys
-    GM.listValues()
-        .then(keys => {
-            if (keys.length === 0) {
-                keysList.innerHTML = '<p>No data found in storage.</p>';
-                return;
-            }
-
-            keysList.innerHTML = '';
-
-            // Sort keys alphabetically for easier navigation
-            keys.sort();
-
-            // Process each key
-            Promise.all(keys.map(key => {
-                return GM.getValue(key)
-                    .then(value => {
-                        return { key, value };
-                    });
-            }))
-            .then(items => {
-                // Create responsive container
-                const container = document.createElement('div');
-                container.style.width = '100%';
-
-                // Add media query detection
-                const isMobile = window.matchMedia("(max-width: 600px)").matches;
-
-                if (isMobile) {
-                    // Mobile view: Card-based layout
-                    items.forEach(item => {
-                        const card = document.createElement('div');
-                        card.style.border = '1px solid #444';
-                        card.style.borderRadius = '4px';
-                        card.style.padding = '10px';
-                        card.style.marginBottom = '15px';
-                        card.style.backgroundColor = '#2a2a2a';
-
-                        // Key
-                        const keyDiv = document.createElement('div');
-                        keyDiv.style.fontWeight = 'bold';
-                        keyDiv.style.marginBottom = '5px';
-                        keyDiv.style.wordBreak = 'break-word';
-                        keyDiv.textContent = item.key;
-                        card.appendChild(keyDiv);
-
-                        // Type and Size
-                        const infoDiv = document.createElement('div');
-                        infoDiv.style.display = 'flex';
-                        infoDiv.style.justifyContent = 'space-between';
-                        infoDiv.style.marginBottom = '10px';
-                        infoDiv.style.fontSize = '0.9em';
-                        infoDiv.style.color = '#aaa';
-
-                        const typeSpan = document.createElement('span');
-                        typeSpan.textContent = `Type: ${getValueType(item.value)}`;
-
-                        const sizeSpan = document.createElement('span');
-                        sizeSpan.textContent = `Size: ${getValueSize(item.value)}`;
-
-                        infoDiv.appendChild(typeSpan);
-                        infoDiv.appendChild(sizeSpan);
-                        card.appendChild(infoDiv);
-
-                        // Actions
-                        const actionDiv = document.createElement('div');
-                        actionDiv.style.display = 'flex';
-                        actionDiv.style.gap = '10px';
-
-                        const viewBtn = document.createElement('button');
-                        viewBtn.textContent = 'View/Edit';
-                        viewBtn.style.flex = '1';
-                        viewBtn.style.padding = '8px';
-                        viewBtn.style.backgroundColor = '#444';
-                        viewBtn.style.border = 'none';
-                        viewBtn.style.borderRadius = '4px';
-                        viewBtn.style.color = 'white';
-                        viewBtn.style.cursor = 'pointer';
-
-                        viewBtn.addEventListener('click', function() {
-                            openEditModal(item.key, item.value);
-                        });
-
-                        const deleteBtn = document.createElement('button');
-                        deleteBtn.textContent = 'Delete';
-                        deleteBtn.style.flex = '1';
-                        deleteBtn.style.padding = '8px';
-                        deleteBtn.style.backgroundColor = '#d9534f';
-                        deleteBtn.style.border = 'none';
-                        deleteBtn.style.borderRadius = '4px';
-                        deleteBtn.style.color = 'white';
-                        deleteBtn.style.cursor = 'pointer';
-
-                        deleteBtn.addEventListener('click', function() {
-                            if (confirm(`Are you sure you want to delete "${item.key}"?`)) {
-                                GM.deleteValue(item.key)
-                                    .then(() => {
-                                        refreshStorageData();
-                                    })
-                                    .catch(err => {
-                                        alert('Error deleting value: ' + err.message);
-                                    });
-                            }
-                        });
-
-                        actionDiv.appendChild(viewBtn);
-                        actionDiv.appendChild(deleteBtn);
-                        card.appendChild(actionDiv);
-
-                        container.appendChild(card);
-                    });
-                } else {
-                    // Desktop view: Table layout
-                    const table = document.createElement('table');
-                    table.style.width = '100%';
-                    table.style.borderCollapse = 'collapse';
-                    table.style.marginTop = '10px';
-
-                    // Create table header
-                    const thead = document.createElement('thead');
-                    const headerRow = document.createElement('tr');
-                    ['Key', 'Type', 'Size', 'Actions'].forEach(text => {
-                        const th = document.createElement('th');
-                        th.textContent = text;
-                        th.style.textAlign = 'left';
-                        th.style.padding = '8px';
-                        th.style.backgroundColor = '#2a2a2a';
-                        th.style.borderBottom = '1px solid #444';
-                        headerRow.appendChild(th);
-                    });
-                    thead.appendChild(headerRow);
-                    table.appendChild(thead);
-
-                    // Create table body
-                    const tbody = document.createElement('tbody');
-
-                    items.forEach(item => {
-                        const row = document.createElement('tr');
-                        row.style.borderBottom = '1px solid #333';
-
-                        // Key column
-                        const keyCell = document.createElement('td');
-                        keyCell.textContent = item.key;
-                        keyCell.style.padding = '8px';
-                        keyCell.style.maxWidth = '200px';
-                        keyCell.style.overflow = 'hidden';
-                        keyCell.style.textOverflow = 'ellipsis';
-                        keyCell.style.whiteSpace = 'nowrap';
-
-                        // Type column
-                        const typeCell = document.createElement('td');
-                        typeCell.textContent = getValueType(item.value);
-                        typeCell.style.padding = '8px';
-
-                        // Size column
-                        const sizeCell = document.createElement('td');
-                        sizeCell.textContent = getValueSize(item.value);
-                        sizeCell.style.padding = '8px';
-
-                        // Actions column
-                        const actionsCell = document.createElement('td');
-                        actionsCell.style.padding = '8px';
-
-                        const actionWrapper = document.createElement('div');
-                        actionWrapper.style.display = 'flex';
-                        actionWrapper.style.gap = '5px';
-
-                        const viewBtn = document.createElement('button');
-                        viewBtn.textContent = 'View/Edit';
-                        viewBtn.style.padding = '3px 8px';
-                        viewBtn.style.backgroundColor = '#444';
-                        viewBtn.style.border = 'none';
-                        viewBtn.style.borderRadius = '2px';
-                        viewBtn.style.color = 'white';
-                        viewBtn.style.cursor = 'pointer';
-
-                        viewBtn.addEventListener('click', function() {
-                            openEditModal(item.key, item.value);
-                        });
-
-                        const deleteBtn = document.createElement('button');
-                        deleteBtn.textContent = 'Delete';
-                        deleteBtn.style.padding = '3px 8px';
-                        deleteBtn.style.backgroundColor = '#d9534f';
-                        deleteBtn.style.border = 'none';
-                        deleteBtn.style.borderRadius = '2px';
-                        deleteBtn.style.color = 'white';
-                        deleteBtn.style.cursor = 'pointer';
-
-                        deleteBtn.addEventListener('click', function() {
-                            if (confirm(`Are you sure you want to delete "${item.key}"?`)) {
-                                GM.deleteValue(item.key)
-                                    .then(() => {
-                                        refreshStorageData();
-                                    })
-                                    .catch(err => {
-                                        alert('Error deleting value: ' + err.message);
-                                    });
-                            }
-                        });
-
-                        actionWrapper.appendChild(viewBtn);
-                        actionWrapper.appendChild(deleteBtn);
-                        actionsCell.appendChild(actionWrapper);
-
-                        // Add all cells to the row
-                        row.appendChild(keyCell);
-                        row.appendChild(typeCell);
-                        row.appendChild(sizeCell);
-                        row.appendChild(actionsCell);
-
-                        // Add row to table body
-                        tbody.appendChild(row);
-                    });
-
-                    table.appendChild(tbody);
-                    container.appendChild(table);
+        // Use GM.listValues() to get all keys
+        GM.listValues()
+            .then(keys => {
+                if (keys.length === 0) {
+                    keysList.innerHTML = '<p>No data found in storage.</p>';
+                    return;
                 }
 
-                keysList.appendChild(container);
+                keysList.innerHTML = '';
 
-                // Add option to create new key
-                const addNewSection = document.createElement('div');
-                addNewSection.style.marginTop = '20px';
+                // Sort keys alphabetically for easier navigation
+                keys.sort();
 
-                const addNewHeading = document.createElement('h4');
-                addNewHeading.textContent = 'Add New Storage Key';
-                addNewSection.appendChild(addNewHeading);
+                // Process each key
+                Promise.all(keys.map(key => {
+                    return GM.getValue(key)
+                        .then(value => {
+                            return { key, value };
+                        });
+                }))
+                    .then(items => {
+                        // Create responsive container
+                        const container = document.createElement('div');
+                        container.style.width = '100%';
 
-                const addNewForm = document.createElement('div');
-                addNewForm.style.display = 'flex';
-                addNewForm.style.gap = '10px';
-                addNewForm.style.marginTop = '10px';
-                addNewForm.style.flexWrap = 'wrap'; // Allow wrapping on small screens
+                        // Add media query detection
+                        const isMobile = window.matchMedia("(max-width: 600px)").matches;
 
-                const keyInput = document.createElement('input');
-                keyInput.type = 'text';
-                keyInput.placeholder = 'Key name';
-                keyInput.style.flex = '1';
-                keyInput.style.padding = '8px';
-                keyInput.style.backgroundColor = '#333';
-                keyInput.style.border = '1px solid #444';
-                keyInput.style.color = '#fff';
-                keyInput.style.borderRadius = '4px';
-                keyInput.style.minWidth = '120px'; // Ensure minimum usable width
+                        if (isMobile) {
+                            // Mobile view: Card-based layout
+                            items.forEach(item => {
+                                const card = document.createElement('div');
+                                card.style.border = '1px solid #444';
+                                card.style.borderRadius = '4px';
+                                card.style.padding = '10px';
+                                card.style.marginBottom = '15px';
+                                card.style.backgroundColor = '#2a2a2a';
 
-                const valueInput = document.createElement('input');
-                valueInput.type = 'text';
-                valueInput.placeholder = 'Value (valid JSON)';
-                valueInput.style.flex = '2';
-                valueInput.style.padding = '8px';
-                valueInput.style.backgroundColor = '#333';
-                valueInput.style.border = '1px solid #444';
-                valueInput.style.color = '#fff';
-                valueInput.style.borderRadius = '4px';
-                valueInput.style.minWidth = '150px'; // Ensure minimum usable width
+                                // Key
+                                const keyDiv = document.createElement('div');
+                                keyDiv.style.fontWeight = 'bold';
+                                keyDiv.style.marginBottom = '5px';
+                                keyDiv.style.wordBreak = 'break-word';
+                                keyDiv.textContent = item.key;
+                                card.appendChild(keyDiv);
 
-                const addBtn = document.createElement('button');
-                addBtn.textContent = 'Add';
-                addBtn.style.padding = '8px';
-                addBtn.style.backgroundColor = '#28a745';
-                addBtn.style.border = 'none';
-                addBtn.style.borderRadius = '4px';
-                addBtn.style.color = 'white';
-                addBtn.style.cursor = 'pointer';
+                                // Type and Size
+                                const infoDiv = document.createElement('div');
+                                infoDiv.style.display = 'flex';
+                                infoDiv.style.justifyContent = 'space-between';
+                                infoDiv.style.marginBottom = '10px';
+                                infoDiv.style.fontSize = '0.9em';
+                                infoDiv.style.color = '#aaa';
 
-                addBtn.addEventListener('click', function() {
-                    const key = keyInput.value.trim();
-                    const value = valueInput.value.trim();
+                                const typeSpan = document.createElement('span');
+                                typeSpan.textContent = `Type: ${getValueType(item.value)}`;
 
-                    if (!key) {
-                        alert('Please enter a key name.');
-                        return;
-                    }
+                                const sizeSpan = document.createElement('span');
+                                sizeSpan.textContent = `Size: ${getValueSize(item.value)}`;
 
-                    if (!value) {
-                        alert('Please enter a value.');
-                        return;
-                    }
+                                infoDiv.appendChild(typeSpan);
+                                infoDiv.appendChild(sizeSpan);
+                                card.appendChild(infoDiv);
 
-                    try {
-                        const parsedValue = JSON.parse(value);
+                                // Actions
+                                const actionDiv = document.createElement('div');
+                                actionDiv.style.display = 'flex';
+                                actionDiv.style.gap = '10px';
 
-                        GM.setValue(key, parsedValue)
-                            .then(() => {
-                                alert('New key added successfully!');
-                                keyInput.value = '';
-                                valueInput.value = '';
-                                refreshStorageData();
-                            })
-                            .catch(err => {
-                                alert('Error adding new key: ' + err.message);
-                            });
-                    } catch (e) {
-                        alert('Invalid JSON format. Please check your input.');
-                    }
-                });
+                                const viewBtn = document.createElement('button');
+                                viewBtn.textContent = 'View/Edit';
+                                viewBtn.style.flex = '1';
+                                viewBtn.style.padding = '8px';
+                                viewBtn.style.backgroundColor = '#444';
+                                viewBtn.style.border = 'none';
+                                viewBtn.style.borderRadius = '4px';
+                                viewBtn.style.color = 'white';
+                                viewBtn.style.cursor = 'pointer';
 
-                addNewForm.appendChild(keyInput);
-                addNewForm.appendChild(valueInput);
-                addNewForm.appendChild(addBtn);
-
-                addNewSection.appendChild(addNewForm);
-                keysList.appendChild(addNewSection);
-
-                // Add export/import buttons
-                const buttonSection = document.createElement('div');
-                buttonSection.style.marginTop = '20px';
-                buttonSection.style.display = 'flex';
-                buttonSection.style.gap = '10px';
-                buttonSection.style.flexWrap = 'wrap'; // Allow buttons to wrap on small screens
-
-                const exportBtn = document.createElement('button');
-                exportBtn.textContent = 'Export All Storage Data';
-                exportBtn.style.padding = '10px';
-                exportBtn.style.backgroundColor = '#007bff';
-                exportBtn.style.border = 'none';
-                exportBtn.style.borderRadius = '4px';
-                exportBtn.style.color = 'white';
-                exportBtn.style.cursor = 'pointer';
-                exportBtn.style.flex = '1';
-                exportBtn.style.minWidth = isMobile ? '100%' : '150px';
-
-                exportBtn.addEventListener('click', function() {
-                    const exportData = {};
-                    items.forEach(item => {
-                        exportData[item.key] = item.value;
-                    });
-
-                    const dataStr = JSON.stringify(exportData, null, 2);
-                    const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
-
-                    const exportLink = document.createElement('a');
-                    exportLink.setAttribute('href', dataUri);
-                    exportLink.setAttribute('download', 'userscript_storage_backup.json');
-                    exportLink.click();
-                });
-
-                const importInput = document.createElement('input');
-                importInput.type = 'file';
-                importInput.accept = '.json';
-                importInput.style.display = 'none';
-                importInput.id = 'import-storage-file';
-
-                const importBtn = document.createElement('button');
-                importBtn.textContent = 'Import Storage Data';
-                importBtn.style.padding = '10px';
-                importBtn.style.backgroundColor = '#6c757d';
-                importBtn.style.border = 'none';
-                importBtn.style.borderRadius = '4px';
-                importBtn.style.color = 'white';
-                importBtn.style.cursor = 'pointer';
-                importBtn.style.flex = '1';
-                importBtn.style.minWidth = isMobile ? '100%' : '150px';
-
-                importBtn.addEventListener('click', function() {
-                    importInput.click();
-                });
-
-                importInput.addEventListener('change', function(e) {
-                    const file = e.target.files[0];
-                    if (!file) return;
-
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        try {
-                            const importData = JSON.parse(e.target.result);
-
-                            if (confirm(`This will import ${Object.keys(importData).length} keys. Continue?`)) {
-                                // Process each key in the import data
-                                const importPromises = Object.entries(importData).map(([key, value]) => {
-                                    return GM.setValue(key, value);
+                                viewBtn.addEventListener('click', function () {
+                                    openEditModal(item.key, item.value);
                                 });
 
-                                Promise.all(importPromises)
+                                const deleteBtn = document.createElement('button');
+                                deleteBtn.textContent = 'Delete';
+                                deleteBtn.style.flex = '1';
+                                deleteBtn.style.padding = '8px';
+                                deleteBtn.style.backgroundColor = '#d9534f';
+                                deleteBtn.style.border = 'none';
+                                deleteBtn.style.borderRadius = '4px';
+                                deleteBtn.style.color = 'white';
+                                deleteBtn.style.cursor = 'pointer';
+
+                                deleteBtn.addEventListener('click', function () {
+                                    if (confirm(`Are you sure you want to delete "${item.key}"?`)) {
+                                        GM.deleteValue(item.key)
+                                            .then(() => {
+                                                refreshStorageData();
+                                            })
+                                            .catch(err => {
+                                                alert('Error deleting value: ' + err.message);
+                                            });
+                                    }
+                                });
+
+                                actionDiv.appendChild(viewBtn);
+                                actionDiv.appendChild(deleteBtn);
+                                card.appendChild(actionDiv);
+
+                                container.appendChild(card);
+                            });
+                        } else {
+                            // Desktop view: Table layout
+                            const table = document.createElement('table');
+                            table.style.width = '100%';
+                            table.style.borderCollapse = 'collapse';
+                            table.style.marginTop = '10px';
+
+                            // Create table header
+                            const thead = document.createElement('thead');
+                            const headerRow = document.createElement('tr');
+                            ['Key', 'Type', 'Size', 'Actions'].forEach(text => {
+                                const th = document.createElement('th');
+                                th.textContent = text;
+                                th.style.textAlign = 'left';
+                                th.style.padding = '8px';
+                                th.style.backgroundColor = '#2a2a2a';
+                                th.style.borderBottom = '1px solid #444';
+                                headerRow.appendChild(th);
+                            });
+                            thead.appendChild(headerRow);
+                            table.appendChild(thead);
+
+                            // Create table body
+                            const tbody = document.createElement('tbody');
+
+                            items.forEach(item => {
+                                const row = document.createElement('tr');
+                                row.style.borderBottom = '1px solid #333';
+
+                                // Key column
+                                const keyCell = document.createElement('td');
+                                keyCell.textContent = item.key;
+                                keyCell.style.padding = '8px';
+                                keyCell.style.maxWidth = '200px';
+                                keyCell.style.overflow = 'hidden';
+                                keyCell.style.textOverflow = 'ellipsis';
+                                keyCell.style.whiteSpace = 'nowrap';
+
+                                // Type column
+                                const typeCell = document.createElement('td');
+                                typeCell.textContent = getValueType(item.value);
+                                typeCell.style.padding = '8px';
+
+                                // Size column
+                                const sizeCell = document.createElement('td');
+                                sizeCell.textContent = getValueSize(item.value);
+                                sizeCell.style.padding = '8px';
+
+                                // Actions column
+                                const actionsCell = document.createElement('td');
+                                actionsCell.style.padding = '8px';
+
+                                const actionWrapper = document.createElement('div');
+                                actionWrapper.style.display = 'flex';
+                                actionWrapper.style.gap = '5px';
+
+                                const viewBtn = document.createElement('button');
+                                viewBtn.textContent = 'View/Edit';
+                                viewBtn.style.padding = '3px 8px';
+                                viewBtn.style.backgroundColor = '#444';
+                                viewBtn.style.border = 'none';
+                                viewBtn.style.borderRadius = '2px';
+                                viewBtn.style.color = 'white';
+                                viewBtn.style.cursor = 'pointer';
+
+                                viewBtn.addEventListener('click', function () {
+                                    openEditModal(item.key, item.value);
+                                });
+
+                                const deleteBtn = document.createElement('button');
+                                deleteBtn.textContent = 'Delete';
+                                deleteBtn.style.padding = '3px 8px';
+                                deleteBtn.style.backgroundColor = '#d9534f';
+                                deleteBtn.style.border = 'none';
+                                deleteBtn.style.borderRadius = '2px';
+                                deleteBtn.style.color = 'white';
+                                deleteBtn.style.cursor = 'pointer';
+
+                                deleteBtn.addEventListener('click', function () {
+                                    if (confirm(`Are you sure you want to delete "${item.key}"?`)) {
+                                        GM.deleteValue(item.key)
+                                            .then(() => {
+                                                refreshStorageData();
+                                            })
+                                            .catch(err => {
+                                                alert('Error deleting value: ' + err.message);
+                                            });
+                                    }
+                                });
+
+                                actionWrapper.appendChild(viewBtn);
+                                actionWrapper.appendChild(deleteBtn);
+                                actionsCell.appendChild(actionWrapper);
+
+                                // Add all cells to the row
+                                row.appendChild(keyCell);
+                                row.appendChild(typeCell);
+                                row.appendChild(sizeCell);
+                                row.appendChild(actionsCell);
+
+                                // Add row to table body
+                                tbody.appendChild(row);
+                            });
+
+                            table.appendChild(tbody);
+                            container.appendChild(table);
+                        }
+
+                        keysList.appendChild(container);
+
+                        // Add option to create new key
+                        const addNewSection = document.createElement('div');
+                        addNewSection.style.marginTop = '20px';
+
+                        const addNewHeading = document.createElement('h4');
+                        addNewHeading.textContent = 'Add New Storage Key';
+                        addNewSection.appendChild(addNewHeading);
+
+                        const addNewForm = document.createElement('div');
+                        addNewForm.style.display = 'flex';
+                        addNewForm.style.gap = '10px';
+                        addNewForm.style.marginTop = '10px';
+                        addNewForm.style.flexWrap = 'wrap'; // Allow wrapping on small screens
+
+                        const keyInput = document.createElement('input');
+                        keyInput.type = 'text';
+                        keyInput.placeholder = 'Key name';
+                        keyInput.style.flex = '1';
+                        keyInput.style.padding = '8px';
+                        keyInput.style.backgroundColor = '#333';
+                        keyInput.style.border = '1px solid #444';
+                        keyInput.style.color = '#fff';
+                        keyInput.style.borderRadius = '4px';
+                        keyInput.style.minWidth = '120px'; // Ensure minimum usable width
+
+                        const valueInput = document.createElement('input');
+                        valueInput.type = 'text';
+                        valueInput.placeholder = 'Value (valid JSON)';
+                        valueInput.style.flex = '2';
+                        valueInput.style.padding = '8px';
+                        valueInput.style.backgroundColor = '#333';
+                        valueInput.style.border = '1px solid #444';
+                        valueInput.style.color = '#fff';
+                        valueInput.style.borderRadius = '4px';
+                        valueInput.style.minWidth = '150px'; // Ensure minimum usable width
+
+                        const addBtn = document.createElement('button');
+                        addBtn.textContent = 'Add';
+                        addBtn.style.padding = '8px';
+                        addBtn.style.backgroundColor = '#28a745';
+                        addBtn.style.border = 'none';
+                        addBtn.style.borderRadius = '4px';
+                        addBtn.style.color = 'white';
+                        addBtn.style.cursor = 'pointer';
+
+                        addBtn.addEventListener('click', function () {
+                            const key = keyInput.value.trim();
+                            const value = valueInput.value.trim();
+
+                            if (!key) {
+                                alert('Please enter a key name.');
+                                return;
+                            }
+
+                            if (!value) {
+                                alert('Please enter a value.');
+                                return;
+                            }
+
+                            try {
+                                const parsedValue = JSON.parse(value);
+
+                                GM.setValue(key, parsedValue)
                                     .then(() => {
-                                        alert('Import completed successfully!');
+                                        alert('New key added successfully!');
+                                        keyInput.value = '';
+                                        valueInput.value = '';
                                         refreshStorageData();
                                     })
                                     .catch(err => {
-                                        alert('Error during import: ' + err.message);
+                                        alert('Error adding new key: ' + err.message);
                                     });
+                            } catch (e) {
+                                alert('Invalid JSON format. Please check your input.');
                             }
-                        } catch (e) {
-                            alert('Invalid JSON file. Please check the file format.');
-                        }
-                    };
-                    reader.readAsText(file);
-                });
+                        });
 
-                buttonSection.appendChild(exportBtn);
-                buttonSection.appendChild(importBtn);
-                buttonSection.appendChild(importInput);
-                keysList.appendChild(buttonSection);
+                        addNewForm.appendChild(keyInput);
+                        addNewForm.appendChild(valueInput);
+                        addNewForm.appendChild(addBtn);
+
+                        addNewSection.appendChild(addNewForm);
+                        keysList.appendChild(addNewSection);
+
+                        // Add export/import buttons
+                        const buttonSection = document.createElement('div');
+                        buttonSection.style.marginTop = '20px';
+                        buttonSection.style.display = 'flex';
+                        buttonSection.style.gap = '10px';
+                        buttonSection.style.flexWrap = 'wrap'; // Allow buttons to wrap on small screens
+
+                        const exportBtn = document.createElement('button');
+                        exportBtn.textContent = 'Export All Storage Data';
+                        exportBtn.style.padding = '10px';
+                        exportBtn.style.backgroundColor = '#007bff';
+                        exportBtn.style.border = 'none';
+                        exportBtn.style.borderRadius = '4px';
+                        exportBtn.style.color = 'white';
+                        exportBtn.style.cursor = 'pointer';
+                        exportBtn.style.flex = '1';
+                        exportBtn.style.minWidth = isMobile ? '100%' : '150px';
+
+                        exportBtn.addEventListener('click', function () {
+                            const exportData = {};
+                            items.forEach(item => {
+                                exportData[item.key] = item.value;
+                            });
+
+                            const dataStr = JSON.stringify(exportData, null, 2);
+                            const dataUri = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
+
+                            const exportLink = document.createElement('a');
+                            exportLink.setAttribute('href', dataUri);
+                            exportLink.setAttribute('download', 'userscript_storage_backup.json');
+                            exportLink.click();
+                        });
+
+                        const importInput = document.createElement('input');
+                        importInput.type = 'file';
+                        importInput.accept = '.json';
+                        importInput.style.display = 'none';
+                        importInput.id = 'import-storage-file';
+
+                        const importBtn = document.createElement('button');
+                        importBtn.textContent = 'Import Storage Data';
+                        importBtn.style.padding = '10px';
+                        importBtn.style.backgroundColor = '#6c757d';
+                        importBtn.style.border = 'none';
+                        importBtn.style.borderRadius = '4px';
+                        importBtn.style.color = 'white';
+                        importBtn.style.cursor = 'pointer';
+                        importBtn.style.flex = '1';
+                        importBtn.style.minWidth = isMobile ? '100%' : '150px';
+
+                        importBtn.addEventListener('click', function () {
+                            importInput.click();
+                        });
+
+                        importInput.addEventListener('change', function (e) {
+                            const file = e.target.files[0];
+                            if (!file) return;
+
+                            const reader = new FileReader();
+                            reader.onload = function (e) {
+                                try {
+                                    const importData = JSON.parse(e.target.result);
+
+                                    if (confirm(`This will import ${Object.keys(importData).length} keys. Continue?`)) {
+                                        // Process each key in the import data
+                                        const importPromises = Object.entries(importData).map(([key, value]) => {
+                                            return GM.setValue(key, value);
+                                        });
+
+                                        Promise.all(importPromises)
+                                            .then(() => {
+                                                alert('Import completed successfully!');
+                                                refreshStorageData();
+                                            })
+                                            .catch(err => {
+                                                alert('Error during import: ' + err.message);
+                                            });
+                                    }
+                                } catch (e) {
+                                    alert('Invalid JSON file. Please check the file format.');
+                                }
+                            };
+                            reader.readAsText(file);
+                        });
+
+                        buttonSection.appendChild(exportBtn);
+                        buttonSection.appendChild(importBtn);
+                        buttonSection.appendChild(importInput);
+                        keysList.appendChild(buttonSection);
+                    })
+                    .catch(err => {
+                        keysList.innerHTML = `<p>Error processing storage data: ${err.message}</p>`;
+                    });
             })
             .catch(err => {
-                keysList.innerHTML = `<p>Error processing storage data: ${err.message}</p>`;
+                keysList.innerHTML = `<p>Error loading storage data: ${err.message}</p>`;
             });
-        })
-        .catch(err => {
-            keysList.innerHTML = `<p>Error loading storage data: ${err.message}</p>`;
-        });
-}
+    }
 
     // Function to open the edit modal
     function openEditModal(key, value) {
@@ -5456,651 +5499,651 @@ function refreshStorageData() {
 
 
 
+}
+
+// Initialize tab arrangement functionality
+initializeTabSorting();
+updateMenuOrder();
+
+// Initialize Bookmarks Page Arrangement functionality
+initializeBookmarksSorting();
+
+// Initialize bookmarks page order from storage or use default order
+async function initializeBookmarksOrder() {
+    const defaultOrder = ['bookmarksTitle', 'searchInput', 'tagSearchInput', 'bookmarksList', 'mangaBookmarksTitle', 'mangaBookmarksList'];
+    const savedOrder = await GM.getValue('bookmarksContainerOrder');
+    return savedOrder || defaultOrder;
+}
+
+// Function to initialize the bookmarks page sorting functionality
+function initializeBookmarksSorting() {
+    const bookmarksList = document.getElementById('bookmarks-list');
+    if (!bookmarksList) return;
+
+    // Initialize bookmarks list with saved order
+    initializeBookmarksOrder().then(bookmarksOrder => {
+        // Reorder the list items according to the saved order
+        const listItems = Array.from(bookmarksList.children);
+        const tempContainer = document.createDocumentFragment();
+
+        bookmarksOrder.forEach(elementName => {
+            const item = listItems.find(li => li.dataset.element === elementName);
+            if (item) tempContainer.appendChild(item);
+        });
+
+        // Clear the list and add all items in the new order
+        while (bookmarksList.firstChild) {
+            bookmarksList.removeChild(bookmarksList.firstChild);
+        }
+
+        bookmarksList.appendChild(tempContainer);
+    });
+
+    // Initialize Sortable.js for Bookmarks Page Arrangement
+    new Sortable(bookmarksList, {
+        animation: 150,
+        handle: '.handle',
+        ghostClass: 'sortable-ghost',
+        dragClass: 'sortable-drag',
+        forceFallback: true,
+        fallbackTolerance: 1,
+        delayOnTouchOnly: false,
+        delay: 0,
+        touchStartThreshold: 1,
+        preventTextSelection: true,
+        onStart: function (evt) {
+            evt.item.classList.add('dragging');
+            document.body.style.userSelect = 'none';
+            document.body.style.webkitUserSelect = 'none';
+            document.body.style.mozUserSelect = 'none';
+            document.body.style.msUserSelect = 'none';
+        },
+        onEnd: async function (evt) {
+            evt.item.classList.remove('dragging');
+            document.body.style.userSelect = '';
+            document.body.style.webkitUserSelect = '';
+            document.body.style.mozUserSelect = '';
+            document.body.style.msUserSelect = '';
+            const newOrder = Array.from(bookmarksList.children).map(item => item.dataset.element);
+            await GM.setValue('bookmarksContainerOrder', newOrder);
+        }
+    });
+
+    // Add mouse event listeners to improve drag handle feedback
+    bookmarksList.querySelectorAll('.handle').forEach(handle => {
+        handle.addEventListener('mousedown', () => {
+            handle.style.cursor = 'grabbing';
+        });
+        handle.addEventListener('mouseup', () => {
+            handle.style.cursor = 'grab';
+        });
+    });
+
+    // Reset button handler
+    document.getElementById('resetBookmarksOrder').addEventListener('click', async function () {
+        const defaultOrder = ['bookmarksTitle', 'searchInput', 'tagSearchInput', 'bookmarksList', 'mangaBookmarksTitle', 'mangaBookmarksList'];
+        await GM.setValue('bookmarksContainerOrder', defaultOrder);
+
+        showPopup('Bookmarks page order reset!', { timeout: 1000 });
+
+        // Reset visual order in settings
+        const bookmarksList = document.getElementById('bookmarks-list');
+        defaultOrder.forEach(elementName => {
+            const item = bookmarksList.querySelector(`[data-element="${elementName}"]`);
+            if (item) bookmarksList.appendChild(item);
+        });
+    });
+}
+
+
+
+// Initialize tab order from storage or use default order
+async function initializeTabOrder() {
+    const defaultOrder = ['random', 'tags', 'artists', 'characters', 'parodies', 'groups', 'info', 'twitter', 'bookmarks', 'offline_favorites', 'read_manga', 'quick_nut', 'continue_reading', 'settings'];
+    const savedOrder = await GM.getValue('tabOrder');
+    return savedOrder || defaultOrder;
+}
+
+// Function to update the menu based on tab order
+async function updateMenuOrder() {
+    const tabOrder = await initializeTabOrder();
+    const menu = document.querySelector('ul.menu.left');
+    const dropdown = document.querySelector('ul.dropdown-menu');
+
+    if (!menu || !dropdown) return;
+
+    // Get all menu items (both desktop and injected)
+    const allMenuItems = Array.from(menu.querySelectorAll('li:not(.dropdown)'));
+
+    // Create a temporary container to hold items during reordering
+    const tempContainer = document.createDocumentFragment();
+
+    // Process each tab in the desired order
+    for (const tabId of tabOrder) {
+        // Find the menu item for this tab
+        const menuItem = allMenuItems.find(li => {
+            const link = li.querySelector('a');
+            if (!link) return false;
+
+            const href = link.getAttribute('href');
+            // Special case for Twitter which is an external link
+            if (tabId === 'twitter' && href.includes('twitter.com/nhentaiOfficial')) {
+                return true;
+            }
+            // Special case for Offline Favorites
+            if (tabId === 'offline_favorites' && href.includes('/favorite/')) {
+                return true;
+            }
+            // Regular case for internal links
+            return href.includes(`/${tabId}/`) ||
+                (tabId === 'read_manga' && href.includes('/read-manga/')) ||
+                (tabId === 'quick_nut' && href.includes('/quick-nut/'));
+        });
+
+        // If found, move it to our temporary container
+        if (menuItem) {
+            tempContainer.appendChild(menuItem);
+        }
     }
 
-            // Initialize tab arrangement functionality
-            initializeTabSorting();
-            updateMenuOrder();
+    // Add the dropdown menu item
+    const dropdownItem = menu.querySelector('li.dropdown');
+    if (dropdownItem) {
+        tempContainer.appendChild(dropdownItem);
+    }
 
-            // Initialize Bookmarks Page Arrangement functionality
-            initializeBookmarksSorting();
+    // Clear the menu and add all items in the new order
+    while (menu.firstChild) {
+        menu.removeChild(menu.firstChild);
+    }
 
-            // Initialize bookmarks page order from storage or use default order
-            async function initializeBookmarksOrder() {
-                const defaultOrder = ['bookmarksTitle', 'searchInput', 'tagSearchInput', 'bookmarksList', 'mangaBookmarksTitle', 'mangaBookmarksList'];
-                const savedOrder = await GM.getValue('bookmarksContainerOrder');
-                return savedOrder || defaultOrder;
+    menu.appendChild(tempContainer);
+
+    // Now update the dropdown menu
+    // Clear the dropdown menu first
+    while (dropdown.firstChild) {
+        dropdown.removeChild(dropdown.firstChild);
+    }
+
+    // Add items to dropdown in the same order
+    for (const tabId of tabOrder) {
+        // Find the corresponding desktop item
+        const desktopItem = Array.from(menu.querySelectorAll('li')).find(li => {
+            const link = li.querySelector('a');
+            if (!link) return false;
+
+            const href = link.getAttribute('href');
+            // Special case for Twitter which is an external link
+            if (tabId === 'twitter' && href.includes('twitter.com/nhentaiOfficial')) {
+                return true;
+            }
+            // Regular case for internal links
+            return href.includes(`/${tabId}/`) ||
+                (tabId === 'read_manga' && href.includes('/read-manga/')) ||
+                (tabId === 'quick_nut' && href.includes('/quick-nut/'));
+        });
+
+        if (desktopItem) {
+            // Clone the link and create a new dropdown item
+            const link = desktopItem.querySelector('a');
+            if (link) {
+                const dropdownLi = document.createElement('li');
+                dropdownLi.innerHTML = `<a href="${link.getAttribute('href')}">${link.textContent}</a>`;
+                dropdown.appendChild(dropdownLi);
+            }
+        }
+    }
+}
+
+// Helper function to find the reference item for insertion
+function findReferenceItem(menu, tabOrder, currentIndex) {
+    // Find the previous item in the order that exists in the menu
+    for (let i = currentIndex - 1; i >= 0; i--) {
+        const prevTabId = tabOrder[i];
+        const prevItem = Array.from(menu.querySelectorAll('li')).find(li => {
+            const link = li.querySelector('a');
+            return link && link.getAttribute('href').includes(prevTabId);
+        });
+        if (prevItem) return prevItem;
+    }
+    return null;
+}
+
+// Initialize Sortable.js for tab arrangement
+function initializeTabSorting() {
+    const tabList = document.getElementById('tab-list');
+    if (!tabList) return;
+
+    // Initialize tab list with saved order
+    initializeTabOrder().then(tabOrder => {
+        // First, check if we need to create the dynamic tab items
+        const bookmarksExists = tabOrder.includes('bookmarks') && !tabList.querySelector('[data-tab="bookmarks"]');
+        const continueReadingExists = tabOrder.includes('continue_reading') && !tabList.querySelector('[data-tab="continue_reading"]');
+        const settingsExists = tabOrder.includes('settings') && !tabList.querySelector('[data-tab="settings"]');
+
+        // Check if these items exist in the actual menu before adding them to the sortable list
+        const menu = document.querySelector('ul.menu.left');
+        if (menu) {
+            // Only create bookmarks tab item if it exists in the actual menu and not in the DOM
+            const bookmarksInMenu = Array.from(menu.querySelectorAll('li')).some(li => {
+                const link = li.querySelector('a');
+                return link && link.getAttribute('href').includes('/bookmarks/');
+            });
+
+            if (bookmarksInMenu && bookmarksExists) {
+                const bookmarksTabItem = document.createElement('li');
+                bookmarksTabItem.className = 'tab-item';
+                bookmarksTabItem.dataset.tab = 'bookmarks';
+                bookmarksTabItem.innerHTML = '<i class="fa fa-bars handle"></i> Bookmarks';
+                tabList.appendChild(bookmarksTabItem);
             }
 
-            // Function to initialize the bookmarks page sorting functionality
-            function initializeBookmarksSorting() {
-                const bookmarksList = document.getElementById('bookmarks-list');
-                if (!bookmarksList) return;
+            // Only create continue reading tab item if it exists in the actual menu and not in the DOM
+            const continueReadingInMenu = Array.from(menu.querySelectorAll('li')).some(li => {
+                const link = li.querySelector('a');
+                return link && link.getAttribute('href').includes('/continue_reading/');
+            });
 
-                // Initialize bookmarks list with saved order
-                initializeBookmarksOrder().then(bookmarksOrder => {
-                    // Reorder the list items according to the saved order
-                    const listItems = Array.from(bookmarksList.children);
-                    const tempContainer = document.createDocumentFragment();
+            if (continueReadingInMenu && continueReadingExists) {
+                const continueReadingTabItem = document.createElement('li');
+                continueReadingTabItem.className = 'tab-item';
+                continueReadingTabItem.dataset.tab = 'continue_reading';
+                continueReadingTabItem.innerHTML = '<i class="fa fa-bars handle"></i> Continue Reading';
+                tabList.appendChild(continueReadingTabItem);
+            }
 
-                    bookmarksOrder.forEach(elementName => {
-                        const item = listItems.find(li => li.dataset.element === elementName);
-                        if (item) tempContainer.appendChild(item);
-                    });
+            // Only create settings tab item if it exists in the actual menu and not in the DOM
+            const settingsInMenu = Array.from(menu.querySelectorAll('li')).some(li => {
+                const link = li.querySelector('a');
+                return link && link.getAttribute('href').includes('/settings/');
+            });
 
-                    // Clear the list and add all items in the new order
-                    while (bookmarksList.firstChild) {
-                        bookmarksList.removeChild(bookmarksList.firstChild);
-                    }
+            if (settingsInMenu && settingsExists) {
+                const settingsTabItem = document.createElement('li');
+                settingsTabItem.className = 'tab-item';
+                settingsTabItem.dataset.tab = 'settings';
+                settingsTabItem.innerHTML = '<i class="fa fa-bars handle"></i> Settings';
+                tabList.appendChild(settingsTabItem);
+            }
 
-                    bookmarksList.appendChild(tempContainer);
+            // Check if we need to add the offline favorites tab (only if user is not logged in)
+            const isLoggedIn = !document.querySelector('.menu-sign-in');
+            const offlineFavoritesExists = tabOrder.includes('offline_favorites') && !tabList.querySelector('[data-tab="offline_favorites"]');
+
+            if (offlineFavoritesExists && !isLoggedIn) {
+                const offlineFavoritesTabItem = document.createElement('li');
+                offlineFavoritesTabItem.className = 'tab-item';
+                offlineFavoritesTabItem.dataset.tab = 'offline_favorites';
+                offlineFavoritesTabItem.innerHTML = '<i class="fa fa-bars handle"></i> Offline Favorites';
+                tabList.appendChild(offlineFavoritesTabItem);
+            }
+        }
+
+        // Now reorder all tabs according to the saved order
+        tabOrder.forEach(tabId => {
+            const item = tabList.querySelector(`[data-tab="${tabId}"]`);
+            if (item) tabList.appendChild(item);
+        });
+    });
+
+    // Check for dynamically added menu items and add them to the tab list
+    function checkForDynamicItems() {
+        const menu = document.querySelector('ul.menu.left');
+        if (!menu) return;
+
+        // Check for Bookmarks
+        const bookmarksItem = Array.from(menu.querySelectorAll('li')).find(li => {
+            const link = li.querySelector('a');
+            return link && link.getAttribute('href').includes('/bookmarks/');
+        });
+
+        if (bookmarksItem && !tabList.querySelector('[data-tab="bookmarks"]')) {
+            const bookmarksTabItem = document.createElement('li');
+            bookmarksTabItem.className = 'tab-item';
+            bookmarksTabItem.dataset.tab = 'bookmarks';
+            bookmarksTabItem.innerHTML = '<i class="fa fa-bars handle"></i> Bookmarks';
+            tabList.appendChild(bookmarksTabItem);
+
+            // Reapply the saved order after adding a new item
+            initializeTabOrder().then(tabOrder => {
+                tabOrder.forEach(tabId => {
+                    const item = tabList.querySelector(`[data-tab="${tabId}"]`);
+                    if (item) tabList.appendChild(item);
                 });
+            });
+        }
 
-                // Initialize Sortable.js for Bookmarks Page Arrangement
-                new Sortable(bookmarksList, {
-                    animation: 150,
-                    handle: '.handle',
-                    ghostClass: 'sortable-ghost',
-                    dragClass: 'sortable-drag',
-                    forceFallback: true,
-                    fallbackTolerance: 1,
-                    delayOnTouchOnly: false,
-                    delay: 0,
-                    touchStartThreshold: 1,
-                    preventTextSelection: true,
-                    onStart: function(evt) {
-                        evt.item.classList.add('dragging');
-                        document.body.style.userSelect = 'none';
-                        document.body.style.webkitUserSelect = 'none';
-                        document.body.style.mozUserSelect = 'none';
-                        document.body.style.msUserSelect = 'none';
-                    },
-                    onEnd: async function(evt) {
-                        evt.item.classList.remove('dragging');
-                        document.body.style.userSelect = '';
-                        document.body.style.webkitUserSelect = '';
-                        document.body.style.mozUserSelect = '';
-                        document.body.style.msUserSelect = '';
-                        const newOrder = Array.from(bookmarksList.children).map(item => item.dataset.element);
-                        await GM.setValue('bookmarksContainerOrder', newOrder);
-                    }
+        // Check for Continue Reading
+        const continueReadingItem = Array.from(menu.querySelectorAll('li')).find(li => {
+            const link = li.querySelector('a');
+            return link && link.getAttribute('href').includes('/continue_reading/');
+        });
+
+        if (continueReadingItem && !tabList.querySelector('[data-tab="continue_reading"]')) {
+            const continueReadingTabItem = document.createElement('li');
+            continueReadingTabItem.className = 'tab-item';
+            continueReadingTabItem.dataset.tab = 'continue_reading';
+            continueReadingTabItem.innerHTML = '<i class="fa fa-bars handle"></i> Continue Reading';
+            tabList.appendChild(continueReadingTabItem);
+
+            // Reapply the saved order after adding a new item
+            initializeTabOrder().then(tabOrder => {
+                tabOrder.forEach(tabId => {
+                    const item = tabList.querySelector(`[data-tab="${tabId}"]`);
+                    if (item) tabList.appendChild(item);
                 });
+            });
+        }
 
-                // Add mouse event listeners to improve drag handle feedback
-                bookmarksList.querySelectorAll('.handle').forEach(handle => {
-                    handle.addEventListener('mousedown', () => {
-                        handle.style.cursor = 'grabbing';
-                    });
-                    handle.addEventListener('mouseup', () => {
-                        handle.style.cursor = 'grab';
-                    });
+        // Check for Info
+        const infoItem = Array.from(menu.querySelectorAll('li')).find(li => {
+            const link = li.querySelector('a');
+            return link && link.getAttribute('href').includes('/info/');
+        });
+
+        if (infoItem && !tabList.querySelector('[data-tab="info"]')) {
+            const infoTabItem = document.createElement('li');
+            infoTabItem.className = 'tab-item';
+            infoTabItem.dataset.tab = 'info';
+            infoTabItem.innerHTML = '<i class="fa fa-bars handle"></i> Info';
+            tabList.appendChild(infoTabItem);
+
+            // Reapply the saved order after adding a new item
+            initializeTabOrder().then(tabOrder => {
+                tabOrder.forEach(tabId => {
+                    const item = tabList.querySelector(`[data-tab="${tabId}"]`);
+                    if (item) tabList.appendChild(item);
                 });
+            });
+        }
 
-                // Reset button handler
-                document.getElementById('resetBookmarksOrder').addEventListener('click', async function() {
-                    const defaultOrder = ['bookmarksTitle', 'searchInput', 'tagSearchInput', 'bookmarksList', 'mangaBookmarksTitle', 'mangaBookmarksList'];
-                    await GM.setValue('bookmarksContainerOrder', defaultOrder);
+        // Check for Twitter
+        const twitterItem = Array.from(menu.querySelectorAll('li')).find(li => {
+            const link = li.querySelector('a');
+            return link && link.getAttribute('href').includes('twitter.com/nhentaiOfficial');
+        });
 
-                    showPopup('Bookmarks page order reset!', {timeout: 1000});
+        if (twitterItem && !tabList.querySelector('[data-tab="twitter"]')) {
+            const twitterTabItem = document.createElement('li');
+            twitterTabItem.className = 'tab-item';
+            twitterTabItem.dataset.tab = 'twitter';
+            twitterTabItem.innerHTML = '<i class="fa fa-bars handle"></i> Twitter';
+            tabList.appendChild(twitterTabItem);
 
-                    // Reset visual order in settings
-                    const bookmarksList = document.getElementById('bookmarks-list');
-                    defaultOrder.forEach(elementName => {
-                        const item = bookmarksList.querySelector(`[data-element="${elementName}"]`);
-                        if (item) bookmarksList.appendChild(item);
-                    });
+            // Reapply the saved order after adding a new item
+            initializeTabOrder().then(tabOrder => {
+                tabOrder.forEach(tabId => {
+                    const item = tabList.querySelector(`[data-tab="${tabId}"]`);
+                    if (item) tabList.appendChild(item);
                 });
-            }
+            });
+        }
 
+        // Check for Settings
+        const settingsItem = Array.from(menu.querySelectorAll('li')).find(li => {
+            const link = li.querySelector('a');
+            return link && link.getAttribute('href').includes('/settings/');
+        });
 
+        if (settingsItem && !tabList.querySelector('[data-tab="settings"]')) {
+            const settingsTabItem = document.createElement('li');
+            settingsTabItem.className = 'tab-item';
+            settingsTabItem.dataset.tab = 'settings';
+            settingsTabItem.innerHTML = '<i class="fa fa-bars handle"></i> Settings';
+            tabList.appendChild(settingsTabItem);
 
-            // Initialize tab order from storage or use default order
-            async function initializeTabOrder() {
-                const defaultOrder = ['random', 'tags', 'artists', 'characters', 'parodies', 'groups', 'info', 'twitter', 'bookmarks', 'offline_favorites', 'read_manga', 'quick_nut', 'continue_reading', 'settings'];
-                const savedOrder = await GM.getValue('tabOrder');
-                return savedOrder || defaultOrder;
-            }
+            // Reapply the saved order after adding a new item
+            initializeTabOrder().then(tabOrder => {
+                tabOrder.forEach(tabId => {
+                    const item = tabList.querySelector(`[data-tab="${tabId}"]`);
+                    if (item) tabList.appendChild(item);
+                });
+            });
+        }
 
-            // Function to update the menu based on tab order
-            async function updateMenuOrder() {
-                const tabOrder = await initializeTabOrder();
-                const menu = document.querySelector('ul.menu.left');
-                const dropdown = document.querySelector('ul.dropdown-menu');
+        // Check for Offline Favorites
+        const offlineFavoritesItem = Array.from(menu.querySelectorAll('li')).find(li => {
+            const link = li.querySelector('a');
+            return link && link.getAttribute('href').includes('/favorite/');
+        });
 
-                if (!menu || !dropdown) return;
+        if (offlineFavoritesItem && !tabList.querySelector('[data-tab="offline_favorites"]')) {
+            // Check if user is logged in
+            const isLoggedIn = !document.querySelector('.menu-sign-in');
 
-                // Get all menu items (both desktop and injected)
-                const allMenuItems = Array.from(menu.querySelectorAll('li:not(.dropdown)'));
+            // Only add the offline favorites tab if the user is not logged in
+            if (!isLoggedIn) {
+                const offlineFavoritesTabItem = document.createElement('li');
+                offlineFavoritesTabItem.className = 'tab-item';
+                offlineFavoritesTabItem.dataset.tab = 'offline_favorites';
+                offlineFavoritesTabItem.innerHTML = '<i class="fa fa-bars handle"></i> Offline Favorites';
+                tabList.appendChild(offlineFavoritesTabItem);
 
-                // Create a temporary container to hold items during reordering
-                const tempContainer = document.createDocumentFragment();
-
-                // Process each tab in the desired order
-                for (const tabId of tabOrder) {
-                    // Find the menu item for this tab
-                    const menuItem = allMenuItems.find(li => {
-                        const link = li.querySelector('a');
-                        if (!link) return false;
-
-                        const href = link.getAttribute('href');
-                        // Special case for Twitter which is an external link
-                        if (tabId === 'twitter' && href.includes('twitter.com/nhentaiOfficial')) {
-                            return true;
-                        }
-                        // Special case for Offline Favorites
-                        if (tabId === 'offline_favorites' && href.includes('/favorite/')) {
-                            return true;
-                        }
-                        // Regular case for internal links
-                        return href.includes(`/${tabId}/`) ||
-                               (tabId === 'read_manga' && href.includes('/read-manga/')) ||
-                               (tabId === 'quick_nut' && href.includes('/quick-nut/'));
-                    });
-
-                    // If found, move it to our temporary container
-                    if (menuItem) {
-                        tempContainer.appendChild(menuItem);
-                    }
-                }
-
-                // Add the dropdown menu item
-                const dropdownItem = menu.querySelector('li.dropdown');
-                if (dropdownItem) {
-                    tempContainer.appendChild(dropdownItem);
-                }
-
-                // Clear the menu and add all items in the new order
-                while (menu.firstChild) {
-                    menu.removeChild(menu.firstChild);
-                }
-
-                menu.appendChild(tempContainer);
-
-                // Now update the dropdown menu
-                // Clear the dropdown menu first
-                while (dropdown.firstChild) {
-                    dropdown.removeChild(dropdown.firstChild);
-                }
-
-                // Add items to dropdown in the same order
-                for (const tabId of tabOrder) {
-                    // Find the corresponding desktop item
-                    const desktopItem = Array.from(menu.querySelectorAll('li')).find(li => {
-                        const link = li.querySelector('a');
-                        if (!link) return false;
-
-                        const href = link.getAttribute('href');
-                        // Special case for Twitter which is an external link
-                        if (tabId === 'twitter' && href.includes('twitter.com/nhentaiOfficial')) {
-                            return true;
-                        }
-                        // Regular case for internal links
-                        return href.includes(`/${tabId}/`) ||
-                               (tabId === 'read_manga' && href.includes('/read-manga/')) ||
-                               (tabId === 'quick_nut' && href.includes('/quick-nut/'));
-                    });
-
-                    if (desktopItem) {
-                        // Clone the link and create a new dropdown item
-                        const link = desktopItem.querySelector('a');
-                        if (link) {
-                            const dropdownLi = document.createElement('li');
-                            dropdownLi.innerHTML = `<a href="${link.getAttribute('href')}">${link.textContent}</a>`;
-                            dropdown.appendChild(dropdownLi);
-                        }
-                    }
-                }
-            }
-
-            // Helper function to find the reference item for insertion
-            function findReferenceItem(menu, tabOrder, currentIndex) {
-                // Find the previous item in the order that exists in the menu
-                for (let i = currentIndex - 1; i >= 0; i--) {
-                    const prevTabId = tabOrder[i];
-                    const prevItem = Array.from(menu.querySelectorAll('li')).find(li => {
-                        const link = li.querySelector('a');
-                        return link && link.getAttribute('href').includes(prevTabId);
-                    });
-                    if (prevItem) return prevItem;
-                }
-                return null;
-            }
-
-            // Initialize Sortable.js for tab arrangement
-            function initializeTabSorting() {
-                const tabList = document.getElementById('tab-list');
-                if (!tabList) return;
-
-                // Initialize tab list with saved order
+                // Reapply the saved order after adding a new item
                 initializeTabOrder().then(tabOrder => {
-                    // First, check if we need to create the dynamic tab items
-                    const bookmarksExists = tabOrder.includes('bookmarks') && !tabList.querySelector('[data-tab="bookmarks"]');
-                    const continueReadingExists = tabOrder.includes('continue_reading') && !tabList.querySelector('[data-tab="continue_reading"]');
-                    const settingsExists = tabOrder.includes('settings') && !tabList.querySelector('[data-tab="settings"]');
-
-                    // Check if these items exist in the actual menu before adding them to the sortable list
-                    const menu = document.querySelector('ul.menu.left');
-                    if (menu) {
-                        // Only create bookmarks tab item if it exists in the actual menu and not in the DOM
-                        const bookmarksInMenu = Array.from(menu.querySelectorAll('li')).some(li => {
-                            const link = li.querySelector('a');
-                            return link && link.getAttribute('href').includes('/bookmarks/');
-                        });
-
-                        if (bookmarksInMenu && bookmarksExists) {
-                            const bookmarksTabItem = document.createElement('li');
-                            bookmarksTabItem.className = 'tab-item';
-                            bookmarksTabItem.dataset.tab = 'bookmarks';
-                            bookmarksTabItem.innerHTML = '<i class="fa fa-bars handle"></i> Bookmarks';
-                            tabList.appendChild(bookmarksTabItem);
-                        }
-
-                        // Only create continue reading tab item if it exists in the actual menu and not in the DOM
-                        const continueReadingInMenu = Array.from(menu.querySelectorAll('li')).some(li => {
-                            const link = li.querySelector('a');
-                            return link && link.getAttribute('href').includes('/continue_reading/');
-                        });
-
-                        if (continueReadingInMenu && continueReadingExists) {
-                            const continueReadingTabItem = document.createElement('li');
-                            continueReadingTabItem.className = 'tab-item';
-                            continueReadingTabItem.dataset.tab = 'continue_reading';
-                            continueReadingTabItem.innerHTML = '<i class="fa fa-bars handle"></i> Continue Reading';
-                            tabList.appendChild(continueReadingTabItem);
-                        }
-
-                        // Only create settings tab item if it exists in the actual menu and not in the DOM
-                        const settingsInMenu = Array.from(menu.querySelectorAll('li')).some(li => {
-                            const link = li.querySelector('a');
-                            return link && link.getAttribute('href').includes('/settings/');
-                        });
-
-                        if (settingsInMenu && settingsExists) {
-                            const settingsTabItem = document.createElement('li');
-                            settingsTabItem.className = 'tab-item';
-                            settingsTabItem.dataset.tab = 'settings';
-                            settingsTabItem.innerHTML = '<i class="fa fa-bars handle"></i> Settings';
-                            tabList.appendChild(settingsTabItem);
-                        }
-
-                        // Check if we need to add the offline favorites tab (only if user is not logged in)
-                        const isLoggedIn = !document.querySelector('.menu-sign-in');
-                        const offlineFavoritesExists = tabOrder.includes('offline_favorites') && !tabList.querySelector('[data-tab="offline_favorites"]');
-
-                        if (offlineFavoritesExists && !isLoggedIn) {
-                            const offlineFavoritesTabItem = document.createElement('li');
-                            offlineFavoritesTabItem.className = 'tab-item';
-                            offlineFavoritesTabItem.dataset.tab = 'offline_favorites';
-                            offlineFavoritesTabItem.innerHTML = '<i class="fa fa-bars handle"></i> Offline Favorites';
-                            tabList.appendChild(offlineFavoritesTabItem);
-                        }
-                    }
-
-                    // Now reorder all tabs according to the saved order
                     tabOrder.forEach(tabId => {
                         const item = tabList.querySelector(`[data-tab="${tabId}"]`);
                         if (item) tabList.appendChild(item);
                     });
                 });
-
-                // Check for dynamically added menu items and add them to the tab list
-                function checkForDynamicItems() {
-                    const menu = document.querySelector('ul.menu.left');
-                    if (!menu) return;
-
-                    // Check for Bookmarks
-                    const bookmarksItem = Array.from(menu.querySelectorAll('li')).find(li => {
-                        const link = li.querySelector('a');
-                        return link && link.getAttribute('href').includes('/bookmarks/');
-                    });
-
-                    if (bookmarksItem && !tabList.querySelector('[data-tab="bookmarks"]')) {
-                        const bookmarksTabItem = document.createElement('li');
-                        bookmarksTabItem.className = 'tab-item';
-                        bookmarksTabItem.dataset.tab = 'bookmarks';
-                        bookmarksTabItem.innerHTML = '<i class="fa fa-bars handle"></i> Bookmarks';
-                        tabList.appendChild(bookmarksTabItem);
-
-                        // Reapply the saved order after adding a new item
-                        initializeTabOrder().then(tabOrder => {
-                            tabOrder.forEach(tabId => {
-                                const item = tabList.querySelector(`[data-tab="${tabId}"]`);
-                                if (item) tabList.appendChild(item);
-                            });
-                        });
-                    }
-
-                    // Check for Continue Reading
-                    const continueReadingItem = Array.from(menu.querySelectorAll('li')).find(li => {
-                        const link = li.querySelector('a');
-                        return link && link.getAttribute('href').includes('/continue_reading/');
-                    });
-
-                    if (continueReadingItem && !tabList.querySelector('[data-tab="continue_reading"]')) {
-                        const continueReadingTabItem = document.createElement('li');
-                        continueReadingTabItem.className = 'tab-item';
-                        continueReadingTabItem.dataset.tab = 'continue_reading';
-                        continueReadingTabItem.innerHTML = '<i class="fa fa-bars handle"></i> Continue Reading';
-                        tabList.appendChild(continueReadingTabItem);
-
-                        // Reapply the saved order after adding a new item
-                        initializeTabOrder().then(tabOrder => {
-                            tabOrder.forEach(tabId => {
-                                const item = tabList.querySelector(`[data-tab="${tabId}"]`);
-                                if (item) tabList.appendChild(item);
-                            });
-                        });
-                    }
-
-                    // Check for Info
-                    const infoItem = Array.from(menu.querySelectorAll('li')).find(li => {
-                        const link = li.querySelector('a');
-                        return link && link.getAttribute('href').includes('/info/');
-                    });
-
-                    if (infoItem && !tabList.querySelector('[data-tab="info"]')) {
-                        const infoTabItem = document.createElement('li');
-                        infoTabItem.className = 'tab-item';
-                        infoTabItem.dataset.tab = 'info';
-                        infoTabItem.innerHTML = '<i class="fa fa-bars handle"></i> Info';
-                        tabList.appendChild(infoTabItem);
-
-                        // Reapply the saved order after adding a new item
-                        initializeTabOrder().then(tabOrder => {
-                            tabOrder.forEach(tabId => {
-                                const item = tabList.querySelector(`[data-tab="${tabId}"]`);
-                                if (item) tabList.appendChild(item);
-                            });
-                        });
-                    }
-
-                    // Check for Twitter
-                    const twitterItem = Array.from(menu.querySelectorAll('li')).find(li => {
-                        const link = li.querySelector('a');
-                        return link && link.getAttribute('href').includes('twitter.com/nhentaiOfficial');
-                    });
-
-                    if (twitterItem && !tabList.querySelector('[data-tab="twitter"]')) {
-                        const twitterTabItem = document.createElement('li');
-                        twitterTabItem.className = 'tab-item';
-                        twitterTabItem.dataset.tab = 'twitter';
-                        twitterTabItem.innerHTML = '<i class="fa fa-bars handle"></i> Twitter';
-                        tabList.appendChild(twitterTabItem);
-
-                        // Reapply the saved order after adding a new item
-                        initializeTabOrder().then(tabOrder => {
-                            tabOrder.forEach(tabId => {
-                                const item = tabList.querySelector(`[data-tab="${tabId}"]`);
-                                if (item) tabList.appendChild(item);
-                            });
-                        });
-                    }
-
-                    // Check for Settings
-                    const settingsItem = Array.from(menu.querySelectorAll('li')).find(li => {
-                        const link = li.querySelector('a');
-                        return link && link.getAttribute('href').includes('/settings/');
-                    });
-
-                    if (settingsItem && !tabList.querySelector('[data-tab="settings"]')) {
-                        const settingsTabItem = document.createElement('li');
-                        settingsTabItem.className = 'tab-item';
-                        settingsTabItem.dataset.tab = 'settings';
-                        settingsTabItem.innerHTML = '<i class="fa fa-bars handle"></i> Settings';
-                        tabList.appendChild(settingsTabItem);
-
-                        // Reapply the saved order after adding a new item
-                        initializeTabOrder().then(tabOrder => {
-                            tabOrder.forEach(tabId => {
-                                const item = tabList.querySelector(`[data-tab="${tabId}"]`);
-                                if (item) tabList.appendChild(item);
-                            });
-                        });
-                    }
-
-                    // Check for Offline Favorites
-                    const offlineFavoritesItem = Array.from(menu.querySelectorAll('li')).find(li => {
-                        const link = li.querySelector('a');
-                        return link && link.getAttribute('href').includes('/favorite/');
-                    });
-
-                    if (offlineFavoritesItem && !tabList.querySelector('[data-tab="offline_favorites"]')) {
-                        // Check if user is logged in
-                        const isLoggedIn = !document.querySelector('.menu-sign-in');
-
-                        // Only add the offline favorites tab if the user is not logged in
-                        if (!isLoggedIn) {
-                            const offlineFavoritesTabItem = document.createElement('li');
-                            offlineFavoritesTabItem.className = 'tab-item';
-                            offlineFavoritesTabItem.dataset.tab = 'offline_favorites';
-                            offlineFavoritesTabItem.innerHTML = '<i class="fa fa-bars handle"></i> Offline Favorites';
-                            tabList.appendChild(offlineFavoritesTabItem);
-
-                            // Reapply the saved order after adding a new item
-                            initializeTabOrder().then(tabOrder => {
-                                tabOrder.forEach(tabId => {
-                                    const item = tabList.querySelector(`[data-tab="${tabId}"]`);
-                                    if (item) tabList.appendChild(item);
-                                });
-                            });
-                        }
-                    }
-
-                    // Check for Read Manga
-                    const readMangaItem = Array.from(menu.querySelectorAll('li')).find(li => {
-                        const link = li.querySelector('a');
-                        return link && link.getAttribute('href').includes('/read-manga/');
-                    });
-
-                    if (readMangaItem && !tabList.querySelector('[data-tab="read_manga"]')) {
-                        const readMangaTabItem = document.createElement('li');
-                        readMangaTabItem.className = 'tab-item';
-                        readMangaTabItem.dataset.tab = 'read_manga';
-                        readMangaTabItem.innerHTML = '<i class="fa fa-bars handle"></i> Read Manga';
-                        tabList.appendChild(readMangaTabItem);
-
-                        // Reapply the saved order after adding a new item
-                        initializeTabOrder().then(tabOrder => {
-                            tabOrder.forEach(tabId => {
-                                const item = tabList.querySelector(`[data-tab="${tabId}"]`);
-                                if (item) tabList.appendChild(item);
-                            });
-                        });
-                    }
-
-                    const quickNutItem = Array.from(menu.querySelectorAll('li')).find(li => {
-                        const link = li.querySelector('a');
-                        return link && link.getAttribute('href').includes('/quick-nut/');
-                    });
-
-                    if (quickNutItem && !tabList.querySelector('[data-tab="quick_nut"]')) {
-                        const quickNutTabItem = document.createElement('li');
-                        quickNutTabItem.className = 'tab-item';
-                        quickNutTabItem.dataset.tab = 'quick_nut';
-                        quickNutTabItem.innerHTML = '<i class="fa fa-bars handle"></i> Quick Nut';
-                        tabList.appendChild(quickNutTabItem);
-
-                        initializeTabOrder().then(tabOrder => {
-                            tabOrder.forEach(tabId => {
-                                const item = tabList.querySelector(`[data-tab="${tabId}"]`);
-                                if (item) tabList.appendChild(item);
-                            });
-                        });
-                    }
-                }
-
-                // Check for dynamic items initially and then every second
-                checkForDynamicItems();
-                setInterval(checkForDynamicItems, 1000);
-
-
-                new Sortable(tabList, {
-                    animation: 150,
-                    handle: '.handle',
-                    ghostClass: 'sortable-ghost',
-                    dragClass: 'sortable-drag',
-                    forceFallback: true,
-                    fallbackTolerance: 1,
-                    delayOnTouchOnly: false,
-                    delay: 0,
-                    touchStartThreshold: 1,
-                    preventTextSelection: true,
-                    onStart: function(evt) {
-                        evt.item.classList.add('dragging');
-                        document.body.style.userSelect = 'none';
-                        document.body.style.webkitUserSelect = 'none';
-                        document.body.style.mozUserSelect = 'none';
-                        document.body.style.msUserSelect = 'none';
-                    },
-                    onEnd: async function(evt) {
-                        evt.item.classList.remove('dragging');
-                        document.body.style.userSelect = '';
-                        document.body.style.webkitUserSelect = '';
-                        document.body.style.mozUserSelect = '';
-                        document.body.style.msUserSelect = '';
-                        const newOrder = Array.from(tabList.children).map(item => item.dataset.tab);
-                        await GM.setValue('tabOrder', newOrder);
-                        updateMenuOrder();
-                    }
-                });
-
-                // Add mouse event listeners to improve drag handle feedback
-                tabList.querySelectorAll('.handle').forEach(handle => {
-                    handle.addEventListener('mousedown', () => {
-                        handle.style.cursor = 'grabbing';
-                    });
-                    handle.addEventListener('mouseup', () => {
-                        handle.style.cursor = 'grab';
-                    });
-                });
-
-                // Reset button handler
-                document.getElementById('resetTabOrder').addEventListener('click', async function() {
-                    const defaultOrder = ['random', 'tags', 'artists', 'characters', 'parodies', 'groups', 'info', 'twitter', 'bookmarks', 'offline_favorites', 'read_manga', 'quick_nut', 'continue_reading', 'settings'];
-                    await GM.setValue('tabOrder', defaultOrder);
-
-                    showPopup('Tab order reset!', {timeout: 1000});
-
-                    // Reset visual order in settings
-                    const tabList = document.getElementById('tab-list');
-                    defaultOrder.forEach(tabId => {
-                        const item = tabList.querySelector(`[data-tab="${tabId}"]`);
-                        if (item) tabList.appendChild(item);
-                    });
-
-                    updateMenuOrder();
-                });
             }
+        }
 
-            // Function to check if the menu is in the correct order
-            async function isMenuInOrder() {
-//                console.log("Checking if menu is in order...");
-                const menu = document.querySelector('ul.menu.left');
-                if (!menu) return false;
+        // Check for Read Manga
+        const readMangaItem = Array.from(menu.querySelectorAll('li')).find(li => {
+            const link = li.querySelector('a');
+            return link && link.getAttribute('href').includes('/read-manga/');
+        });
 
-//                console.log("Menu:", menu);
-                const tabOrder = await initializeTabOrder(); // Wait for the promise to resolve
-//                console.log("Tab order:", tabOrder);
+        if (readMangaItem && !tabList.querySelector('[data-tab="read_manga"]')) {
+            const readMangaTabItem = document.createElement('li');
+            readMangaTabItem.className = 'tab-item';
+            readMangaTabItem.dataset.tab = 'read_manga';
+            readMangaTabItem.innerHTML = '<i class="fa fa-bars handle"></i> Read Manga';
+            tabList.appendChild(readMangaTabItem);
 
-                // Get all menu items except dropdown in their DOM order
-                const allMenuItems = Array.from(menu.querySelectorAll('li:not(.dropdown)'));
-//                console.log("All menu items:", allMenuItems);
-
-                // Create a map of tab IDs to their desired position
-                const tabPositions = {};
-                tabOrder.forEach((tabId, index) => {
-                    tabPositions[tabId] = index;
+            // Reapply the saved order after adding a new item
+            initializeTabOrder().then(tabOrder => {
+                tabOrder.forEach(tabId => {
+                    const item = tabList.querySelector(`[data-tab="${tabId}"]`);
+                    if (item) tabList.appendChild(item);
                 });
+            });
+        }
 
-                // Extract the tab IDs from the DOM in order
-                const currentTabOrder = [];
-                for (const menuItem of allMenuItems) {
-                    const link = menuItem.querySelector('a');
-                    if (link) {
-                        const href = link.getAttribute('href');
-                        // Special case for Twitter which is an external link
-                        if (href.includes('twitter.com/nhentaiOfficial')) {
-                            currentTabOrder.push('twitter');
-                            continue;
-                        }
-                        // Special case for Offline Favorites
-                        if (href.includes('/favorite/')) {
-                            currentTabOrder.push('offline_favorites');
-                            continue;
-                        }
-                        if (href.includes('/read-manga/')) {
-                            currentTabOrder.push('read_manga');
-                            continue;
-                        }
-                        if (href.includes('/quick-nut/')) {
-                            currentTabOrder.push('quick_nut');
-                            continue;
-                        }
-                        // Extract the tab ID from the href for internal links
-                        const match = href.match(/\/([^\/]+)\//);
-                        if (match && match[1]) {
-                            currentTabOrder.push(match[1]);
-                        }
-                    }
-                }
+        const quickNutItem = Array.from(menu.querySelectorAll('li')).find(li => {
+            const link = li.querySelector('a');
+            return link && link.getAttribute('href').includes('/quick-nut/');
+        });
 
-//                console.log("Current tab order from DOM:", currentTabOrder);
-//                console.log("Desired tab order:", tabOrder);
+        if (quickNutItem && !tabList.querySelector('[data-tab="quick_nut"]')) {
+            const quickNutTabItem = document.createElement('li');
+            quickNutTabItem.className = 'tab-item';
+            quickNutTabItem.dataset.tab = 'quick_nut';
+            quickNutTabItem.innerHTML = '<i class="fa fa-bars handle"></i> Quick Nut';
+            tabList.appendChild(quickNutTabItem);
 
-                // Get the tabs that are actually present in the menu
-                const presentTabs = tabOrder.filter(tabId => currentTabOrder.includes(tabId));
+            initializeTabOrder().then(tabOrder => {
+                tabOrder.forEach(tabId => {
+                    const item = tabList.querySelector(`[data-tab="${tabId}"]`);
+                    if (item) tabList.appendChild(item);
+                });
+            });
+        }
+    }
 
-                // If no tabs from the order are present, consider it in order to avoid constant updates
-                if (presentTabs.length === 0) {
-                    return true;
-                }
+    // Check for dynamic items initially and then every second
+    checkForDynamicItems();
+    setInterval(checkForDynamicItems, 1000);
 
-                // Check if the offline favorites tab is the only one missing
-                const missingTabs = tabOrder.filter(tabId => !currentTabOrder.includes(tabId));
-                if (missingTabs.length === 1 && missingTabs[0] === 'offline_favorites') {
-                    // If only the offline favorites tab is missing, consider the menu in order
-                    return true;
-                }
 
-                // Check if there are other important tabs missing
-                const importantMissingTabs = missingTabs.filter(tabId =>
-                    tabId !== 'offline_favorites' &&
-                    tabId !== 'twitter' &&
-                    tabId !== 'info'
-                );
+    new Sortable(tabList, {
+        animation: 150,
+        handle: '.handle',
+        ghostClass: 'sortable-ghost',
+        dragClass: 'sortable-drag',
+        forceFallback: true,
+        fallbackTolerance: 1,
+        delayOnTouchOnly: false,
+        delay: 0,
+        touchStartThreshold: 1,
+        preventTextSelection: true,
+        onStart: function (evt) {
+            evt.item.classList.add('dragging');
+            document.body.style.userSelect = 'none';
+            document.body.style.webkitUserSelect = 'none';
+            document.body.style.mozUserSelect = 'none';
+            document.body.style.msUserSelect = 'none';
+        },
+        onEnd: async function (evt) {
+            evt.item.classList.remove('dragging');
+            document.body.style.userSelect = '';
+            document.body.style.webkitUserSelect = '';
+            document.body.style.mozUserSelect = '';
+            document.body.style.msUserSelect = '';
+            const newOrder = Array.from(tabList.children).map(item => item.dataset.tab);
+            await GM.setValue('tabOrder', newOrder);
+            updateMenuOrder();
+        }
+    });
 
-                if (importantMissingTabs.length > 0) {
-                    // If important tabs are missing, the menu is not in order
-                    return false;
-                }
+    // Add mouse event listeners to improve drag handle feedback
+    tabList.querySelectorAll('.handle').forEach(handle => {
+        handle.addEventListener('mousedown', () => {
+            handle.style.cursor = 'grabbing';
+        });
+        handle.addEventListener('mouseup', () => {
+            handle.style.cursor = 'grab';
+        });
+    });
 
-                // Now check if the relative order is correct for the tabs that exist
-                // Skip tabs that don't exist in the current DOM
-                let lastFoundIndex = -1;
-                for (const tabId of tabOrder) {
-                    const currentIndex = currentTabOrder.indexOf(tabId);
-                    if (currentIndex !== -1) {
-                        // If this tab exists in the DOM, it should come after the last found tab
-                        if (currentIndex < lastFoundIndex) {
-                            console.log(`Tab ${tabId} is out of order: found at ${currentIndex}, should be after ${lastFoundIndex}`);
-                            return false;
-                        }
-                        lastFoundIndex = currentIndex;
-                    }
-                }
+    // Reset button handler
+    document.getElementById('resetTabOrder').addEventListener('click', async function () {
+        const defaultOrder = ['random', 'tags', 'artists', 'characters', 'parodies', 'groups', 'info', 'twitter', 'bookmarks', 'offline_favorites', 'read_manga', 'quick_nut', 'continue_reading', 'settings'];
+        await GM.setValue('tabOrder', defaultOrder);
 
-                // If we get here, all existing tabs are in the correct relative order
-//                console.log("Menu is in correct order");
-                return true;
+        showPopup('Tab order reset!', { timeout: 1000 });
+
+        // Reset visual order in settings
+        const tabList = document.getElementById('tab-list');
+        defaultOrder.forEach(tabId => {
+            const item = tabList.querySelector(`[data-tab="${tabId}"]`);
+            if (item) tabList.appendChild(item);
+        });
+
+        updateMenuOrder();
+    });
+}
+
+// Function to check if the menu is in the correct order
+async function isMenuInOrder() {
+    //                console.log("Checking if menu is in order...");
+    const menu = document.querySelector('ul.menu.left');
+    if (!menu) return false;
+
+    //                console.log("Menu:", menu);
+    const tabOrder = await initializeTabOrder(); // Wait for the promise to resolve
+    //                console.log("Tab order:", tabOrder);
+
+    // Get all menu items except dropdown in their DOM order
+    const allMenuItems = Array.from(menu.querySelectorAll('li:not(.dropdown)'));
+    //                console.log("All menu items:", allMenuItems);
+
+    // Create a map of tab IDs to their desired position
+    const tabPositions = {};
+    tabOrder.forEach((tabId, index) => {
+        tabPositions[tabId] = index;
+    });
+
+    // Extract the tab IDs from the DOM in order
+    const currentTabOrder = [];
+    for (const menuItem of allMenuItems) {
+        const link = menuItem.querySelector('a');
+        if (link) {
+            const href = link.getAttribute('href');
+            // Special case for Twitter which is an external link
+            if (href.includes('twitter.com/nhentaiOfficial')) {
+                currentTabOrder.push('twitter');
+                continue;
             }
-
-        // Call updateMenuOrder only when the menu is not in the correct order
-        // Use a longer interval to reduce constant updates
-        setInterval(async () => {
-            if (!await isMenuInOrder()) {
-                updateMenuOrder();
+            // Special case for Offline Favorites
+            if (href.includes('/favorite/')) {
+                currentTabOrder.push('offline_favorites');
+                continue;
             }
-        }, 1000);
+            if (href.includes('/read-manga/')) {
+                currentTabOrder.push('read_manga');
+                continue;
+            }
+            if (href.includes('/quick-nut/')) {
+                currentTabOrder.push('quick_nut');
+                continue;
+            }
+            // Extract the tab ID from the href for internal links
+            const match = href.match(/\/([^\/]+)\//);
+            if (match && match[1]) {
+                currentTabOrder.push(match[1]);
+            }
+        }
+    }
+
+    //                console.log("Current tab order from DOM:", currentTabOrder);
+    //                console.log("Desired tab order:", tabOrder);
+
+    // Get the tabs that are actually present in the menu
+    const presentTabs = tabOrder.filter(tabId => currentTabOrder.includes(tabId));
+
+    // If no tabs from the order are present, consider it in order to avoid constant updates
+    if (presentTabs.length === 0) {
+        return true;
+    }
+
+    // Check if the offline favorites tab is the only one missing
+    const missingTabs = tabOrder.filter(tabId => !currentTabOrder.includes(tabId));
+    if (missingTabs.length === 1 && missingTabs[0] === 'offline_favorites') {
+        // If only the offline favorites tab is missing, consider the menu in order
+        return true;
+    }
+
+    // Check if there are other important tabs missing
+    const importantMissingTabs = missingTabs.filter(tabId =>
+        tabId !== 'offline_favorites' &&
+        tabId !== 'twitter' &&
+        tabId !== 'info'
+    );
+
+    if (importantMissingTabs.length > 0) {
+        // If important tabs are missing, the menu is not in order
+        return false;
+    }
+
+    // Now check if the relative order is correct for the tabs that exist
+    // Skip tabs that don't exist in the current DOM
+    let lastFoundIndex = -1;
+    for (const tabId of tabOrder) {
+        const currentIndex = currentTabOrder.indexOf(tabId);
+        if (currentIndex !== -1) {
+            // If this tab exists in the DOM, it should come after the last found tab
+            if (currentIndex < lastFoundIndex) {
+                console.log(`Tab ${tabId} is out of order: found at ${currentIndex}, should be after ${lastFoundIndex}`);
+                return false;
+            }
+            lastFoundIndex = currentIndex;
+        }
+    }
+
+    // If we get here, all existing tabs are in the correct relative order
+    //                console.log("Menu is in correct order");
+    return true;
+}
+
+// Call updateMenuOrder only when the menu is not in the correct order
+// Use a longer interval to reduce constant updates
+setInterval(async () => {
+    if (!await isMenuInOrder()) {
+        updateMenuOrder();
+    }
+}, 1000);
 
 //------------------------------------------------ Advanced Settings Management Functions---------------------------------------------------------
 
@@ -6265,16 +6308,16 @@ function showPopup(message, options = {}) {
 }
 
 function exportBookmarkedPages() {
-        GM.getValue('bookmarkedPages', []).then(bookmarkedPages => {
-            const blob = new Blob([JSON.stringify(bookmarkedPages, null, 2)], { type: 'application/json' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = 'bookmarked_pages.json';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        });
-    }
+    GM.getValue('bookmarkedPages', []).then(bookmarkedPages => {
+        const blob = new Blob([JSON.stringify(bookmarkedPages, null, 2)], { type: 'application/json' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = 'bookmarked_pages.json';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    });
+}
 
 
 
@@ -6286,7 +6329,7 @@ function exportBookmarkedPages() {
 
 //----------------------------**Random Hentai Preferences**----------------------------
 // Intercept random button clicks only if preferences are set
-document.addEventListener('click', async function(event) {
+document.addEventListener('click', async function (event) {
     const target = event.target;
     if (target.tagName === 'A' && target.getAttribute('href') === '/random/') {
         event.preventDefault(); // Prevent the default navigation
@@ -6376,18 +6419,18 @@ function showLoadingPopup() {
 
     // Add event listener to close button
     const closeButton = popup.querySelector('.close');
-    closeButton.addEventListener('click', function() {
+    closeButton.addEventListener('click', function () {
         hideLoadingPopup();
         window.searchInProgress = false; // Stop the search
     });
 
     // Add hover effect for the close button
-    closeButton.addEventListener('mouseenter', function() {
+    closeButton.addEventListener('mouseenter', function () {
         closeButton.style.color = 'red';
         closeButton.style.opacity = '0.7';
     });
 
-    closeButton.addEventListener('mouseleave', function() {
+    closeButton.addEventListener('mouseleave', function () {
         closeButton.style.color = 'white';
         closeButton.style.opacity = '1';
     });
@@ -6395,12 +6438,12 @@ function showLoadingPopup() {
     // Add hover effect for control buttons
     const controlButtons = document.querySelectorAll('.control-button');
     controlButtons.forEach(button => {
-        button.addEventListener('mouseenter', function() {
+        button.addEventListener('mouseenter', function () {
             button.style.color = '#ddd'; // Light color on hover
             button.style.transform = 'scale(1.1)'; // Slightly enlarge button
         });
 
-        button.addEventListener('mouseleave', function() {
+        button.addEventListener('mouseleave', function () {
             button.style.color = 'white'; // Original color
             button.style.transform = 'scale(1)'; // Return to original size
         });
@@ -6412,7 +6455,7 @@ function showLoadingPopup() {
     document.getElementById('next-image').addEventListener('click', showNextImage);
 
     // Add click event listener to the preview image to navigate to the content URL
-    document.getElementById('cover-preview').addEventListener('click', function() {
+    document.getElementById('cover-preview').addEventListener('click', function () {
         const currentImageIndex = parseInt(localStorage.getItem('currentImageIndex') || '0', 10);
         const images = getImagesFromLocalStorage();
         if (images[currentImageIndex] && images[currentImageIndex].url) {
@@ -6434,26 +6477,26 @@ async function fetchRandomHentai(retryCount = 0) {
     try {
         if (!window.searchInProgress) return; // Stop if search was canceled
         const response = await fetch('https://nhentai.net/random/', { method: 'HEAD' });
-        
+
         // Handle 429 Too Many Requests error
         if (response.status === 429) {
             console.log(`Received 429 Too Many Requests in fetchRandomHentai. Retry attempt: ${retryCount + 1}`);
-            
+
             // Calculate wait time with exponential backoff (5s, then 10s max)
             const waitTime = Math.min(5000 * Math.pow(2, retryCount), 10000);
-            
+
             // Show message in loading popup
             const loadingPopup = document.getElementById('randomLoadingPopup');
             if (loadingPopup) {
                 const statusElement = loadingPopup.querySelector('.random-status');
                 if (statusElement) {
-                    statusElement.textContent = `Rate limited. Waiting ${waitTime/1000}s before retry...`;
+                    statusElement.textContent = `Rate limited. Waiting ${waitTime / 1000}s before retry...`;
                 }
             }
-            
+
             // Wait before retrying
             await new Promise(resolve => setTimeout(resolve, waitTime));
-            
+
             // Max retries (3 attempts total)
             if (retryCount < 2) {
                 return fetchRandomHentai(retryCount + 1);
@@ -6462,21 +6505,21 @@ async function fetchRandomHentai(retryCount = 0) {
                 return;
             }
         }
-        
+
         await analyzeURL(response.url);
     } catch (error) {
         console.error('Error fetching random URL:', error);
-        
+
         // Check if error is related to rate limiting
         if (error.message && error.message.includes('429')) {
             console.log(`Caught 429 error in fetchRandomHentai. Retry attempt: ${retryCount + 1}`);
-            
+
             // Calculate wait time with exponential backoff (5s, then 10s max)
             const waitTime = Math.min(5000 * Math.pow(2, retryCount), 10000);
-            
+
             // Wait before retrying
             await new Promise(resolve => setTimeout(resolve, waitTime));
-            
+
             // Max retries (3 attempts total)
             if (retryCount < 2) {
                 return fetchRandomHentai(retryCount + 1);
@@ -6490,28 +6533,28 @@ async function analyzeURL(url, retryCount = 0) {
         if (!window.searchInProgress) {
             return; // Stop if search was canceled
         }
-        
+
         const response = await fetch(url);
-        
+
         // Handle 429 Too Many Requests error with retry mechanism
         if (response.status === 429) {
             console.log(`Received 429 Too Many Requests. Retry attempt: ${retryCount + 1}`);
-            
+
             // Calculate wait time with exponential backoff (5s, then 10s max)
             const waitTime = Math.min(5000 * Math.pow(2, retryCount), 10000);
-            
+
             // Show message in loading popup
             const loadingPopup = document.getElementById('randomLoadingPopup');
             if (loadingPopup) {
                 const statusElement = loadingPopup.querySelector('.random-status');
                 if (statusElement) {
-                    statusElement.textContent = `Rate limited. Waiting ${waitTime/1000}s before retry...`;
+                    statusElement.textContent = `Rate limited. Waiting ${waitTime / 1000}s before retry...`;
                 }
             }
-            
+
             // Wait before retrying
             await new Promise(resolve => setTimeout(resolve, waitTime));
-            
+
             // Max retries (3 attempts total)
             if (retryCount < 2) {
                 return analyzeURL(url, retryCount + 1);
@@ -6521,7 +6564,7 @@ async function analyzeURL(url, retryCount = 0) {
                 return;
             }
         }
-        
+
         const html = await response.text();
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
@@ -6576,32 +6619,32 @@ async function analyzeURL(url, retryCount = 0) {
         }
     } catch (error) {
         console.error('Error analyzing page:', error);
-        
+
         // Check if error is related to rate limiting
         if (error.message && error.message.includes('429')) {
             console.log(`Caught 429 error. Retry attempt: ${retryCount + 1}`);
-            
+
             // Calculate wait time with exponential backoff (5s, then 10s max)
             const waitTime = Math.min(5000 * Math.pow(2, retryCount), 10000);
-            
+
             // Show message in loading popup
             const loadingPopup = document.getElementById('randomLoadingPopup');
             if (loadingPopup) {
                 const statusElement = loadingPopup.querySelector('.random-status');
                 if (statusElement) {
-                    statusElement.textContent = `Rate limited. Waiting ${waitTime/1000}s before retry...`;
+                    statusElement.textContent = `Rate limited. Waiting ${waitTime / 1000}s before retry...`;
                 }
             }
-            
+
             // Wait before retrying
             await new Promise(resolve => setTimeout(resolve, waitTime));
-            
+
             // Max retries (3 attempts total)
             if (retryCount < 2) {
                 return analyzeURL(url, retryCount + 1);
             }
         }
-        
+
         // For other errors or max retries reached, try a new random manga
         fetchRandomHentai();
     }
@@ -6638,7 +6681,7 @@ async function meetsUserPreferences(tags, pages) {
         }
 
         const withinPageRange = (!isNaN(preferredPagesMin) ? pages >= preferredPagesMin : true) &&
-                                (!isNaN(preferredPagesMax) ? pages <= preferredPagesMax : true);
+            (!isNaN(preferredPagesMax) ? pages <= preferredPagesMax : true);
 
         const hasBlacklistedTags = blacklistedTags.some(tag => cleanedTags.includes(tag));
 
@@ -6723,10 +6766,10 @@ function updatePreviewImage(imageUrl, language = '', pages = '', title = '') {
 }
 
 // Remove the old click event listener from the image and add it to the link instead (Not necessary may remove later)
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     const coverPreviewLink = document.getElementById('cover-preview-link');
     if (coverPreviewLink) {
-        coverPreviewLink.addEventListener('click', function(event) {
+        coverPreviewLink.addEventListener('click', function (event) {
             event.preventDefault();
             const currentImageIndex = parseInt(localStorage.getItem('currentImageIndex') || '0', 10);
             const images = getImagesFromLocalStorage();
@@ -6792,12 +6835,12 @@ async function addNewTabButtons() {
 
                     if (openInNewTabType === 'foreground') {
                         console.log("foreground");
-                      window.open(fullUrl, '_blank'); // Open in new tab and focus on it
+                        window.open(fullUrl, '_blank'); // Open in new tab and focus on it
                     } else {
                         console.log("background");
-                      GM.openInTab(fullUrl, { active: false }); // Open in new tab without focusing on it
+                        GM.openInTab(fullUrl, { active: false }); // Open in new tab without focusing on it
                     }
-                  }else {
+                } else {
                     console.error('No URL found for this cover.'); // Error log if no URL
                 }
             });
@@ -6840,44 +6883,44 @@ function mangaBookmarking() {
           animation: bookmark-pulse 0.6s ease-out;
         }
     `);
-// Get the download button
-const downloadButton = document.getElementById('download');
-if (!downloadButton) {
-    console.log('Download button not found.');
-    return;
-}
-
-// Check if the manga bookmarking button is enabled in settings
-async function getMangaBookMarkingButtonEnabled() {
-    return await GM.getValue('mangaBookMarkingButtonEnabled', true);
-}
-
-getMangaBookMarkingButtonEnabled().then(mangaBookMarkingButtonEnabled => {
-    if (!mangaBookMarkingButtonEnabled) return;
-
-    // Get the current URL
-    const currentUrl = window.location.href;
-
-    // Check if the current manga is already bookmarked
-    async function getBookmarkedMangas() {
-        try {
-            const bookmarkedMangas = await GM.getValue('bookmarkedMangas', []);
-            return bookmarkedMangas;
-        } catch (error) {
-            console.error('Error checking bookmarks:', error);
-            return [];
-        }
+    // Get the download button
+    const downloadButton = document.getElementById('download');
+    if (!downloadButton) {
+        console.log('Download button not found.');
+        return;
     }
 
-    getBookmarkedMangas().then(bookmarkedMangas => {
-        let bookmarkText = 'Bookmark';
-        let bookmarkClass = 'btn-enabled';
-        if (bookmarkedMangas.some(manga => manga.url === currentUrl)) {
-            bookmarkText = 'Bookmarked';
-            bookmarkClass = 'btn-disabled';
+    // Check if the manga bookmarking button is enabled in settings
+    async function getMangaBookMarkingButtonEnabled() {
+        return await GM.getValue('mangaBookMarkingButtonEnabled', true);
+    }
+
+    getMangaBookMarkingButtonEnabled().then(mangaBookMarkingButtonEnabled => {
+        if (!mangaBookMarkingButtonEnabled) return;
+
+        // Get the current URL
+        const currentUrl = window.location.href;
+
+        // Check if the current manga is already bookmarked
+        async function getBookmarkedMangas() {
+            try {
+                const bookmarkedMangas = await GM.getValue('bookmarkedMangas', []);
+                return bookmarkedMangas;
+            } catch (error) {
+                console.error('Error checking bookmarks:', error);
+                return [];
+            }
         }
 
-        const MangaBookMarkHtml = `
+        getBookmarkedMangas().then(bookmarkedMangas => {
+            let bookmarkText = 'Bookmark';
+            let bookmarkClass = 'btn-enabled';
+            if (bookmarkedMangas.some(manga => manga.url === currentUrl)) {
+                bookmarkText = 'Bookmarked';
+                bookmarkClass = 'btn-disabled';
+            }
+
+            const MangaBookMarkHtml = `
             <a class="btn btn-primary ${bookmarkClass} tooltip bookmark" id="bookmark-button">
                 <i class="fas fa-bookmark"></i>
                 <span>${bookmarkText}</span>
@@ -6885,62 +6928,62 @@ getMangaBookMarkingButtonEnabled().then(mangaBookMarkingButtonEnabled => {
             </a>
         `;
 
-        // Insert 'Find Similar' button next to the download button
-        $(downloadButton).after(MangaBookMarkHtml);
+            // Insert 'Find Similar' button next to the download button
+            $(downloadButton).after(MangaBookMarkHtml);
 
-        // Add event listener to the bookmark button
-        document.getElementById('bookmark-button').addEventListener('click', async function() {
-            // Get the current URL
-            const currentUrl = window.location.href;
+            // Add event listener to the bookmark button
+            document.getElementById('bookmark-button').addEventListener('click', async function () {
+                // Get the current URL
+                const currentUrl = window.location.href;
 
-            // Get the cover image URL
-            const coverImageContainer = document.getElementById('cover');
-            const coverImage = coverImageContainer.querySelector('img');
-            const coverImageUrl = coverImage.dataset.src || coverImage.src;
+                // Get the cover image URL
+                const coverImageContainer = document.getElementById('cover');
+                const coverImage = coverImageContainer.querySelector('img');
+                const coverImageUrl = coverImage.dataset.src || coverImage.src;
 
-            try {
-                // Get the bookmarked mangas (asynchronously)
-                const bookmarkedMangas = await GM.getValue('bookmarkedMangas', []);
+                try {
+                    // Get the bookmarked mangas (asynchronously)
+                    const bookmarkedMangas = await GM.getValue('bookmarkedMangas', []);
 
-                const existingManga = bookmarkedMangas.find(manga => manga.url === currentUrl);
-                if (existingManga) {
-                    // If already bookmarked, remove it
-                    const index = bookmarkedMangas.indexOf(existingManga);
-                    bookmarkedMangas.splice(index, 1);
-                    this.querySelector('span').textContent = 'Bookmark';
-                    this.classList.remove('btn-disabled');
-                    this.classList.add('btn-enabled');
-                } else {
-                    // If not bookmarked, add it
-                    bookmarkedMangas.push({
-                        url: currentUrl,
-                        coverImageUrl: coverImageUrl
-                    });
-                    this.querySelector('span').textContent = 'Bookmarked';
-                    this.classList.remove('btn-enabled');
-                    this.classList.add('btn-disabled');
+                    const existingManga = bookmarkedMangas.find(manga => manga.url === currentUrl);
+                    if (existingManga) {
+                        // If already bookmarked, remove it
+                        const index = bookmarkedMangas.indexOf(existingManga);
+                        bookmarkedMangas.splice(index, 1);
+                        this.querySelector('span').textContent = 'Bookmark';
+                        this.classList.remove('btn-disabled');
+                        this.classList.add('btn-enabled');
+                    } else {
+                        // If not bookmarked, add it
+                        bookmarkedMangas.push({
+                            url: currentUrl,
+                            coverImageUrl: coverImageUrl
+                        });
+                        this.querySelector('span').textContent = 'Bookmarked';
+                        this.classList.remove('btn-enabled');
+                        this.classList.add('btn-disabled');
+                    }
+
+                    const isNewlyBookmarked = !existingManga; // True if we just added a bookmark
+
+                    // Save the updated list (asynchronously)
+                    await GM.setValue('bookmarkedMangas', bookmarkedMangas);
+
+                    if (isNewlyBookmarked) { // If a new bookmark was added
+                        this.classList.add('bookmark-animation');
+                        setTimeout(() => {
+                            this.classList.remove('bookmark-animation');
+                        }, 600); // Animation duration 0.6s
+                    }
+
+                } catch (error) {
+                    console.error('Error handling bookmarks:', error);
+                    // Optionally display an error to the user
+                    alert('An error occurred while saving your bookmark.');
                 }
-
-                const isNewlyBookmarked = !existingManga; // True if we just added a bookmark
-
-                // Save the updated list (asynchronously)
-                await GM.setValue('bookmarkedMangas', bookmarkedMangas);
-
-                if (isNewlyBookmarked) { // If a new bookmark was added
-                    this.classList.add('bookmark-animation');
-                    setTimeout(() => {
-                        this.classList.remove('bookmark-animation');
-                    }, 600); // Animation duration 0.6s
-                }
-
-            } catch (error) {
-                console.error('Error handling bookmarks:', error);
-                // Optionally display an error to the user
-                alert('An error occurred while saving your bookmark.');
-            }
+            });
         });
     });
-});
 }
 
 mangaBookmarking();
@@ -6982,7 +7025,7 @@ async function addShareButton() {
         const shareBtn = document.getElementById('share-gallery-button');
         if (!shareBtn) return;
 
-        shareBtn.addEventListener('click', async function(e) {
+        shareBtn.addEventListener('click', async function (e) {
             e.preventDefault();
             e.stopPropagation();
 
@@ -7005,21 +7048,21 @@ async function addShareButton() {
                     {
                         text: 'Send',
                         callback: async () => {
-            let toUUID = (document.getElementById('nhp-share-recipient')?.value || '').trim().toUpperCase();
-            if (!toUUID) { showPopup('Please enter a recipient ID.', { timeout: 2500 }); return; }
-            // Only accept exactly 5 alphanumeric characters (UUID format used by this script)
-            if (!/^[A-Z0-9]{5}$/.test(toUUID)) {
-              showPopup('Recipient ID must be exactly 5 letters/numbers.', { timeout: 3000 });
-              return;
-            }
+                            let toUUID = (document.getElementById('nhp-share-recipient')?.value || '').trim().toUpperCase();
+                            if (!toUUID) { showPopup('Please enter a recipient ID.', { timeout: 2500 }); return; }
+                            // Only accept exactly 5 alphanumeric characters (UUID format used by this script)
+                            if (!/^[A-Z0-9]{5}$/.test(toUUID)) {
+                                showPopup('Recipient ID must be exactly 5 letters/numbers.', { timeout: 3000 });
+                                return;
+                            }
 
-            // Check for duplicates in local history
-            const sentShares = await GM.getValue('sentShares', []);
-            const alreadySent = sentShares.some(s => s.toUUID === toUUID && String(s.id) === String(galleryId));
-            if (alreadySent) {
-                showPopup('You have already shared this gallery with this user.', { timeout: 4000 });
-                return;
-            }
+                            // Check for duplicates in local history
+                            const sentShares = await GM.getValue('sentShares', []);
+                            const alreadySent = sentShares.some(s => s.toUUID === toUUID && String(s.id) === String(galleryId));
+                            if (alreadySent) {
+                                showPopup('You have already shared this gallery with this user.', { timeout: 4000 });
+                                return;
+                            }
 
                             // Verify recipient exists in JSONStorage public cloud
                             let recipientExists = false;
@@ -7041,7 +7084,7 @@ async function addShareButton() {
 
                             try {
                                 let fromUUID = '';
-                                try { fromUUID = await syncSystem.getUserUUID(); } catch (_) {}
+                                try { fromUUID = await syncSystem.getUserUUID(); } catch (_) { }
                                 const payload = { toUUID, id: galleryId, url: currentUrl, fromUUID };
                                 const res = await fetch('https://nhentai-share.babykoolstar.workers.dev/send', {
                                     method: 'POST',
@@ -7068,7 +7111,7 @@ async function addShareButton() {
                             }
                         }
                     },
-                    { text: 'Cancel', callback: () => {} }
+                    { text: 'Cancel', callback: () => { } }
                 ],
                 timeout: 0
             });
@@ -7114,12 +7157,14 @@ async function startShareInboxPoller() {
                             `;
                             showPopup(content, {
                                 buttons: [
-                                    { text: 'Open', callback: () => {
-                                        if (!galleryUrl) return;
-                                        const popup = window.open(galleryUrl, '_blank');
-                                        if (!popup) window.location.href = galleryUrl;
-                                    } },
-                                    { text: 'Dismiss', callback: () => {} }
+                                    {
+                                        text: 'Open', callback: () => {
+                                            if (!galleryUrl) return;
+                                            const popup = window.open(galleryUrl, '_blank');
+                                            if (!popup) window.location.href = galleryUrl;
+                                        }
+                                    },
+                                    { text: 'Dismiss', callback: () => { } }
                                 ],
                                 timeout: 0
                             });
@@ -7140,7 +7185,7 @@ async function startShareInboxPoller() {
                 }
                 await pollOnce();
                 await GM.setValue('lastInboxPollTS', Date.now());
-            } catch (_) {}
+            } catch (_) { }
         }, intervalMs);
     } catch (e) {
         console.error('Share inbox poller error:', e);
@@ -7175,7 +7220,7 @@ async function appendToInbox(newMessages) {
             ts: m.ts || Date.now()
         })));
         await GM.setValue('inboxMessages', combined);
-    } catch (_) {}
+    } catch (_) { }
 }
 
 // Render Inbox list in settings
@@ -7208,7 +7253,7 @@ async function renderInboxList() {
     container.html(html);
 
     // Attach handlers
-    container.find('.inbox-open').off('click').on('click', async function() {
+    container.find('.inbox-open').off('click').on('click', async function () {
         const index = $(this).closest('.inbox-item').data('index');
         const msgs = await GM.getValue('inboxMessages', []);
         const m = msgs[index];
@@ -7218,7 +7263,7 @@ async function renderInboxList() {
             if (!popup) window.location.href = url;
         }
     });
-    container.find('.inbox-delete').off('click').on('click', async function() {
+    container.find('.inbox-delete').off('click').on('click', async function () {
         const index = $(this).closest('.inbox-item').data('index');
         const content = `
             <div style="text-align:left">
@@ -7238,7 +7283,7 @@ async function renderInboxList() {
                         showPopup('Message deleted.', { timeout: 1500 });
                     }
                 },
-                { text: 'Cancel', callback: () => {} }
+                { text: 'Cancel', callback: () => { } }
             ],
             timeout: 0
         });
@@ -7331,14 +7376,14 @@ function initMonthFilterReinjector() {
     document.addEventListener('pjax:success', schedule, { passive: true });
 
     const originalPushState = history.pushState;
-    history.pushState = function() {
+    history.pushState = function () {
         const ret = originalPushState.apply(this, arguments);
         schedule();
         return ret;
     };
 
     const originalReplaceState = history.replaceState;
-    history.replaceState = function() {
+    history.replaceState = function () {
         const ret = originalReplaceState.apply(this, arguments);
         schedule();
         return ret;
@@ -7513,7 +7558,7 @@ async function replaceRelatedWithBookmarks() {
                 addKnownArtists(artistsNow);
             }
         }
-    } catch (_) {}
+    } catch (_) { }
 
     console.log('Current manga tags:', currentTags);
     await addKnownMultiwordTags(currentTags);
@@ -7537,51 +7582,51 @@ async function replaceRelatedWithBookmarks() {
         try {
             // Get manga info with tags - only use cached data
             const mangaInfo = await GM.getValue(`manga_${bookmark.id}`, null);
-            
+
             // Try to get additional tags from the URL-based cache
             const mangaUrl = `https://nhentai.net/g/${bookmark.id}/`;
             const additionalTags = await GM.getValue(`tags_${mangaUrl}`, []);
-            
+
             // If no cached info or tags from either source, skip this bookmark
             if ((!mangaInfo || !mangaInfo.tags || mangaInfo.tags.length === 0) && additionalTags.length === 0) {
                 return { bookmark, score: 0, tags: [], tagIds: [] };
             }
-            
+
             // Initialize bookmarkTags array
             let bookmarkTags = [];
-            
+
             // Add tags from mangaInfo if available
             if (mangaInfo && mangaInfo.tags && mangaInfo.tags.length > 0) {
                 bookmarkTags = mangaInfo.tags.map(tag =>
                     tag.replace(/\d+K?$/, '').trim().toLowerCase()
                 );
             }
-            
+
             // Add tags from URL-based cache if available
             if (additionalTags.length > 0) {
                 // Clean up additional tags and add them to bookmarkTags
-                const cleanedAdditionalTags = additionalTags.map(tag => 
+                const cleanedAdditionalTags = additionalTags.map(tag =>
                     typeof tag === 'string' ? tag.replace(/\d+K?$/, '').trim().toLowerCase() : ''
                 ).filter(tag => tag !== '');
-                
+
                 // Merge tags, avoiding duplicates
                 bookmarkTags = [...new Set([...bookmarkTags, ...cleanedAdditionalTags])];
             }
-            
+
             // Get tag IDs if available
             const tagIds = mangaInfo?.tagIds || [];
-            
+
             // Calculate score based on matching tags
             let score = 0;
             const matchingTags = [];
-            
+
             for (const tag of currentTags) {
                 if (bookmarkTags.includes(tag)) {
                     score++;
                     matchingTags.push(tag);
                 }
             }
-            
+
             // Determine language from tags
             let language = null;
             if (bookmarkTags.includes('english')) {
@@ -7591,7 +7636,7 @@ async function replaceRelatedWithBookmarks() {
             } else if (bookmarkTags.includes('chinese')) {
                 language = 'chinese';
             }
-            
+
             return {
                 bookmark,
                 score,
@@ -7617,7 +7662,7 @@ async function replaceRelatedWithBookmarks() {
 
     for (let i = 0; i < filteredBookmarks.length; i += BATCH_SIZE) {
         const batch = filteredBookmarks.slice(i, i + BATCH_SIZE);
-        console.log(`Processing batch ${Math.floor(i/BATCH_SIZE) + 1} of ${Math.ceil(filteredBookmarks.length/BATCH_SIZE)}`);
+        console.log(`Processing batch ${Math.floor(i / BATCH_SIZE) + 1} of ${Math.ceil(filteredBookmarks.length / BATCH_SIZE)}`);
 
         const batchPromises = batch.map(scoreBookmark);
         const batchResults = await Promise.all(batchPromises);
@@ -7995,7 +8040,7 @@ async function replaceRelatedWithBookmarks() {
 }
 
 // Call the function when the page is loaded
-$(document).ready(function() {
+$(document).ready(function () {
     setTimeout(replaceRelatedWithBookmarks, 1000); // Delay to ensure page is fully loaded
 });
 
@@ -8010,73 +8055,73 @@ async function appendButton() {
         const bookmarks = await getBookmarksFromStorage();
 
 
-// Create a function to check for the element and append the button
-function checkAndAppendButton() {
-    const targets = document.querySelectorAll(".bookmarks-title");
-    if (targets.length > 0) {
-        targets.forEach(target => {
-            // Check if button already exists to avoid duplicates
-            if (target.nextElementSibling && target.nextElementSibling.classList.contains('random-button')) {
-                return;
-            }
-
-            // Append the button
-            const button = $('<button class="random-button"><i class="fas fa-random"></i> Random</button>');
-            $(target).after(button);
-            $(target).css('display', 'inline-block');
-            button.css({
-                'display': 'inline-block',
-                'margin-left': '10px',
-                'position': 'relative',
-                'top': '-3px'
-            });
-
-            button.on('click', async () => {
-                if (bookmarks.length > 0) {
-                    const randomIndex = Math.floor(Math.random() * bookmarks.length);
-                    const randomBookmark = bookmarks[randomIndex];
-                    const link = `https://nhentai.net/g/${randomBookmark.id}/`;
-
-                    // Store bookmark info in localStorage for the next page
-                    localStorage.setItem('randomMangaSource', JSON.stringify({
-                        source: randomBookmark.source,
-                        id: randomBookmark.id
-                    }));
-
-                    // Get the openInNewTabType value from storage
-                    const openInNewTabType = await GM.getValue('openInNewTabType', 'new-tab');
-                    const enableRandomButton = await GM.getValue('enableRandomButton', true);
-                    const randomOpenType = await GM.getValue('randomOpenType', 'new-tab');
-
-                    // Determine how to open the link based on the openInNewTabType value
-                    if (enableRandomButton && randomOpenType === 'new-tab') {
-                        // Open the link in a new tab
-                        window.open(link, '_blank');
-                    } else if (enableRandomButton && randomOpenType === 'current-tab') {
-                        // Open the link in the current tab
-                        window.location.href = link;
-                    } else if (openInNewTabType === 'new-tab') {
-                        // Open the link in a new tab
-                        window.open(link, '_blank');
-                    } else if (openInNewTabType === 'current-tab') {
-                        // Open the link in the current tab
-                        window.location.href = link;
+        // Create a function to check for the element and append the button
+        function checkAndAppendButton() {
+            const targets = document.querySelectorAll(".bookmarks-title");
+            if (targets.length > 0) {
+                targets.forEach(target => {
+                    // Check if button already exists to avoid duplicates
+                    if (target.nextElementSibling && target.nextElementSibling.classList.contains('random-button')) {
+                        return;
                     }
-                } else {
-                    showPopup("No bookmarks found.", {
-                        timeout: 3000
+
+                    // Append the button
+                    const button = $('<button class="random-button"><i class="fas fa-random"></i> Random</button>');
+                    $(target).after(button);
+                    $(target).css('display', 'inline-block');
+                    button.css({
+                        'display': 'inline-block',
+                        'margin-left': '10px',
+                        'position': 'relative',
+                        'top': '-3px'
                     });
-                }
-            });
-        });
 
-        // Clear the interval since we've found the elements
-        clearInterval(intervalId);
-    }
-}
+                    button.on('click', async () => {
+                        if (bookmarks.length > 0) {
+                            const randomIndex = Math.floor(Math.random() * bookmarks.length);
+                            const randomBookmark = bookmarks[randomIndex];
+                            const link = `https://nhentai.net/g/${randomBookmark.id}/`;
 
-// Set an interval to check for the element every second
-const intervalId = setInterval(checkAndAppendButton, 1);
+                            // Store bookmark info in localStorage for the next page
+                            localStorage.setItem('randomMangaSource', JSON.stringify({
+                                source: randomBookmark.source,
+                                id: randomBookmark.id
+                            }));
+
+                            // Get the openInNewTabType value from storage
+                            const openInNewTabType = await GM.getValue('openInNewTabType', 'new-tab');
+                            const enableRandomButton = await GM.getValue('enableRandomButton', true);
+                            const randomOpenType = await GM.getValue('randomOpenType', 'new-tab');
+
+                            // Determine how to open the link based on the openInNewTabType value
+                            if (enableRandomButton && randomOpenType === 'new-tab') {
+                                // Open the link in a new tab
+                                window.open(link, '_blank');
+                            } else if (enableRandomButton && randomOpenType === 'current-tab') {
+                                // Open the link in the current tab
+                                window.location.href = link;
+                            } else if (openInNewTabType === 'new-tab') {
+                                // Open the link in a new tab
+                                window.open(link, '_blank');
+                            } else if (openInNewTabType === 'current-tab') {
+                                // Open the link in the current tab
+                                window.location.href = link;
+                            }
+                        } else {
+                            showPopup("No bookmarks found.", {
+                                timeout: 3000
+                            });
+                        }
+                    });
+                });
+
+                // Clear the interval since we've found the elements
+                clearInterval(intervalId);
+            }
+        }
+
+        // Set an interval to check for the element every second
+        const intervalId = setInterval(checkAndAppendButton, 1);
 
 
     } else {
@@ -8154,56 +8199,56 @@ appendButton();
 
 
 async function getBookmarksFromStorage() {
-const bookmarks = [];
-const addedIds = new Set();
+    const bookmarks = [];
+    const addedIds = new Set();
 
-// Check for bookmarks in the first format (simple array of IDs)
-const allKeys = await GM.listValues();
-for (const key of allKeys) {
-if (key.startsWith("bookmark_manga_ids_")) {
-    const ids = await GM.getValue(key);
-    if (Array.isArray(ids)) {
-        // Add each ID as a bookmark object
-        ids.forEach(id => {
-            if (!addedIds.has(id)) {
-                bookmarks.push({
-                    id: id,
-                    url: `https://nhentai.net/g/${id}/`,
-                    source: key
+    // Check for bookmarks in the first format (simple array of IDs)
+    const allKeys = await GM.listValues();
+    for (const key of allKeys) {
+        if (key.startsWith("bookmark_manga_ids_")) {
+            const ids = await GM.getValue(key);
+            if (Array.isArray(ids)) {
+                // Add each ID as a bookmark object
+                ids.forEach(id => {
+                    if (!addedIds.has(id)) {
+                        bookmarks.push({
+                            id: id,
+                            url: `https://nhentai.net/g/${id}/`,
+                            source: key
+                        });
+                        addedIds.add(id);
+                    }
                 });
-                addedIds.add(id);
-            }
-        });
-    }
-}
-}
-
-// Check for bookmarks in the second format (array of objects)
-const bookmarkedMangas = await GM.getValue("bookmarkedMangas");
-if (Array.isArray(bookmarkedMangas)) {
-bookmarkedMangas.forEach(manga => {
-    // Extract ID from URL if it exists
-    if (manga.url) {
-        const match = manga.url.match(/\/g\/(\d+)/);
-        if (match && match[1]) {
-            const id = match[1];
-            // Check if this ID is already in our bookmarks array
-            if (!addedIds.has(id)) {
-                bookmarks.push({
-                    id: id,
-                    url: manga.url,
-                    cover: manga.cover || null,
-                    title: manga.title || null,
-                    source: "bookmarkedMangas"
-                });
-                addedIds.add(id);
             }
         }
     }
-});
-}
 
-return bookmarks;
+    // Check for bookmarks in the second format (array of objects)
+    const bookmarkedMangas = await GM.getValue("bookmarkedMangas");
+    if (Array.isArray(bookmarkedMangas)) {
+        bookmarkedMangas.forEach(manga => {
+            // Extract ID from URL if it exists
+            if (manga.url) {
+                const match = manga.url.match(/\/g\/(\d+)/);
+                if (match && match[1]) {
+                    const id = match[1];
+                    // Check if this ID is already in our bookmarks array
+                    if (!addedIds.has(id)) {
+                        bookmarks.push({
+                            id: id,
+                            url: manga.url,
+                            cover: manga.cover || null,
+                            title: manga.title || null,
+                            source: "bookmarkedMangas"
+                        });
+                        addedIds.add(id);
+                    }
+                }
+            }
+        });
+    }
+
+    return bookmarks;
 }
 
 function getMangaLink(mangaID) {
@@ -8212,216 +8257,216 @@ function getMangaLink(mangaID) {
 //---------------------------**BookMark-Random-Button**-----------------------------
 
 //--------------------------**Offline Favoriting**----------------------------------------------
-    // Main function to initialize the script
-    async function init() {
-        const offlineFavoritingEnabled = await GM.getValue('offlineFavoritingEnabled', true);
-        if (!offlineFavoritingEnabled) return;
-        console.log("NHentai Favorite Manager initialized");
+// Main function to initialize the script
+async function init() {
+    const offlineFavoritingEnabled = await GM.getValue('offlineFavoritingEnabled', true);
+    if (!offlineFavoritingEnabled) return;
+    console.log("NHentai Favorite Manager initialized");
 
-        // Check if user is logged in
-        const isLoggedIn = !document.querySelector('.menu-sign-in');
-        console.log("User logged in status:", isLoggedIn);
+    // Check if user is logged in
+    const isLoggedIn = !document.querySelector('.menu-sign-in');
+    console.log("User logged in status:", isLoggedIn);
 
-        // Process stored favorites if user is logged in, regardless of current page
-        if (isLoggedIn) {
-            const toFavorite = await GM.getValue('toFavorite', []);
-            if (Array.isArray(toFavorite) && toFavorite.length > 0) {
-                console.log("Found stored favorites to process:", toFavorite);
-                await processFavorites(toFavorite);
-            }
-
-            const toUnfavorite = await GM.getValue('toUnfavorite', []);
-            if (Array.isArray(toUnfavorite) && toUnfavorite.length > 0) {
-                console.log("Found stored unfavorites to process:", toUnfavorite);
-                await processUnfavorites(toUnfavorite);
-            }
+    // Process stored favorites if user is logged in, regardless of current page
+    if (isLoggedIn) {
+        const toFavorite = await GM.getValue('toFavorite', []);
+        if (Array.isArray(toFavorite) && toFavorite.length > 0) {
+            console.log("Found stored favorites to process:", toFavorite);
+            await processFavorites(toFavorite);
         }
 
-        // Only proceed with manga-specific features if we're on a manga page
-        if (window.location.pathname.includes('/g/')) {
-            await handleMangaPage(isLoggedIn);
+        const toUnfavorite = await GM.getValue('toUnfavorite', []);
+        if (Array.isArray(toUnfavorite) && toUnfavorite.length > 0) {
+            console.log("Found stored unfavorites to process:", toUnfavorite);
+            await processUnfavorites(toUnfavorite);
         }
     }
 
-    // Handle manga page-specific functionality
-    async function handleMangaPage(isLoggedIn) {
-        // Get the manga ID from the URL
-        const mangaId = getMangaIdFromUrl();
-        console.log("Current manga ID:", mangaId);
+    // Only proceed with manga-specific features if we're on a manga page
+    if (window.location.pathname.includes('/g/')) {
+        await handleMangaPage(isLoggedIn);
+    }
+}
 
-        if (!mangaId) {
-            console.log("Could not find manga ID, exiting manga-specific handling");
-            return;
+// Handle manga page-specific functionality
+async function handleMangaPage(isLoggedIn) {
+    // Get the manga ID from the URL
+    const mangaId = getMangaIdFromUrl();
+    console.log("Current manga ID:", mangaId);
+
+    if (!mangaId) {
+        console.log("Could not find manga ID, exiting manga-specific handling");
+        return;
+    }
+
+    // Get favorite button
+    const favoriteBtn = document.querySelector("#info > div")?.firstElementChild;
+    // Set up interval to log favorite button every 5 seconds
+    /*setInterval(() => {
+        console.log("Favorite button:", favoriteBtn);
+    }, 5000);*/
+    if (!favoriteBtn) {
+        console.log("Could not find favorite button, exiting manga-specific handling");
+        return;
+    }
+
+    function isButtonFavorited(button) {
+        if (!button) return false;
+        if (button.classList && button.classList.contains('favorited')) return true;
+        const textEl = button.querySelector('span.text');
+        const text = String((textEl ? textEl.textContent : button.textContent) || '').trim();
+        return text.toLowerCase().includes('unfavorite');
+    }
+
+    async function updateOfflineFavoritesFromButtonState(button) {
+        const shouldBeFavorited = isButtonFavorited(button);
+        let currentOfflineFavorites = await GM.getValue('offlineFavorites', []);
+        if (!Array.isArray(currentOfflineFavorites)) currentOfflineFavorites = [];
+
+        const has = currentOfflineFavorites.includes(mangaId);
+        if (shouldBeFavorited && !has) {
+            currentOfflineFavorites.push(mangaId);
+            await GM.setValue('offlineFavorites', currentOfflineFavorites);
+        } else if (!shouldBeFavorited && has) {
+            currentOfflineFavorites = currentOfflineFavorites.filter(id => id !== mangaId);
+            await GM.setValue('offlineFavorites', currentOfflineFavorites);
         }
+    }
 
-        // Get favorite button
-        const favoriteBtn = document.querySelector("#info > div")?.firstElementChild;
-        // Set up interval to log favorite button every 5 seconds
-        /*setInterval(() => {
-            console.log("Favorite button:", favoriteBtn);
-        }, 5000);*/
-        if (!favoriteBtn) {
-            console.log("Could not find favorite button, exiting manga-specific handling");
-            return;
-        }
+    // Get stored favorites (persisted) + pending favorites (not yet synced)
+    let offlineFavorites = await GM.getValue('offlineFavorites', []);
+    if (!Array.isArray(offlineFavorites)) {
+        offlineFavorites = [];
+        await GM.setValue('offlineFavorites', offlineFavorites);
+    }
 
-        function isButtonFavorited(button) {
-            if (!button) return false;
-            if (button.classList && button.classList.contains('favorited')) return true;
-            const textEl = button.querySelector('span.text');
-            const text = String((textEl ? textEl.textContent : button.textContent) || '').trim();
-            return text.toLowerCase().includes('unfavorite');
-        }
+    let toFavorite = await GM.getValue('toFavorite', []);
+    if (!Array.isArray(toFavorite)) {
+        toFavorite = [];
+        await GM.setValue('toFavorite', toFavorite);
+    }
 
-        async function updateOfflineFavoritesFromButtonState(button) {
-            const shouldBeFavorited = isButtonFavorited(button);
-            let currentOfflineFavorites = await GM.getValue('offlineFavorites', []);
-            if (!Array.isArray(currentOfflineFavorites)) currentOfflineFavorites = [];
+    let toUnfavorite = await GM.getValue('toUnfavorite', []);
+    if (!Array.isArray(toUnfavorite)) {
+        toUnfavorite = [];
+        await GM.setValue('toUnfavorite', toUnfavorite);
+    }
 
-            const has = currentOfflineFavorites.includes(mangaId);
-            if (shouldBeFavorited && !has) {
-                currentOfflineFavorites.push(mangaId);
-                await GM.setValue('offlineFavorites', currentOfflineFavorites);
-            } else if (!shouldBeFavorited && has) {
-                currentOfflineFavorites = currentOfflineFavorites.filter(id => id !== mangaId);
-                await GM.setValue('offlineFavorites', currentOfflineFavorites);
-            }
-        }
+    console.log("Stored favorites:", offlineFavorites);
+    console.log("Pending favorites:", toFavorite);
+    console.log("Pending unfavorites:", toUnfavorite);
 
-        // Get stored favorites (persisted) + pending favorites (not yet synced)
-        let offlineFavorites = await GM.getValue('offlineFavorites', []);
-        if (!Array.isArray(offlineFavorites)) {
-            offlineFavorites = [];
-            await GM.setValue('offlineFavorites', offlineFavorites);
-        }
+    // Is this manga in our favorites?
+    const isFavorited = offlineFavorites.includes(mangaId) || toFavorite.includes(mangaId);
+    console.log("Current manga in stored favorites:", isFavorited);
 
-        let toFavorite = await GM.getValue('toFavorite', []);
-        if (!Array.isArray(toFavorite)) {
-            toFavorite = [];
-            await GM.setValue('toFavorite', toFavorite);
-        }
+    // Enable button if disabled
+    if (favoriteBtn.classList.contains('btn-disabled') && !isLoggedIn) {
+        favoriteBtn.classList.remove('btn-disabled');
+        console.log("Favorite button enabled");
+    }
 
-        let toUnfavorite = await GM.getValue('toUnfavorite', []);
-        if (!Array.isArray(toUnfavorite)) {
-            toUnfavorite = [];
-            await GM.setValue('toUnfavorite', toUnfavorite);
-        }
+    // Update button state if it's in our favorites
+    if (isFavorited && !isLoggedIn) {
+        updateButtonToFavorited(favoriteBtn);
+    }
 
-        console.log("Stored favorites:", offlineFavorites);
-        console.log("Pending favorites:", toFavorite);
-        console.log("Pending unfavorites:", toUnfavorite);
+    if (isLoggedIn) {
+        await updateOfflineFavoritesFromButtonState(favoriteBtn);
+    }
 
-        // Is this manga in our favorites?
-        const isFavorited = offlineFavorites.includes(mangaId) || toFavorite.includes(mangaId);
-        console.log("Current manga in stored favorites:", isFavorited);
-
-        // Enable button if disabled
-        if (favoriteBtn.classList.contains('btn-disabled') && !isLoggedIn) {
-            favoriteBtn.classList.remove('btn-disabled');
-            console.log("Favorite button enabled");
-        }
-
-        // Update button state if it's in our favorites
-        if (isFavorited && !isLoggedIn) {
-            updateButtonToFavorited(favoriteBtn);
-        }
+    // Add click event to favorite button
+    favoriteBtn.addEventListener('click', async function (e) {
+        console.log("Favorite button clicked");
 
         if (isLoggedIn) {
-            await updateOfflineFavoritesFromButtonState(favoriteBtn);
+            setTimeout(() => {
+                updateOfflineFavoritesFromButtonState(favoriteBtn);
+            }, 350);
+            return;
         }
 
-        // Add click event to favorite button
-        favoriteBtn.addEventListener('click', async function(e) {
-            console.log("Favorite button clicked");
+        e.preventDefault();
+        e.stopPropagation();
 
-            if (isLoggedIn) {
-                setTimeout(() => {
-                    updateOfflineFavoritesFromButtonState(favoriteBtn);
-                }, 350);
-                return;
-            }
+        // Get the CURRENT list of favorites (not the one from page load)
+        // This ensures we have the most up-to-date list
+        let currentFavorites = await GM.getValue('toFavorite', []);
+        if (!Array.isArray(currentFavorites)) {
+            currentFavorites = [];
+        }
 
-            e.preventDefault();
-            e.stopPropagation();
+        let currentOfflineFavorites = await GM.getValue('offlineFavorites', []);
+        if (!Array.isArray(currentOfflineFavorites)) currentOfflineFavorites = [];
 
-            // Get the CURRENT list of favorites (not the one from page load)
-            // This ensures we have the most up-to-date list
-            let currentFavorites = await GM.getValue('toFavorite', []);
-            if (!Array.isArray(currentFavorites)) {
-                currentFavorites = [];
-            }
+        let currentPendingUnfavorites = await GM.getValue('toUnfavorite', []);
+        if (!Array.isArray(currentPendingUnfavorites)) currentPendingUnfavorites = [];
 
-            let currentOfflineFavorites = await GM.getValue('offlineFavorites', []);
-            if (!Array.isArray(currentOfflineFavorites)) currentOfflineFavorites = [];
+        // Check if this manga is CURRENTLY in favorites
+        const currentlyFavorited = currentFavorites.includes(mangaId) || currentOfflineFavorites.includes(mangaId);
+        console.log("Manga currently in favorites:", currentlyFavorited);
 
-            let currentPendingUnfavorites = await GM.getValue('toUnfavorite', []);
-            if (!Array.isArray(currentPendingUnfavorites)) currentPendingUnfavorites = [];
+        if (!isLoggedIn) {
+            if (currentlyFavorited) {
+                const wasPendingFavorite = currentFavorites.includes(mangaId);
+                const pendingIndex = currentFavorites.indexOf(mangaId);
+                if (pendingIndex !== -1) currentFavorites.splice(pendingIndex, 1);
 
-            // Check if this manga is CURRENTLY in favorites
-            const currentlyFavorited = currentFavorites.includes(mangaId) || currentOfflineFavorites.includes(mangaId);
-            console.log("Manga currently in favorites:", currentlyFavorited);
+                currentOfflineFavorites = currentOfflineFavorites.filter(id => id !== mangaId);
 
-            if (!isLoggedIn) {
-                if (currentlyFavorited) {
-                    const wasPendingFavorite = currentFavorites.includes(mangaId);
-                    const pendingIndex = currentFavorites.indexOf(mangaId);
-                    if (pendingIndex !== -1) currentFavorites.splice(pendingIndex, 1);
-
-                    currentOfflineFavorites = currentOfflineFavorites.filter(id => id !== mangaId);
-
-                    if (!wasPendingFavorite && !currentPendingUnfavorites.includes(mangaId)) {
-                        currentPendingUnfavorites.push(mangaId);
-                    }
-
-                    updateButtonToUnfavorited(favoriteBtn);
-                    console.log("Removed manga from stored favorites:", mangaId);
-                } else {
-                    if (!currentFavorites.includes(mangaId)) currentFavorites.push(mangaId);
-                    if (!currentOfflineFavorites.includes(mangaId)) currentOfflineFavorites.push(mangaId);
-
-                    currentPendingUnfavorites = currentPendingUnfavorites.filter(id => id !== mangaId);
-
-                    updateButtonToFavorited(favoriteBtn);
-                    console.log("Added manga to stored favorites:", mangaId);
+                if (!wasPendingFavorite && !currentPendingUnfavorites.includes(mangaId)) {
+                    currentPendingUnfavorites.push(mangaId);
                 }
 
-                await GM.setValue('toFavorite', currentFavorites);
-                await GM.setValue('toUnfavorite', currentPendingUnfavorites);
-                await GM.setValue('offlineFavorites', currentOfflineFavorites);
-                console.log("Updated pending favorites:", currentFavorites);
-                console.log("Updated pending unfavorites:", currentPendingUnfavorites);
-                console.log("Updated stored favorites:", currentOfflineFavorites);
+                updateButtonToUnfavorited(favoriteBtn);
+                console.log("Removed manga from stored favorites:", mangaId);
+            } else {
+                if (!currentFavorites.includes(mangaId)) currentFavorites.push(mangaId);
+                if (!currentOfflineFavorites.includes(mangaId)) currentOfflineFavorites.push(mangaId);
+
+                currentPendingUnfavorites = currentPendingUnfavorites.filter(id => id !== mangaId);
+
+                updateButtonToFavorited(favoriteBtn);
+                console.log("Added manga to stored favorites:", mangaId);
             }
-        });
-    }
 
-    // Helper function to get manga ID from URL
-    function getMangaIdFromUrl() {
-        const urlPath = window.location.pathname;
-        const match = urlPath.match(/\/g\/(\d+)/);
-        return match ? match[1] : null;
-    }
-
-    // Extract CSRF token from page
-    function getCsrfToken() {
-        // Try to get from app initialization
-        const scriptText = document.body.innerHTML;
-        const tokenMatch = scriptText.match(/csrf_token:\s*"([^"]+)"/);
-        if (tokenMatch && tokenMatch[1]) {
-            console.log("Found CSRF token from script:", tokenMatch[1]);
-            return tokenMatch[1];
+            await GM.setValue('toFavorite', currentFavorites);
+            await GM.setValue('toUnfavorite', currentPendingUnfavorites);
+            await GM.setValue('offlineFavorites', currentOfflineFavorites);
+            console.log("Updated pending favorites:", currentFavorites);
+            console.log("Updated pending unfavorites:", currentPendingUnfavorites);
+            console.log("Updated stored favorites:", currentOfflineFavorites);
         }
+    });
+}
 
-        // Try alternative method - look for form inputs
-        const csrfInput = document.querySelector('input[name="csrfmiddlewaretoken"]');
-        if (csrfInput) {
-            console.log("Found CSRF token from input:", csrfInput.value);
-            return csrfInput.value;
-        }
+// Helper function to get manga ID from URL
+function getMangaIdFromUrl() {
+    const urlPath = window.location.pathname;
+    const match = urlPath.match(/\/g\/(\d+)/);
+    return match ? match[1] : null;
+}
 
-        console.log("Could not find CSRF token");
-        return null;
+// Extract CSRF token from page
+function getCsrfToken() {
+    // Try to get from app initialization
+    const scriptText = document.body.innerHTML;
+    const tokenMatch = scriptText.match(/csrf_token:\s*"([^"]+)"/);
+    if (tokenMatch && tokenMatch[1]) {
+        console.log("Found CSRF token from script:", tokenMatch[1]);
+        return tokenMatch[1];
     }
+
+    // Try alternative method - look for form inputs
+    const csrfInput = document.querySelector('input[name="csrfmiddlewaretoken"]');
+    if (csrfInput) {
+        console.log("Found CSRF token from input:", csrfInput.value);
+        return csrfInput.value;
+    }
+
+    console.log("Could not find CSRF token");
+    return null;
+}
 
 // Nhentai Plus+.user.js (4405-4427)
 function updateButtonToFavorited(button) {
@@ -8538,47 +8583,47 @@ async function sendFavoriteRequest(mangaId) {
             // Submit the form
             form.submit();
         });
-    }else{
-    return new Promise((resolve, reject) => {
-        console.log("Sending favorite request for manga:", mangaId);
+    } else {
+        return new Promise((resolve, reject) => {
+            console.log("Sending favorite request for manga:", mangaId);
 
-        // Get CSRF token - trying multiple methods
-        let csrfToken = getCsrfToken();
-        if (!csrfToken) {
-            console.error("Could not find CSRF token for request");
-            reject(new Error("Missing CSRF token"));
-            return;
-        }
-
-        // Use fetch API instead of GM.xmlHttpRequest for iOS compatibility
-        // Note: This requires Tampermonkey to grant fetch permissions
-        fetch(`https://nhentai.net/api/gallery/${mangaId}/favorite`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/x-www-form-urlencoded",
-                "X-CSRFToken": csrfToken,
-                "Referer": "https://nhentai.net/g/" + mangaId + "/",
-                "User-Agent": navigator.userAgent
-            },
-            body: `csrf_token=${encodeURIComponent(csrfToken)}`,
-            credentials: "include", // Important for sending cookies properly
-            mode: "cors"
-        })
-        .then(response => {
-            console.log("Favorite request response for manga " + mangaId + ":", response.status);
-            if (response.status === 200) {
-                resolve(response);
-            } else {
-                console.error("Favorite request failed for manga " + mangaId + ":", response.status);
-                reject(new Error(`Request failed with status ${response.status}`));
+            // Get CSRF token - trying multiple methods
+            let csrfToken = getCsrfToken();
+            if (!csrfToken) {
+                console.error("Could not find CSRF token for request");
+                reject(new Error("Missing CSRF token"));
+                return;
             }
-        })
-        .catch(error => {
-            console.error("Favorite request error for manga " + mangaId + ":", error);
-            reject(error);
+
+            // Use fetch API instead of GM.xmlHttpRequest for iOS compatibility
+            // Note: This requires Tampermonkey to grant fetch permissions
+            fetch(`https://nhentai.net/api/gallery/${mangaId}/favorite`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "X-CSRFToken": csrfToken,
+                    "Referer": "https://nhentai.net/g/" + mangaId + "/",
+                    "User-Agent": navigator.userAgent
+                },
+                body: `csrf_token=${encodeURIComponent(csrfToken)}`,
+                credentials: "include", // Important for sending cookies properly
+                mode: "cors"
+            })
+                .then(response => {
+                    console.log("Favorite request response for manga " + mangaId + ":", response.status);
+                    if (response.status === 200) {
+                        resolve(response);
+                    } else {
+                        console.error("Favorite request failed for manga " + mangaId + ":", response.status);
+                        reject(new Error(`Request failed with status ${response.status}`));
+                    }
+                })
+                .catch(error => {
+                    console.error("Favorite request error for manga " + mangaId + ":", error);
+                    reject(error);
+                });
         });
-    });
-}
+    }
 }
 
 async function sendUnfavoriteRequest(mangaId) {
@@ -8604,19 +8649,19 @@ async function sendUnfavoriteRequest(mangaId) {
             credentials: "include",
             mode: "cors"
         })
-        .then(response => {
-            console.log("Unfavorite request response for manga " + mangaId + ":", response.status);
-            if (response.status === 200) {
-                resolve(response);
-            } else {
-                console.error("Unfavorite request failed for manga " + mangaId + ":", response.status);
-                reject(new Error(`Request failed with status ${response.status}`));
-            }
-        })
-        .catch(error => {
-            console.error("Unfavorite request error for manga " + mangaId + ":", error);
-            reject(error);
-        });
+            .then(response => {
+                console.log("Unfavorite request response for manga " + mangaId + ":", response.status);
+                if (response.status === 200) {
+                    resolve(response);
+                } else {
+                    console.error("Unfavorite request failed for manga " + mangaId + ":", response.status);
+                    reject(new Error(`Request failed with status ${response.status}`));
+                }
+            })
+            .catch(error => {
+                console.error("Unfavorite request error for manga " + mangaId + ":", error);
+                reject(error);
+            });
     });
 }
 
@@ -8675,32 +8720,32 @@ function verifyCookies() {
             method: "GET",
             credentials: "include"
         })
-        .then(response => {
-            if (response.ok) {
-                // Check if we're actually logged in by looking for specific elements in the response
-                return response.text().then(html => {
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(html, "text/html");
+            .then(response => {
+                if (response.ok) {
+                    // Check if we're actually logged in by looking for specific elements in the response
+                    return response.text().then(html => {
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(html, "text/html");
 
-                    // If the menu-sign-in element is present, we're not properly logged in
-                    const signInElement = doc.querySelector('.menu-sign-in');
-                    if (signInElement) {
-                        console.error("Session cookies not working correctly - not logged in");
-                        reject(new Error("Session cookies not working correctly - not logged in"));
-                    } else {
-                        console.log("Cookies and session verified successfully");
-                        resolve(true);
-                    }
-                });
-            } else {
-                console.error("Failed to verify session");
-                reject(new Error("Failed to verify session"));
-            }
-        })
-        .catch(error => {
-            console.error("Error verifying cookies:", error);
-            reject(error);
-        });
+                        // If the menu-sign-in element is present, we're not properly logged in
+                        const signInElement = doc.querySelector('.menu-sign-in');
+                        if (signInElement) {
+                            console.error("Session cookies not working correctly - not logged in");
+                            reject(new Error("Session cookies not working correctly - not logged in"));
+                        } else {
+                            console.log("Cookies and session verified successfully");
+                            resolve(true);
+                        }
+                    });
+                } else {
+                    console.error("Failed to verify session");
+                    reject(new Error("Failed to verify session"));
+                }
+            })
+            .catch(error => {
+                console.error("Error verifying cookies:", error);
+                reject(error);
+            });
     });
 }
 
@@ -8724,95 +8769,95 @@ async function processFavorites(favorites) {
         return;
     }
 
-        // Create and show a popup with progress information
-        const progressPopup = showPopup(`Processing favorites: 0/${favorites.length}`, {
-            autoClose: false,
-            width: '300px',
-            buttons: [
-                {
-                    text: "Cancel",
-                    callback: () => {
-                        // User canceled processing
-                        processingCanceled = true;
-                    }
-                }
-            ]
-        });
-
-        const successfulOnes = [];
-        const failedOnes = [];
-        let processingCanceled = false;
-
-        for (let i = 0; i < favorites.length; i++) {
-            if (processingCanceled) {
-                progressPopup.updateMessage(`Processing canceled. Completed: ${successfulOnes.length}/${favorites.length}`);
-                break;
-            }
-
-            const mangaId = favorites[i];
-
-            // Update progress in popup
-            progressPopup.updateMessage(`Processing favorites: ${i+1}/${favorites.length}`);
-
-            try {
-                await sendFavoriteRequest(mangaId);
-                console.log("Successfully favorited manga:", mangaId);
-                successfulOnes.push(mangaId);
-            } catch (error) {
-                console.error("Error favoriting manga:", mangaId, error);
-                failedOnes.push(mangaId);
-            }
-
-            // Small delay to avoid hammering the server
-            await new Promise(resolve => setTimeout(resolve, 500));
-        }
-
-        if (successfulOnes.length > 0) {
-            let offlineFavorites = await GM.getValue('offlineFavorites', []);
-            if (!Array.isArray(offlineFavorites)) offlineFavorites = [];
-            const offlineSet = new Set(offlineFavorites);
-            for (const id of successfulOnes) {
-                if (!offlineSet.has(id)) {
-                    offlineFavorites.push(id);
-                    offlineSet.add(id);
+    // Create and show a popup with progress information
+    const progressPopup = showPopup(`Processing favorites: 0/${favorites.length}`, {
+        autoClose: false,
+        width: '300px',
+        buttons: [
+            {
+                text: "Cancel",
+                callback: () => {
+                    // User canceled processing
+                    processingCanceled = true;
                 }
             }
-            await GM.setValue('offlineFavorites', offlineFavorites);
+        ]
+    });
 
-            let toUnfavorite = await GM.getValue('toUnfavorite', []);
-            if (!Array.isArray(toUnfavorite)) toUnfavorite = [];
-            toUnfavorite = toUnfavorite.filter(id => !successfulOnes.includes(id));
-            await GM.setValue('toUnfavorite', toUnfavorite);
+    const successfulOnes = [];
+    const failedOnes = [];
+    let processingCanceled = false;
+
+    for (let i = 0; i < favorites.length; i++) {
+        if (processingCanceled) {
+            progressPopup.updateMessage(`Processing canceled. Completed: ${successfulOnes.length}/${favorites.length}`);
+            break;
         }
 
-        // Keep only the failed ones in storage
-        if (failedOnes.length > 0) {
-            await GM.setValue('toFavorite', failedOnes);
-            console.log("Updated stored favorites with failed ones:", failedOnes);
-        } else {
-            // Clear stored favorites after processing
-            await GM.setValue('toFavorite', []);
-            console.log("Cleared stored favorites");
+        const mangaId = favorites[i];
+
+        // Update progress in popup
+        progressPopup.updateMessage(`Processing favorites: ${i + 1}/${favorites.length}`);
+
+        try {
+            await sendFavoriteRequest(mangaId);
+            console.log("Successfully favorited manga:", mangaId);
+            successfulOnes.push(mangaId);
+        } catch (error) {
+            console.error("Error favoriting manga:", mangaId, error);
+            failedOnes.push(mangaId);
         }
 
-        // Update final result in popup
-        progressPopup.updateMessage(`Completed: ${successfulOnes.length} successful, ${failedOnes.length} failed`);
-
-        // Close the popup
-        progressPopup.close();
-
-        // Show a summary popup that auto-closes
-        showPopup(`Completed: ${successfulOnes.length} successful, ${failedOnes.length} failed`, {
-            timeout: 5000,
-            width: '300px',
-            buttons: [
-                {
-                    text: "OK",
-                    callback: () => {}
-                }
-            ]
-        });
+        // Small delay to avoid hammering the server
+        await new Promise(resolve => setTimeout(resolve, 500));
     }
+
+    if (successfulOnes.length > 0) {
+        let offlineFavorites = await GM.getValue('offlineFavorites', []);
+        if (!Array.isArray(offlineFavorites)) offlineFavorites = [];
+        const offlineSet = new Set(offlineFavorites);
+        for (const id of successfulOnes) {
+            if (!offlineSet.has(id)) {
+                offlineFavorites.push(id);
+                offlineSet.add(id);
+            }
+        }
+        await GM.setValue('offlineFavorites', offlineFavorites);
+
+        let toUnfavorite = await GM.getValue('toUnfavorite', []);
+        if (!Array.isArray(toUnfavorite)) toUnfavorite = [];
+        toUnfavorite = toUnfavorite.filter(id => !successfulOnes.includes(id));
+        await GM.setValue('toUnfavorite', toUnfavorite);
+    }
+
+    // Keep only the failed ones in storage
+    if (failedOnes.length > 0) {
+        await GM.setValue('toFavorite', failedOnes);
+        console.log("Updated stored favorites with failed ones:", failedOnes);
+    } else {
+        // Clear stored favorites after processing
+        await GM.setValue('toFavorite', []);
+        console.log("Cleared stored favorites");
+    }
+
+    // Update final result in popup
+    progressPopup.updateMessage(`Completed: ${successfulOnes.length} successful, ${failedOnes.length} failed`);
+
+    // Close the popup
+    progressPopup.close();
+
+    // Show a summary popup that auto-closes
+    showPopup(`Completed: ${successfulOnes.length} successful, ${failedOnes.length} failed`, {
+        timeout: 5000,
+        width: '300px',
+        buttons: [
+            {
+                text: "OK",
+                callback: () => { }
+            }
+        ]
+    });
+}
 
 async function processUnfavorites(unfavorites) {
     if (window.location.href.startsWith("https://nhentai.net/login/")) {
@@ -8856,7 +8901,7 @@ async function processUnfavorites(unfavorites) {
         }
 
         const mangaId = unfavorites[i];
-        progressPopup.updateMessage(`Processing unfavorites: ${i+1}/${unfavorites.length}`);
+        progressPopup.updateMessage(`Processing unfavorites: ${i + 1}/${unfavorites.length}`);
 
         try {
             await sendUnfavoriteRequest(mangaId);
@@ -8899,7 +8944,7 @@ async function processUnfavorites(unfavorites) {
         buttons: [
             {
                 text: "OK",
-                callback: () => {}
+                callback: () => { }
             }
         ]
     });
@@ -8967,7 +9012,7 @@ async function createSettingsMenu() {
             buttons: [
                 {
                     text: "Close",
-                    callback: () => {}
+                    callback: () => { }
                 }
             ]
         });
@@ -9039,37 +9084,37 @@ async function deleteInfoButton() {
     if (!infoButtonEnabled) return;
 
     $("a[href='/info/']").remove();
-  }
+}
 
-  //Call the function to execute
-  deleteInfoButton();
+//Call the function to execute
+deleteInfoButton();
 //-------------------------------------------------**Delete-Info-Button**-----------------------------------------------
 
 //-------------------------------------------------**Delete-Profile-Button**-----------------------------------------------
 
 
-async  function deleteProfileButton() {
+async function deleteProfileButton() {
     const profileButtonEnabled = await GM.getValue('profileButtonEnabled', true);
     if (!profileButtonEnabled) return;
 
     $("li a[href^='/users/']").remove();
-  }
+}
 
-  //Call the function to execute.
-  deleteProfileButton();
+//Call the function to execute.
+deleteProfileButton();
 
-  //-------------------------------------------------**Delete-Profile-Button**-----------------------------------------------
+//-------------------------------------------------**Delete-Profile-Button**-----------------------------------------------
 
 //-------------------------------------------------**Delete-Logout-Button**-----------------------------------------------
 
-async  function deleteLogoutButton() {
+async function deleteLogoutButton() {
     const logoutButtonEnabled = await GM.getValue('logoutButtonEnabled', true);
     if (!logoutButtonEnabled) return;
 
     $("li a[href='/logout/?next=/settings/']").parent().remove();
-  }
+}
 
-  deleteLogoutButton();
+deleteLogoutButton();
 
 //-------------------------------------------------**Delete-Logout-Button**-----------------------------------------------
 
@@ -9195,8 +9240,8 @@ async function handleOfflineFavoritesPage() {
     document.getElementById('content').appendChild(container);
 
     // Add CSS styles
-     // Add CSS styles
-     GM.addStyle(`
+    // Add CSS styles
+    GM.addStyle(`
         #offline-favorites-container {
             padding: 20px 0;
             max-width: 1200px;
@@ -9585,7 +9630,7 @@ async function handleOfflineFavoritesPage() {
     renderFavorites(combinedFavorites);
 
     // Add event listener for sort control
-    document.getElementById('sort-favorites').addEventListener('change', async function() {
+    document.getElementById('sort-favorites').addEventListener('change', async function () {
         combinedFavorites = await getCombinedFavorites();
         renderFavorites(combinedFavorites, this.value);
     });
@@ -9762,389 +9807,389 @@ addPageNumbersToThumbnails();
 
 // -----------------------------------------------**Background Max Manga Sync**--------------------------------------------------------
 // Wait for the HTML document to be fully loaded
-setTimeout(async function() {
+setTimeout(async function () {
     // Function to fetch and process bookmarked pages
     async function processBookmarkedPages(isBackgroundProcess = false) {
-      // Get all bookmarked pages from storage
-      const bookmarkedPages = await GM.getValue('bookmarkedPages', []);
-      
-      // Get the max manga per bookmark from the slider
-      const maxMangaPerBookmark = await GM.getValue('maxMangaPerBookmark', 5);
-      
-      // Get the last processing timestamp to avoid processing too frequently
-      const lastProcessTime = await GM.getValue('lastBookmarkProcessTime', 0);
-      const now = new Date().getTime();
-      
-      // If this is a background process, only run if it's been at least 1 hour since last run
-      if (isBackgroundProcess && (now - lastProcessTime < 3600000)) {
-        console.log('Background processing skipped - last run was less than 1 hour ago');
-        return;
-      }
-      
-      // Always get bookmarks from storage, but also check DOM if we're on the bookmarks page
-      let bookmarkLinks = [];
-      
-      // First, always use the stored bookmarked pages as the primary source
-      bookmarkLinks = bookmarkedPages.map(url => ({ href: url }));
-      
-      // If we're on the bookmarks page, also check the DOM for any new bookmarks
-      if (!isBackgroundProcess && window.location.href.includes('/bookmarks')) {
-        const domBookmarkLinks = document.querySelectorAll('.bookmarks-list .bookmark-link');
-        console.log('Found bookmark links in DOM:', domBookmarkLinks.length);
-        
-        // Convert DOM collection to array and add any links not already in our list
-        Array.from(domBookmarkLinks).forEach(link => {
-          if (link.href && !bookmarkLinks.some(existing => existing.href === link.href)) {
-            bookmarkLinks.push(link);
-          }
-        });
-      }
-      
-      console.log('Processing bookmarks:', bookmarkLinks.length);
+        // Get all bookmarked pages from storage
+        const bookmarkedPages = await GM.getValue('bookmarkedPages', []);
 
-      console.log('Max manga per bookmark setting:', maxMangaPerBookmark);
+        // Get the max manga per bookmark from the slider
+        const maxMangaPerBookmark = await GM.getValue('maxMangaPerBookmark', 5);
 
-      if (bookmarkLinks.length === 0) {
-        console.log('No bookmark links found');
-        return;
-      }
+        // Get the last processing timestamp to avoid processing too frequently
+        const lastProcessTime = await GM.getValue('lastBookmarkProcessTime', 0);
+        const now = new Date().getTime();
 
-      // Log the fetched bookmarked URLs
-      console.log('Processing bookmarked URLs:');
-      
-      // Store the current time as the last processing time
-      // await GM.setValue('lastBookmarkProcessTime', now);
-      
-      // Track rate limit status
-      let isRateLimited = false;
-      let rateLimitResetTime = 0;
-      
-      // Request each bookmark URL and extract manga URLs
-      for (const link of bookmarkLinks) {
-        if (!link.href) {
-          console.log('Bookmark link has no href attribute, skipping');
-          continue;
-        }
-        
-        // If we're rate limited and the reset time hasn't passed, skip processing
-        if (isRateLimited && now < rateLimitResetTime) {
-          console.log(`Skipping processing due to rate limit. Will reset at ${new Date(rateLimitResetTime).toLocaleTimeString()}`);
-          continue;
+        // If this is a background process, only run if it's been at least 1 hour since last run
+        if (isBackgroundProcess && (now - lastProcessTime < 3600000)) {
+            console.log('Background processing skipped - last run was less than 1 hour ago');
+            return;
         }
 
-        // Check if bookmark has existing cache
-        const existingCache = await GM.getValue(`bookmark_manga_ids_${link.href}`);
-        if (existingCache && !isBackgroundProcess) {
-          console.log(`Skipping bookmark ${link.href} as it has existing cache`);
-          continue;
+        // Always get bookmarks from storage, but also check DOM if we're on the bookmarks page
+        let bookmarkLinks = [];
+
+        // First, always use the stored bookmarked pages as the primary source
+        bookmarkLinks = bookmarkedPages.map(url => ({ href: url }));
+
+        // If we're on the bookmarks page, also check the DOM for any new bookmarks
+        if (!isBackgroundProcess && window.location.href.includes('/bookmarks')) {
+            const domBookmarkLinks = document.querySelectorAll('.bookmarks-list .bookmark-link');
+            console.log('Found bookmark links in DOM:', domBookmarkLinks.length);
+
+            // Convert DOM collection to array and add any links not already in our list
+            Array.from(domBookmarkLinks).forEach(link => {
+                if (link.href && !bookmarkLinks.some(existing => existing.href === link.href)) {
+                    bookmarkLinks.push(link);
+                }
+            });
         }
 
-        console.log(`Processing bookmark: ${link.href}`);
+        console.log('Processing bookmarks:', bookmarkLinks.length);
 
-        try {
-          // Fetch the bookmark page with retry logic
-          const bookmarkResponse = await fetchWithRetry(link.href);
-          
-          // Check for rate limiting headers
-          const rateLimitRemaining = bookmarkResponse.headers.get('X-RateLimit-Remaining');
-          const rateLimitReset = bookmarkResponse.headers.get('X-RateLimit-Reset');
-          
-          if (rateLimitRemaining === '0' && rateLimitReset) {
-            isRateLimited = true;
-            rateLimitResetTime = parseInt(rateLimitReset) * 1000; // Convert to milliseconds
-            console.log(`Rate limit reached. Will reset at ${new Date(rateLimitResetTime).toLocaleTimeString()}`);
-          }
-          
-          const html = await bookmarkResponse.text();
-          const doc = new DOMParser().parseFromString(html, 'text/html');
+        console.log('Max manga per bookmark setting:', maxMangaPerBookmark);
 
-          // Extract all manga URLs from the page (main gallery thumbnails)
-          const mangaLinks = doc.querySelectorAll('.gallery a.cover');
-          const allMangaUrls = Array.from(mangaLinks).map(link => {
-            return {
-              url: 'https://nhentai.net' + link.getAttribute('href'),
-              id: link.getAttribute('href').split('/g/')[1].replace('/', '')
-            };
-          });
+        if (bookmarkLinks.length === 0) {
+            console.log('No bookmark links found');
+            return;
+        }
 
-          // Store the complete list of manga IDs for this bookmark
-          await GM.setValue(`bookmark_manga_ids_${link.href}`, allMangaUrls.map(item => item.id));
+        // Log the fetched bookmarked URLs
+        console.log('Processing bookmarked URLs:');
 
-          // Apply limit if maxMangaPerBookmark is valid
-          const limitToApply = (!isNaN(maxMangaPerBookmark) && maxMangaPerBookmark > 0)
-            ? maxMangaPerBookmark
-            : allMangaUrls.length;
+        // Store the current time as the last processing time
+        // await GM.setValue('lastBookmarkProcessTime', now);
 
-          // Slice the array to the appropriate length
-          const mangaToProcess = allMangaUrls.slice(0, limitToApply);
+        // Track rate limit status
+        let isRateLimited = false;
+        let rateLimitResetTime = 0;
 
-          // Log the fetched manga URLs from each bookmark with limit info
-          console.log(`Found ${allMangaUrls.length} manga in bookmark, processing ${mangaToProcess.length} (limit: ${limitToApply})`);
-
-          // Fetch and process tags for each manga URL (limited by maxMangaPerBookmark)
-          for (const manga of mangaToProcess) {
-            // Check if we've hit a rate limit during processing
-            if (isRateLimited && now < rateLimitResetTime) {
-              console.log(`Pausing manga processing due to rate limit. Will resume later.`);
-              break;
+        // Request each bookmark URL and extract manga URLs
+        for (const link of bookmarkLinks) {
+            if (!link.href) {
+                console.log('Bookmark link has no href attribute, skipping');
+                continue;
             }
-            
-            const mangaId = manga.id;
-            const mangaUrl = manga.url;
 
-            // Use a simpler cache key that only depends on the manga ID
-            let mangaInfo = await GM.getValue(`manga_${mangaId}`, null);
+            // If we're rate limited and the reset time hasn't passed, skip processing
+            if (isRateLimited && now < rateLimitResetTime) {
+                console.log(`Skipping processing due to rate limit. Will reset at ${new Date(rateLimitResetTime).toLocaleTimeString()}`);
+                continue;
+            }
 
-            // Track when this manga was last seen
-            const currentTime = new Date().getTime();
+            // Check if bookmark has existing cache
+            const existingCache = await GM.getValue(`bookmark_manga_ids_${link.href}`);
+            if (existingCache && !isBackgroundProcess) {
+                console.log(`Skipping bookmark ${link.href} as it has existing cache`);
+                continue;
+            }
 
-            if (!mangaInfo) {
-              console.log(`Fetching new manga info for ID: ${mangaId}, URL: ${mangaUrl}`);
-              try {
-                // Fetch the manga page with retry logic
-                const mangaResponse = await fetchWithRetry(mangaUrl);
-                
+            console.log(`Processing bookmark: ${link.href}`);
+
+            try {
+                // Fetch the bookmark page with retry logic
+                const bookmarkResponse = await fetchWithRetry(link.href);
+
                 // Check for rate limiting headers
-                const mangaRateLimitRemaining = mangaResponse.headers.get('X-RateLimit-Remaining');
-                const mangaRateLimitReset = mangaResponse.headers.get('X-RateLimit-Reset');
-                
-                if (mangaRateLimitRemaining === '0' && mangaRateLimitReset) {
-                  isRateLimited = true;
-                  rateLimitResetTime = parseInt(mangaRateLimitReset) * 1000; // Convert to milliseconds
-                  console.log(`Rate limit reached during manga fetch. Will reset at ${new Date(rateLimitResetTime).toLocaleTimeString()}`);
-                }
-                
-                const html = await mangaResponse.text();
-                const doc = new DOMParser().parseFromString(html, 'text/html');
-                const tagsList = doc.querySelectorAll('#tags .tag');
-                
-                // Extract artist names specifically
-                try {
-                  const tagGroups = Array.from(doc.querySelectorAll('#tags .tag-container'));
-                  const artistGroup = tagGroups.find(c => {
-                    const fn = c.querySelector('.field-name');
-                    return fn && /artists/i.test(fn.textContent);
-                  });
-                  if (artistGroup) {
-                    const artists = Array.from(artistGroup.querySelectorAll('a.tag .name')).map(el => el.textContent.trim());
-                    if (artists.length) {
-                      addKnownArtists(artists);
-                    }
-                  }
-                } catch (_) {}
-                
-                // Get the title
-                const titleElement = doc.querySelector('h1.title');
-                const title = titleElement ? titleElement.textContent.trim() : null;
+                const rateLimitRemaining = bookmarkResponse.headers.get('X-RateLimit-Remaining');
+                const rateLimitReset = bookmarkResponse.headers.get('X-RateLimit-Reset');
 
-                if (tagsList.length > 0) {
-                  const tags = Array.from(tagsList).map(tag => tag.textContent.trim());
-                  console.log(`Fetched tags for ${mangaUrl}:`, tags);
-                  await addKnownMultiwordTags(tags);
-                  mangaInfo = {
-                    id: mangaId,
-                    url: mangaUrl,
-                    title: title,
-                    tags: tags,
-                    lastSeen: currentTime,
-                    bookmarks: [link.href] // Track which bookmarks this manga appears in
-                  };
-                } else {
-                  console.log(`No tags found for ${mangaUrl}`);
-                  mangaInfo = {
-                    id: mangaId,
-                    url: mangaUrl,
-                    title: title,
-                    tags: [],
-                    lastSeen: currentTime,
-                    bookmarks: [link.href]
-                  };
+                if (rateLimitRemaining === '0' && rateLimitReset) {
+                    isRateLimited = true;
+                    rateLimitResetTime = parseInt(rateLimitReset) * 1000; // Convert to milliseconds
+                    console.log(`Rate limit reached. Will reset at ${new Date(rateLimitResetTime).toLocaleTimeString()}`);
                 }
-                await GM.setValue(`manga_${mangaId}`, mangaInfo);
-              } catch (error) {
-                console.error(`Error fetching tags for: ${mangaUrl}`, error);
-                mangaInfo = {
-                  id: mangaId,
-                  url: mangaUrl,
-                  tags: [],
-                  lastSeen: currentTime,
-                  bookmarks: [link.href]
-                };
-                await GM.setValue(`manga_${mangaId}`, mangaInfo);
-                
+
+                const html = await bookmarkResponse.text();
+                const doc = new DOMParser().parseFromString(html, 'text/html');
+
+                // Extract all manga URLs from the page (main gallery thumbnails)
+                const mangaLinks = doc.querySelectorAll('.gallery a.cover');
+                const allMangaUrls = Array.from(mangaLinks).map(link => {
+                    return {
+                        url: 'https://nhentai.net' + link.getAttribute('href'),
+                        id: link.getAttribute('href').split('/g/')[1].replace('/', '')
+                    };
+                });
+
+                // Store the complete list of manga IDs for this bookmark
+                await GM.setValue(`bookmark_manga_ids_${link.href}`, allMangaUrls.map(item => item.id));
+
+                // Apply limit if maxMangaPerBookmark is valid
+                const limitToApply = (!isNaN(maxMangaPerBookmark) && maxMangaPerBookmark > 0)
+                    ? maxMangaPerBookmark
+                    : allMangaUrls.length;
+
+                // Slice the array to the appropriate length
+                const mangaToProcess = allMangaUrls.slice(0, limitToApply);
+
+                // Log the fetched manga URLs from each bookmark with limit info
+                console.log(`Found ${allMangaUrls.length} manga in bookmark, processing ${mangaToProcess.length} (limit: ${limitToApply})`);
+
+                // Fetch and process tags for each manga URL (limited by maxMangaPerBookmark)
+                for (const manga of mangaToProcess) {
+                    // Check if we've hit a rate limit during processing
+                    if (isRateLimited && now < rateLimitResetTime) {
+                        console.log(`Pausing manga processing due to rate limit. Will resume later.`);
+                        break;
+                    }
+
+                    const mangaId = manga.id;
+                    const mangaUrl = manga.url;
+
+                    // Use a simpler cache key that only depends on the manga ID
+                    let mangaInfo = await GM.getValue(`manga_${mangaId}`, null);
+
+                    // Track when this manga was last seen
+                    const currentTime = new Date().getTime();
+
+                    if (!mangaInfo) {
+                        console.log(`Fetching new manga info for ID: ${mangaId}, URL: ${mangaUrl}`);
+                        try {
+                            // Fetch the manga page with retry logic
+                            const mangaResponse = await fetchWithRetry(mangaUrl);
+
+                            // Check for rate limiting headers
+                            const mangaRateLimitRemaining = mangaResponse.headers.get('X-RateLimit-Remaining');
+                            const mangaRateLimitReset = mangaResponse.headers.get('X-RateLimit-Reset');
+
+                            if (mangaRateLimitRemaining === '0' && mangaRateLimitReset) {
+                                isRateLimited = true;
+                                rateLimitResetTime = parseInt(mangaRateLimitReset) * 1000; // Convert to milliseconds
+                                console.log(`Rate limit reached during manga fetch. Will reset at ${new Date(rateLimitResetTime).toLocaleTimeString()}`);
+                            }
+
+                            const html = await mangaResponse.text();
+                            const doc = new DOMParser().parseFromString(html, 'text/html');
+                            const tagsList = doc.querySelectorAll('#tags .tag');
+
+                            // Extract artist names specifically
+                            try {
+                                const tagGroups = Array.from(doc.querySelectorAll('#tags .tag-container'));
+                                const artistGroup = tagGroups.find(c => {
+                                    const fn = c.querySelector('.field-name');
+                                    return fn && /artists/i.test(fn.textContent);
+                                });
+                                if (artistGroup) {
+                                    const artists = Array.from(artistGroup.querySelectorAll('a.tag .name')).map(el => el.textContent.trim());
+                                    if (artists.length) {
+                                        addKnownArtists(artists);
+                                    }
+                                }
+                            } catch (_) { }
+
+                            // Get the title
+                            const titleElement = doc.querySelector('h1.title');
+                            const title = titleElement ? titleElement.textContent.trim() : null;
+
+                            if (tagsList.length > 0) {
+                                const tags = Array.from(tagsList).map(tag => tag.textContent.trim());
+                                console.log(`Fetched tags for ${mangaUrl}:`, tags);
+                                await addKnownMultiwordTags(tags);
+                                mangaInfo = {
+                                    id: mangaId,
+                                    url: mangaUrl,
+                                    title: title,
+                                    tags: tags,
+                                    lastSeen: currentTime,
+                                    bookmarks: [link.href] // Track which bookmarks this manga appears in
+                                };
+                            } else {
+                                console.log(`No tags found for ${mangaUrl}`);
+                                mangaInfo = {
+                                    id: mangaId,
+                                    url: mangaUrl,
+                                    title: title,
+                                    tags: [],
+                                    lastSeen: currentTime,
+                                    bookmarks: [link.href]
+                                };
+                            }
+                            await GM.setValue(`manga_${mangaId}`, mangaInfo);
+                        } catch (error) {
+                            console.error(`Error fetching tags for: ${mangaUrl}`, error);
+                            mangaInfo = {
+                                id: mangaId,
+                                url: mangaUrl,
+                                tags: [],
+                                lastSeen: currentTime,
+                                bookmarks: [link.href]
+                            };
+                            await GM.setValue(`manga_${mangaId}`, mangaInfo);
+
+                            // Check if the error was due to rate limiting
+                            if (error.message && error.message.includes('429')) {
+                                isRateLimited = true;
+                                rateLimitResetTime = currentTime + 300000; // Wait 5 minutes by default
+                                console.log(`Rate limit detected from error. Pausing for 5 minutes.`);
+                            }
+                        }
+                    } else {
+                        // Update the existing manga info with the current timestamp
+                        // and add this bookmark if not already present
+                        if (!mangaInfo.bookmarks.includes(link.href)) {
+                            mangaInfo.bookmarks.push(link.href);
+                        }
+                        mangaInfo.lastSeen = currentTime;
+                        await GM.setValue(`manga_${mangaId}`, mangaInfo);
+                        console.log(`Updated existing manga cache for ${mangaId}`);
+                    }
+
+                    // Add a small delay between manga requests to avoid rate limiting
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+            } catch (error) {
+                console.error(`Error processing bookmark: ${link.href}`, error);
+
                 // Check if the error was due to rate limiting
                 if (error.message && error.message.includes('429')) {
-                  isRateLimited = true;
-                  rateLimitResetTime = currentTime + 300000; // Wait 5 minutes by default
-                  console.log(`Rate limit detected from error. Pausing for 5 minutes.`);
+                    isRateLimited = true;
+                    rateLimitResetTime = now + 300000; // Wait 5 minutes by default
+                    console.log(`Rate limit detected from error. Pausing for 5 minutes.`);
                 }
-              }
-            } else {
-              // Update the existing manga info with the current timestamp
-              // and add this bookmark if not already present
-              if (!mangaInfo.bookmarks.includes(link.href)) {
-                mangaInfo.bookmarks.push(link.href);
-              }
-              mangaInfo.lastSeen = currentTime;
-              await GM.setValue(`manga_${mangaId}`, mangaInfo);
-              console.log(`Updated existing manga cache for ${mangaId}`);
             }
-            
-            // Add a small delay between manga requests to avoid rate limiting
-            await new Promise(resolve => setTimeout(resolve, 500));
-          }
-        } catch (error) {
-          console.error(`Error processing bookmark: ${link.href}`, error);
-          
-          // Check if the error was due to rate limiting
-          if (error.message && error.message.includes('429')) {
-            isRateLimited = true;
-            rateLimitResetTime = now + 300000; // Wait 5 minutes by default
-            console.log(`Rate limit detected from error. Pausing for 5 minutes.`);
-          }
+
+            // Add a delay between bookmark processing to avoid rate limiting
+            await new Promise(resolve => setTimeout(resolve, 1000));
         }
-        
-        // Add a delay between bookmark processing to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
 
-      // Optional: clean up old cached manga data that hasn't been seen in a while
-      await cleanupOldCacheData(30); // Clean data older than 30 days
+        // Optional: clean up old cached manga data that hasn't been seen in a while
+        await cleanupOldCacheData(30); // Clean data older than 30 days
 
-      console.log('Bookmark processing completed');
+        console.log('Bookmark processing completed');
 
-      // Store the current time as the last processing time AFTER processing is complete
-      // Use current time instead of the 'now' variable from the beginning of the function
-      await GM.setValue('lastBookmarkProcessTime', new Date().getTime());
+        // Store the current time as the last processing time AFTER processing is complete
+        // Use current time instead of the 'now' variable from the beginning of the function
+        await GM.setValue('lastBookmarkProcessTime', new Date().getTime());
     }
 
     // Helper function to clean up old cache data
     async function cleanupOldCacheData(daysOld) {
-      try {
-        const allKeys = await GM.listValues();
-        const mangaKeys = allKeys.filter(key => key.startsWith('manga_'));
-        const now = new Date().getTime();
-        const cutoffTime = now - (daysOld * 24 * 60 * 60 * 1000); // Convert days to milliseconds
+        try {
+            const allKeys = await GM.listValues();
+            const mangaKeys = allKeys.filter(key => key.startsWith('manga_'));
+            const now = new Date().getTime();
+            const cutoffTime = now - (daysOld * 24 * 60 * 60 * 1000); // Convert days to milliseconds
 
-        let removedCount = 0;
+            let removedCount = 0;
 
-        for (const key of mangaKeys) {
-          const mangaInfo = await GM.getValue(key);
+            for (const key of mangaKeys) {
+                const mangaInfo = await GM.getValue(key);
 
-          // If there's no lastSeen or if it's older than the cutoff, remove it
-          if (!mangaInfo || !mangaInfo.lastSeen || mangaInfo.lastSeen < cutoffTime) {
-            await GM.deleteValue(key);
-            removedCount++;
-          }
+                // If there's no lastSeen or if it's older than the cutoff, remove it
+                if (!mangaInfo || !mangaInfo.lastSeen || mangaInfo.lastSeen < cutoffTime) {
+                    await GM.deleteValue(key);
+                    removedCount++;
+                }
+            }
+
+            if (removedCount > 0) {
+                console.log(`Cleaned up ${removedCount} old manga entries from cache`);
+            }
+        } catch (error) {
+            console.error('Error cleaning up old cache data:', error);
         }
-
-        if (removedCount > 0) {
-          console.log(`Cleaned up ${removedCount} old manga entries from cache`);
-        }
-      } catch (error) {
-        console.error('Error cleaning up old cache data:', error);
-      }
     }
 
     // Helper function to fetch with retry logic for 429 errors
     async function fetchWithRetry(url, maxRetries = 10, initialDelay = 2000) {
-      let retries = 0;
-      let delay = initialDelay;
+        let retries = 0;
+        let delay = initialDelay;
 
-      while (retries < maxRetries) {
-        try {
-          const response = await fetch(url);
+        while (retries < maxRetries) {
+            try {
+                const response = await fetch(url);
 
-          // If we got a 429 Too Many Requests, retry after a delay
-          if (response.status === 429) {
-            retries++;
-            console.log(`Rate limited (429) on ${url}. Retry ${retries}/${maxRetries} after ${delay}ms delay.`);
-            
-            // Check for Retry-After header
-            const retryAfter = response.headers.get('Retry-After');
-            if (retryAfter) {
-              // Retry-After is in seconds, convert to milliseconds
-              delay = parseInt(retryAfter) * 1000;
-              console.log(`Server specified Retry-After: ${retryAfter} seconds`);
+                // If we got a 429 Too Many Requests, retry after a delay
+                if (response.status === 429) {
+                    retries++;
+                    console.log(`Rate limited (429) on ${url}. Retry ${retries}/${maxRetries} after ${delay}ms delay.`);
+
+                    // Check for Retry-After header
+                    const retryAfter = response.headers.get('Retry-After');
+                    if (retryAfter) {
+                        // Retry-After is in seconds, convert to milliseconds
+                        delay = parseInt(retryAfter) * 1000;
+                        console.log(`Server specified Retry-After: ${retryAfter} seconds`);
+                    }
+
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    // Increase delay for subsequent retries (exponential backoff)
+                    delay = Math.min(delay * 1.5, 30000); // Cap at 30 seconds
+                } else {
+                    // For any other status, return the response
+                    return response;
+                }
+            } catch (error) {
+                retries++;
+                console.error(`Fetch error for ${url}. Retry ${retries}/${maxRetries}.`, error);
+                if (retries >= maxRetries) throw error;
+                await new Promise(resolve => setTimeout(resolve, delay));
+                // Increase delay for subsequent retries
+                delay = Math.min(delay * 1.5, 30000);
             }
-            
-            await new Promise(resolve => setTimeout(resolve, delay));
-            // Increase delay for subsequent retries (exponential backoff)
-            delay = Math.min(delay * 1.5, 30000); // Cap at 30 seconds
-          } else {
-            // For any other status, return the response
-            return response;
-          }
-        } catch (error) {
-          retries++;
-          console.error(`Fetch error for ${url}. Retry ${retries}/${maxRetries}.`, error);
-          if (retries >= maxRetries) throw error;
-          await new Promise(resolve => setTimeout(resolve, delay));
-          // Increase delay for subsequent retries
-          delay = Math.min(delay * 1.5, 30000);
         }
-      }
 
-      throw new Error(`Failed to fetch ${url} after ${maxRetries} retries.`);
+        throw new Error(`Failed to fetch ${url} after ${maxRetries} retries.`);
     }
 
     // Helper function to update manga cache when limit changes
     async function updateMangaCache() {
-      const maxMangaPerBookmark = await GM.getValue('maxMangaPerBookmark', 5);
-      const allKeys = await GM.listValues();
-      const mangaKeys = allKeys.filter(key => key.startsWith('manga_'));
+        const maxMangaPerBookmark = await GM.getValue('maxMangaPerBookmark', 5);
+        const allKeys = await GM.listValues();
+        const mangaKeys = allKeys.filter(key => key.startsWith('manga_'));
 
-      for (const key of mangaKeys) {
-        const mangaInfo = await GM.getValue(key);
+        for (const key of mangaKeys) {
+            const mangaInfo = await GM.getValue(key);
 
-        if (mangaInfo) {
-          const newLimit = maxMangaPerBookmark;
-          const existingLimit = mangaInfo.limit;
+            if (mangaInfo) {
+                const newLimit = maxMangaPerBookmark;
+                const existingLimit = mangaInfo.limit;
 
-          if (newLimit !== existingLimit) {
-            console.log(`Updating manga cache for ${mangaInfo.id} with new limit ${newLimit}`);
-            mangaInfo.limit = newLimit;
-            await GM.setValue(key, mangaInfo);
-          }
+                if (newLimit !== existingLimit) {
+                    console.log(`Updating manga cache for ${mangaInfo.id} with new limit ${newLimit}`);
+                    mangaInfo.limit = newLimit;
+                    await GM.setValue(key, mangaInfo);
+                }
+            }
         }
-      }
     }
 
     // Set up periodic background processing
     function setupBackgroundProcessing() {
-      // Process bookmarks in the background every hour
-      setInterval(async () => {
-        console.log('Starting background bookmark processing...');
-        await processBookmarkedPages(true);
-      }, 3600000); // 1 hour in milliseconds
-      
-      // Also run once at startup after a short delay
-      setTimeout(async () => {
-        console.log('Running initial background bookmark processing...');
-        await processBookmarkedPages(true);
-      }, 30000); // 30 seconds after page load
+        // Process bookmarks in the background every hour
+        setInterval(async () => {
+            console.log('Starting background bookmark processing...');
+            await processBookmarkedPages(true);
+        }, 3600000); // 1 hour in milliseconds
+
+        // Also run once at startup after a short delay
+        setTimeout(async () => {
+            console.log('Running initial background bookmark processing...');
+            await processBookmarkedPages(true);
+        }, 30000); // 30 seconds after page load
     }
 
     // Process bookmarks on any page, but with different behavior
-     // If we're on the bookmarks page, process immediately with DOM integration
-     // Otherwise, process in background mode after a short delay
-     if (window.location.href.includes('/bookmarks')) {
-       processBookmarkedPages(false); // Process with DOM integration
-     } else {
-       // On other pages, process in background mode after a short delay
-       setTimeout(() => {
-         processBookmarkedPages(true); // Process in background mode
-       }, 5000); // 5 second delay to not interfere with page loading
-     }
+    // If we're on the bookmarks page, process immediately with DOM integration
+    // Otherwise, process in background mode after a short delay
+    if (window.location.href.includes('/bookmarks')) {
+        processBookmarkedPages(false); // Process with DOM integration
+    } else {
+        // On other pages, process in background mode after a short delay
+        setTimeout(() => {
+            processBookmarkedPages(true); // Process in background mode
+        }, 5000); // 5 second delay to not interfere with page loading
+    }
 
-     // Set up background processing regardless of current page
-     setupBackgroundProcessing();
+    // Set up background processing regardless of current page
+    setupBackgroundProcessing();
 
     // Removed: bootstrapKnownMultiwordTagsFromStorage(); (Smart Tag now relies on GitHub taxonomy)
 
     // Fetch taxonomy daily and assimilate known artists
     if (typeof taxonomyManager !== 'undefined' && !taxonomyManager.isMobile) {
-      taxonomyManager.fetchIfStale().catch(e => console.warn('Taxonomy fetch failed', e));
+        taxonomyManager.fetchIfStale().catch(e => console.warn('Taxonomy fetch failed', e));
     }
 
     // Update manga cache when limit changes
@@ -10162,19 +10207,19 @@ setTimeout(async function() {
 const originalOpen = XMLHttpRequest.prototype.open;
 
 async function addKnownMultiwordTags(tagsArray) {
-  // No-op: Smart Tag relies solely on GitHub taxonomy
+    // No-op: Smart Tag relies solely on GitHub taxonomy
 }
 
 async function addKnownArtists(items) {
-  // No-op: Smart Tag relies solely on GitHub taxonomy
+    // No-op: Smart Tag relies solely on GitHub taxonomy
 }
 
 async function bootstrapKnownMultiwordTagsFromStorage() {
-  // No-op: legacy GM tag bootstrap removed
+    // No-op: legacy GM tag bootstrap removed
 }
 
 // Handle form submissions
-document.querySelector('form.search').addEventListener('submit', async function(e) {
+document.querySelector('form.search').addEventListener('submit', async function (e) {
     e.preventDefault();
     const searchInput = this.querySelector('input[name="q"]');
     let raw = (searchInput.value || '').trim();
@@ -10200,7 +10245,7 @@ document.querySelector('form.search').addEventListener('submit', async function(
 
     if (smartTagEnabled && raw && !/[":]/.test(raw)) {
         const wordsAll = raw.trim().split(/\s+/).filter(Boolean);
-        const jpParticles = new Set(["ga","de","no","ni","wa","to","e","o","ya","kara","made","shite","suru"]);
+        const jpParticles = new Set(["ga", "de", "no", "ni", "wa", "to", "e", "o", "ya", "kara", "made", "shite", "suru"]);
         const hasParticles = wordsAll.some(w => jpParticles.has(w.toLowerCase()));
         const likelyTitle = wordsAll.length >= 5 || hasParticles;
         async function promptForAmbiguity(name, types) {
@@ -10247,7 +10292,7 @@ document.querySelector('form.search').addEventListener('submit', async function(
                 select.style.color = '#e6e6e6';
                 select.style.border = '1px solid #3d3d3d';
                 select.style.borderRadius = '4px';
-                const ordered = ['artist','group','parody','character','tag'];
+                const ordered = ['artist', 'group', 'parody', 'character', 'tag'];
                 const present = ordered.filter(t => types.includes(t));
                 present.forEach(t => {
                     const opt = document.createElement('option');
@@ -10298,7 +10343,7 @@ document.querySelector('form.search').addEventListener('submit', async function(
                     const chosen = select.value || 'tag';
                     if (remember.checked) {
                         const ov = await GM.getValue('smartTagOverrides', {});
-                        const norm = String(name).toLowerCase().replace(/-/g,' ').trim();
+                        const norm = String(name).toLowerCase().replace(/-/g, ' ').trim();
                         ov[norm] = chosen;
                         await GM.setValue('smartTagOverrides', ov);
                     }
@@ -10325,7 +10370,7 @@ document.querySelector('form.search').addEventListener('submit', async function(
             const t = tokenRaw.trim();
             if (!t) return null;
             if (isLanguage(t)) return `language:"${t.toLowerCase()}"`;
-            const norm = t.toLowerCase().replace(/-/g,' ').trim();
+            const norm = t.toLowerCase().replace(/-/g, ' ').trim();
             if (typeof taxonomyManager !== 'undefined') {
                 const overrides = await GM.getValue('smartTagOverrides', {});
                 const ovType = overrides[norm];
@@ -10361,7 +10406,7 @@ document.querySelector('form.search').addEventListener('submit', async function(
                 if (pairs) {
                     const phrases = [];
                     for (let i = 0; i < words.length; i += 2) {
-                        phrases.push(`${words[i]} ${words[i+1]}`);
+                        phrases.push(`${words[i]} ${words[i + 1]}`);
                     }
                     const mapped = [];
                     for (const s of phrases) {
@@ -10415,7 +10460,7 @@ document.querySelector('form.search').addEventListener('submit', async function(
                     // prefer longer phrases first
                     for (let n = Math.min(3, words.length - k); n >= 2; n--) {
                         const rawPhrase = words.slice(k, k + n).join(' ');
-                        const normPhrase = rawPhrase.toLowerCase().replace(/-/g,' ').trim();
+                        const normPhrase = rawPhrase.toLowerCase().replace(/-/g, ' ').trim();
                         const isArtistPhrase = tm ? await tm.isArtistName(rawPhrase) : false;
                         if (isArtistPhrase) {
                             advTokens.push(`artist:"${rawPhrase}"`);
@@ -10648,7 +10693,7 @@ function deSmartTagQuery(q) {
     observer.observe(document.documentElement, { childList: true, subtree: true });
 
     const originalPushState = history.pushState;
-    history.pushState = function() {
+    history.pushState = function () {
         const ret = originalPushState.apply(this, arguments);
         setTimeout(removeOnce, 0);
         return ret;
@@ -10659,11 +10704,11 @@ function deSmartTagQuery(q) {
 
 
 // Modify XHR requests
-XMLHttpRequest.prototype.open = function(method, url) {
+XMLHttpRequest.prototype.open = function (method, url) {
     // Store the original arguments and context for later use
     const xhr = this;
     const args = arguments;
-    
+
     if (typeof url === 'string' && url.includes('/search/')) {
         try {
             const urlObj = new URL(url, window.location.origin);
@@ -10674,7 +10719,7 @@ XMLHttpRequest.prototype.open = function(method, url) {
                 return originalOpen.apply(xhr, args);
             }
             let queryArray = query.split(/\s+/).filter(tag => tag.length > 0).map(tag => tag.toLowerCase());
-            
+
             // Fetch mustAddTags asynchronously for XHR as well
             GM.getValue('mustAddTagsEnabled', false).then(mustAddTagsEnabled => {
                 if (mustAddTagsEnabled) {
@@ -10683,7 +10728,7 @@ XMLHttpRequest.prototype.open = function(method, url) {
                         try {
                             queryArray = [...new Set([...queryArray, ...mustAddTags])];
                             query = queryArray.join(' ');
-                            
+
                             urlObj.searchParams.set('q', query);
                             // Re-open the request with the modified URL
                             return originalOpen.apply(xhr, [method, urlObj.toString(), ...Array.prototype.slice.call(args, 2)]);
@@ -10794,26 +10839,26 @@ class OnlineDataSync {
             data: {}
         };
         // Define which keys to sync 
-         const syncableKeys = [ 
-             'bookmarkedPages', 'offlineFavorites', 'mustAddTags', 'mustAddTagsEnabled', 
-             'randomPrefLanguage', 'randomPrefTags', 'randomPrefPagesMin', 'randomPrefPagesMax', 
-             'blacklistedTags', 'findSimilarEnabled', 'bookmarksEnabled', 'maxTagsToSelect', 
-             'showNonEnglish', 'showPageNumbersEnabled', 'maxMangaPerBookmark', 
-             'englishFilterEnabled', 'autoLoginEnabled','findAltmangaEnabled', 
-             'bookmarksEnabled', 'language', 'tags', 'pagesMin', 'pagesMax', 'matchAllTags', 
-             'mustAddTagsEnabled', 'findAltMangaThumbnailEnabled', 'openInNewTabEnabled', 
-             'mangaBookMarkingButtonEnabled', 'mangaBookMarkingType', 'bookmarkArrangementType', 
-             'monthFilterEnabled', 'tooltipsEnabled', 'mangagroupingenabled', 'maxMangaPerBookmark', 
-             'openInNewTabType', 'offlineFavoritingEnabled', 'offlineFavoritesPageEnabled', 
-             'nfmPageEnabled', 'publicSyncEnabled', 'privateSyncEnabled', 
-             'autoSyncEnabled', 'syncInterval', 'lastSyncUpload', 
-             'lastSyncDownload', 'bookmarksPageEnabled', 'replaceRelatedWithBookmarks', 
-             'enableRelatedFlipButton', 'twitterButtonEnabled', 'enableRandomButton', 
-             'randomOpenType', 'profileButtonEnabled', 'infoButtonEnabled', 'logoutButtonEnabled', 
-             'bookmarkLinkEnabled', 'findSimilarType', 'bookmarkedMangas',
-             // New Hide/Blacklist feature
-             'hideBlacklistEnabled', 'hiddenGalleries',
-             // Inbox & Share settings
+        const syncableKeys = [
+            'bookmarkedPages', 'offlineFavorites', 'mustAddTags', 'mustAddTagsEnabled',
+            'randomPrefLanguage', 'randomPrefTags', 'randomPrefPagesMin', 'randomPrefPagesMax',
+            'blacklistedTags', 'findSimilarEnabled', 'bookmarksEnabled', 'maxTagsToSelect',
+            'showNonEnglish', 'showPageNumbersEnabled', 'maxMangaPerBookmark',
+            'englishFilterEnabled', 'autoLoginEnabled', 'findAltmangaEnabled',
+            'bookmarksEnabled', 'language', 'tags', 'pagesMin', 'pagesMax', 'matchAllTags',
+            'mustAddTagsEnabled', 'findAltMangaThumbnailEnabled', 'openInNewTabEnabled',
+            'mangaBookMarkingButtonEnabled', 'mangaBookMarkingType', 'bookmarkArrangementType',
+            'monthFilterEnabled', 'tooltipsEnabled', 'mangagroupingenabled', 'maxMangaPerBookmark',
+            'openInNewTabType', 'offlineFavoritingEnabled', 'offlineFavoritesPageEnabled',
+            'nfmPageEnabled', 'publicSyncEnabled', 'privateSyncEnabled',
+            'autoSyncEnabled', 'syncInterval', 'lastSyncUpload',
+            'lastSyncDownload', 'bookmarksPageEnabled', 'replaceRelatedWithBookmarks',
+            'enableRelatedFlipButton', 'twitterButtonEnabled', 'enableRandomButton',
+            'randomOpenType', 'profileButtonEnabled', 'infoButtonEnabled', 'logoutButtonEnabled',
+            'bookmarkLinkEnabled', 'findSimilarType', 'bookmarkedMangas',
+            // New Hide/Blacklist feature
+            'hideBlacklistEnabled', 'hiddenGalleries',
+            // Inbox & Share settings
             'shareButtonEnabled', 'receiveSharesEnabled', 'receivePopupsEnabled', 'inboxPollIntervalMin', 'inboxMessages',
             'favoriteTagsList'
         ];
@@ -10893,7 +10938,7 @@ class OnlineDataSync {
                 throw new Error('Public sync safety: aborting upload because existing cloud data has no users map');
             }
             existingData = {
-              //  version: CURRENT_VERSION,
+                //  version: CURRENT_VERSION,
                 //lastUpdated: new Date().toISOString(),
                 users: {}
             };
@@ -10923,7 +10968,7 @@ class OnlineDataSync {
 
         // Add/update current user's data
         existingData.users[userUUID] = userSyncData;
-       // existingData.lastUpdated = new Date().toISOString();
+        // existingData.lastUpdated = new Date().toISOString();
         // existingData.version = CURRENT_VERSION;
 
         await provider.upload(config, existingData);
@@ -11101,7 +11146,7 @@ class TaxonomyManager {
             console.warn('TaxonomyManager: fetch failed', e);
         }
     }
-            /* removed old caching logic for taxonomy; now fetches directly from GitHub and applies in-memory */
+    /* removed old caching logic for taxonomy; now fetches directly from GitHub and applies in-memory */
 
     async getTypesForNameAsync(name) {
         const n = this.normalizeName(name);
@@ -11204,7 +11249,7 @@ class TaxonomyManager {
             this.lastLoadedAt = null;
             this.mobileByTypeCache = null;
             this.mobileByTypeCacheAt = 0;
-        } catch (_) {}
+        } catch (_) { }
     }
 }
 
@@ -11267,7 +11312,7 @@ class JSONStorageProvider {
                         version: preservedVersion,
                         compressedData
                     };
-                } catch (_) {}
+                } catch (_) { }
             }
             return {
                 isCompressed: true,
@@ -11280,7 +11325,7 @@ class JSONStorageProvider {
             return userData; // Fallback to uncompressed data
         }
     }
-    
+
     // Decompress individual user data if it's compressed
     async decompressUserData(userData) {
         try {
@@ -11316,37 +11361,37 @@ class JSONStorageProvider {
     async prepareDataForUpload(data) {
         // If data doesn't have users structure, return as is
         if (!data || !data.users) return data;
-        
+
         // Create a copy of the data structure
         const processedData = {
             ...data,
             users: {}
         };
-        
+
         // Compress each user's data individually
         for (const [uuid, userData] of Object.entries(data.users)) {
             processedData.users[uuid] = await this.compressUserData(userData);
         }
-        
+
         return processedData;
     }
-    
+
     // Process downloaded data - decompresses each user's data individually
     async processDownloadedData(data) {
         // If data doesn't have users structure, return as is
         if (!data || !data.users) return data;
-        
+
         // Create a copy of the data structure
         const processedData = {
             ...data,
             users: {}
         };
-        
+
         // Decompress each user's data individually
         for (const [uuid, userData] of Object.entries(data.users)) {
             processedData.users[uuid] = await this.decompressUserData(userData);
         }
-        
+
         return processedData;
     }
 
@@ -11360,14 +11405,14 @@ class JSONStorageProvider {
                     'Content-Type': 'application/json'
                 },
                 data: JSON.stringify(processedData),
-                onload: function(response) {
+                onload: function (response) {
                     if (response.status === 200) {
                         resolve(JSON.parse(response.responseText));
                     } else {
                         reject(new Error(`Upload failed: ${response.status} ${response.statusText}`));
                     }
                 },
-                onerror: function(error) {
+                onerror: function (error) {
                     reject(new Error(`Network error: ${error}`));
                 }
             });
@@ -11392,7 +11437,7 @@ class JSONStorageProvider {
                         reject(new Error(`Download failed: ${response.status} ${response.statusText}`));
                     }
                 },
-                onerror: function(error) {
+                onerror: function (error) {
                     reject(new Error(`Network error: ${error}`));
                 }
             });
@@ -12308,7 +12353,8 @@ class MarkAsReadSystem {
     }
 
     /**
-     * Cache gallery data for Read Manga page
+     * Cache gallery data for Read Manga page.
+     * Stores only id, title, thumbnail, pages, url, cachedAt (no tags) to keep storage small.
      */
     async cacheGalleryData(galleryId, title = null, coverImageUrl = null) {
         try {
@@ -12322,9 +12368,7 @@ class MarkAsReadSystem {
                 title: title || 'Gallery ' + galleryId,
                 thumbnail: coverImageUrl || null,
                 pages: 'Unknown',
-                tags: [],
                 url: `/g/${galleryId}/`,
-                cached: true,
                 cachedAt: new Date().toISOString()
             };
 
@@ -12349,10 +12393,6 @@ class MarkAsReadSystem {
                 if (pageNumberButton) {
                     galleryInfo.pages = pageNumberButton.textContent.trim();
                 }
-
-                // Get tags from tag containers
-                const tagElements = document.querySelectorAll('.tag-container .tag .name');
-                galleryInfo.tags = Array.from(tagElements).map(tag => tag.textContent.trim());
             }
 
             // Method 2: Check if we're on a listing page and can find the gallery
@@ -12382,7 +12422,8 @@ class MarkAsReadSystem {
     }
 
     /**
-     * Cache gallery data from first page (for auto-mark scenarios)
+     * Cache gallery data from first page (for auto-mark scenarios).
+     * Stores only id, title, thumbnail, pages, url, cachedAt (no tags) to keep storage small.
      */
     async cacheGalleryDataFromFirstPage(galleryId) {
         try {
@@ -12396,9 +12437,7 @@ class MarkAsReadSystem {
                 title: 'Gallery ' + galleryId,
                 thumbnail: null,
                 pages: 'Unknown',
-                tags: [],
                 url: `/g/${galleryId}/`,
-                cached: true,
                 cachedAt: new Date().toISOString()
             };
 
@@ -12416,10 +12455,6 @@ class MarkAsReadSystem {
                 if (pageNumberButton) {
                     galleryInfo.pages = pageNumberButton.textContent.trim();
                 }
-
-                // Get tags from tag containers
-                const tagElements = document.querySelectorAll('.tag-container .tag .name');
-                galleryInfo.tags = Array.from(tagElements).map(tag => tag.textContent.trim());
             }
 
             // For auto-mark scenarios, try to fetch the cover from the first page
@@ -13976,7 +14011,7 @@ class AdvancedSearchSystem {
 
         const artistName = decodeURIComponent(pathParts[2]);
         // Learn artist name when visiting artist page
-        try { addKnownArtists([artistName]); } catch (_) {}
+        try { addKnownArtists([artistName]); } catch (_) { }
         const searchUrl = this.buildTagSearchUrl('artist', artistName);
 
         this.addSearchButton('English + This Artist', searchUrl, 'Search for English galleries by this artist');
@@ -14362,10 +14397,10 @@ class ReadMangaPageSystem {
 
         // Fetch gallery data for read galleries
         const galleryData = await this.fetchGalleryData(readGalleries, baseLimit);
-        
+
         // Apply sorting based on current selection
         const sortedData = await this.sortGalleryData(galleryData);
-        
+
         await this.renderGalleryGrid(sortedData, readGalleries.length);
     }
 
@@ -14400,7 +14435,7 @@ class ReadMangaPageSystem {
 
         // Try to get cached data from localStorage first
         const cachedData = await GM.getValue('readGalleriesCache', {});
-        
+
         // Get the user-configured limit or provided limit
         const baseLimit = typeof limit === 'number' ? limit : await GM.getValue('maxReadMangaDisplay', 100);
 
@@ -14447,13 +14482,13 @@ class ReadMangaPageSystem {
     async sortGalleryData(galleryData) {
         const sortOrder = await GM.getValue('readMangaSortOrder', 'recent');
         const readGalleries = await GM.getValue('readGalleries', []);
-        
+
         // Create a map of gallery ID to its position in the readGalleries array (for recent/oldest sorting)
         const readOrderMap = {};
         readGalleries.forEach((id, index) => {
             readOrderMap[id] = index;
         });
-        
+
         switch (sortOrder) {
             case 'recent':
                 // Most recently read first (reverse order of readGalleries array)
@@ -14462,7 +14497,7 @@ class ReadMangaPageSystem {
                     const bIndex = readOrderMap[b.id] ?? 999999;
                     return bIndex - aIndex; // Reverse order for most recent first
                 });
-                
+
             case 'oldest':
                 // Oldest read first (original order of readGalleries array)
                 return galleryData.sort((a, b) => {
@@ -14470,7 +14505,7 @@ class ReadMangaPageSystem {
                     const bIndex = readOrderMap[b.id] ?? 999999;
                     return aIndex - bIndex; // Original order for oldest first
                 });
-                
+
             case 'id-asc':
                 // ID ascending (lowest ID first)
                 return galleryData.sort((a, b) => {
@@ -14478,7 +14513,7 @@ class ReadMangaPageSystem {
                     const bId = parseInt(b.id) || 0;
                     return aId - bId;
                 });
-                
+
             case 'id-desc':
                 // ID descending (highest ID first)
                 return galleryData.sort((a, b) => {
@@ -14486,7 +14521,7 @@ class ReadMangaPageSystem {
                     const bId = parseInt(b.id) || 0;
                     return bId - aId;
                 });
-                
+
             default:
                 return galleryData;
         }
@@ -14727,7 +14762,7 @@ class ReadMangaPageSystem {
             // Set the current sort value from storage
             const currentSort = await GM.getValue('readMangaSortOrder', 'recent');
             sortSelect.value = currentSort;
-            
+
             sortSelect.addEventListener('change', async () => {
                 // Save the selected sort order
                 await GM.setValue('readMangaSortOrder', sortSelect.value);
@@ -15373,7 +15408,7 @@ async function initReadMangaPageSystem() {
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initReadMangaPageSystem);
 } else {
-initReadMangaPageSystem();
+    initReadMangaPageSystem();
 }
 
 //------------------------  **Read Manga Page System**  ------------------
@@ -15456,7 +15491,7 @@ class QuickNutPageSystem {
         if (shouldRebuild || items.length === 0) {
             items = await this.buildAggregatedItems(englishOnly, avoidSet, 1, readSet, !!skipRead);
             await GM.setValue('quickNutCache', { builtAt: Date.now(), items });
-            try { if (typeof taxonomyManager !== 'undefined' && typeof taxonomyManager.unload === 'function') taxonomyManager.unload(); } catch (_) {}
+            try { if (typeof taxonomyManager !== 'undefined' && typeof taxonomyManager.unload === 'function') taxonomyManager.unload(); } catch (_) { }
         } else {
             const filtered = items.filter(it => !avoidSet.has(it.id) && !(skipRead && readSet.has(it.id)));
             console.log('[QuickNut] render filter cached', { before: items.length, after: filtered.length });
@@ -15468,7 +15503,7 @@ class QuickNutPageSystem {
         if (window.readMangaPageSystem && typeof window.readMangaPageSystem.addReadMangaPageCSS === 'function') {
             window.readMangaPageSystem.addReadMangaPageCSS();
         }
-        try { await this.addSeenIds(items.map(it => it.id)); } catch (_) {}
+        try { await this.addSeenIds(items.map(it => it.id)); } catch (_) { }
     }
     shouldRebuild(mode, minutes, lastTS) {
         const now = Date.now();
@@ -15486,11 +15521,11 @@ class QuickNutPageSystem {
         const avoidedBucket = [];
         let skippedReadCount = 0;
         console.log('[QuickNut] build start', { englishOnly, favoritesCount: favs.length, avoidCount: avoidIdsSet ? avoidIdsSet.size : 0, readCount: readIdsSet ? readIdsSet.size : 0, skipReadEnabled, startPage, maxPagesPerFavorite: this.maxPagesPerFavorite, targetTotal: this.targetTotal });
-        try { if (typeof taxonomyManager !== 'undefined') await taxonomyManager.ensureLoaded(); } catch (_) {}
+        try { if (typeof taxonomyManager !== 'undefined') await taxonomyManager.ensureLoaded(); } catch (_) { }
         for (const name of favs) {
             let types = [];
             try { types = (typeof taxonomyManager !== 'undefined') ? await taxonomyManager.getTypesForNameAsync(name) : []; } catch (_) { types = []; }
-            const allowed = Array.isArray(types) ? types.filter(t => ['artist','group','parody','character','tag'].includes(t)) : [];
+            const allowed = Array.isArray(types) ? types.filter(t => ['artist', 'group', 'parody', 'character', 'tag'].includes(t)) : [];
             console.log('[QuickNut] classify', { name, types: allowed });
             if (!allowed.length) { console.log('[QuickNut] skip unsupported types', { name }); continue; }
             const cleanValue = String(name).replace(/["']/g, '').trim();
@@ -15607,7 +15642,7 @@ class QuickNutPageSystem {
             cache[id] = { url, ts: Date.now() };
             await GM.setValue(this.thumbCacheKey, cache);
             console.log('[QuickNut] thumb cached', { id, url });
-        } catch (_) {}
+        } catch (_) { }
     }
     async clearThumbCache() {
         await GM.setValue(this.thumbCacheKey, {});
@@ -15672,7 +15707,7 @@ class QuickNutPageSystem {
             const limited = Array.from(set).slice(-1000);
             await GM.setValue(this.seenIdsKey, limited);
             console.log('[QuickNut] addSeenIds', { addCount: ids.length, before: Array.isArray(list) ? list.length : 0, after: limited.length });
-        } catch (_) {}
+        } catch (_) { }
     }
     async refreshAvoidingSeen() {
         try {
@@ -15687,14 +15722,14 @@ class QuickNutPageSystem {
             await this.clearThumbCache();
             const items = await this.buildAggregatedItems(englishOnly, avoidSet, 2, readSet, !!skipRead);
             await GM.setValue('quickNutCache', { builtAt: Date.now(), items });
-            try { if (typeof taxonomyManager !== 'undefined' && typeof taxonomyManager.unload === 'function') taxonomyManager.unload(); } catch (_) {}
+            try { if (typeof taxonomyManager !== 'undefined' && typeof taxonomyManager.unload === 'function') taxonomyManager.unload(); } catch (_) { }
             this.replacePageContent(this.buildPageContent(items));
             this.attachHandlers();
             if (window.readMangaPageSystem && typeof window.readMangaPageSystem.addReadMangaPageCSS === 'function') {
                 window.readMangaPageSystem.addReadMangaPageCSS();
             }
             console.log('[QuickNut] refresh built', { count: items.length });
-        } catch (e) {}
+        } catch (e) { }
     }
 }
 
@@ -16187,15 +16222,15 @@ GM.addStyle(`
     }
 `);
 
-            // Function to adjust the position of a specific element
-            setInterval(function() {
-                
-                const pageNumberDisplay = $('.page-number-display');
-                
-                if (pageNumberDisplay.length > 0) {
-                    $('.read-manga-gallery .remove-read-btn').css('top', '30px');
-                }
-            }, 100);
+// Function to adjust the position of a specific element
+setInterval(function () {
+
+    const pageNumberDisplay = $('.page-number-display');
+
+    if (pageNumberDisplay.length > 0) {
+        $('.read-manga-gallery .remove-read-btn').css('top', '30px');
+    }
+}, 100);
 
 // Initialize enhanced CSS
 addEnhancedCSS();
@@ -16867,18 +16902,18 @@ async function addGalleryCaptionTooltips() {
 }
 
 // Initialize gallery caption tooltips
-$(document).ready(function() {
+$(document).ready(function () {
     // Add tooltips to existing galleries
     addGalleryCaptionTooltips();
 
     // Watch for new galleries being added dynamically
-    const observer = new MutationObserver(async function(mutations) {
+    const observer = new MutationObserver(async function (mutations) {
         const galleryCaptionTooltipsEnabled = await GM.getValue('galleryCaptionTooltipsEnabled', true);
         const cachedData = await GM.getValue('readGalleriesCache', {});
 
-        mutations.forEach(function(mutation) {
+        mutations.forEach(function (mutation) {
             if (mutation.type === 'childList') {
-                mutation.addedNodes.forEach(function(node) {
+                mutation.addedNodes.forEach(function (node) {
                     if (node.nodeType === 1) {
                         if (node.classList && node.classList.contains('gallery')) {
                             const caption = node.querySelector('.caption');
@@ -16931,7 +16966,7 @@ $(document).ready(function() {
 });
 
 // Initialize AutoSync on page load
-$(document).ready(async function() {
+$(document).ready(async function () {
     // Wait a bit for the page to fully load before initializing autosync
     setTimeout(async () => {
         try {
