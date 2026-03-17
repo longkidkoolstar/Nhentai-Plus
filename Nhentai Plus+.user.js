@@ -2840,6 +2840,22 @@ if (window.location.href.includes('/settings')) {
                             <input type="password" id="password" placeholder="Password">
                         </div>
                     </div>
+                    <div style="margin-top: 15px; border-top: 1px solid var(--nh-border); padding-top: 12px;">
+                        <div class="setting-row" style="margin-bottom: 8px;">
+                            <div class="setting-info">
+                                <span class="setting-label">Session Tokens</span>
+                                <span class="setting-desc">Cloudflare &amp; session cookies stored in your browser (nhentai.net domain)</span>
+                            </div>
+                            <button type="button" id="refreshSessionTokens" class="btn btn-secondary" style="flex-shrink:0;">Refresh</button>
+                        </div>
+                        <div id="sessionTokensInfo" style="font-size:0.85em; color: var(--nh-text-muted, #aaa); background: var(--nh-input-bg, #1a1a2e); border: 1px solid var(--nh-border); border-radius:6px; padding: 10px; margin-top: 6px;">
+                            <div style="margin-bottom:6px;"><strong>cf_clearance</strong> (Cloudflare): <span id="token-cf-clearance">checking…</span></div>
+                            <div style="margin-bottom:6px;"><strong>sessionid</strong> (nhentai login): <span id="token-sessionid">checking…</span></div>
+                            <div style="margin-top:8px; font-size:0.9em; opacity:0.75;">
+                                These tokens are set automatically by nhentai.net and Cloudflare. They live in your browser's cookie store for nhentai.net — <em>not</em> in Tampermonkey storage. If they appear as <em>HttpOnly / not accessible</em>, that is normal and expected. You can inspect them in your browser's DevTools → Application → Cookies → https://nhentai.net.
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="setting-card">
@@ -3762,6 +3778,30 @@ if (window.location.href.includes('/settings')) {
         $('#pref-pages-min').val(pagesMin);
         $('#pref-pages-max').val(pagesMax);
         $('#autoLoginCredentials').toggle(autoLoginEnabled);
+
+        // Session token display helper
+        function updateSessionTokenDisplay() {
+            function escapeHtml(str) {
+                return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+            }
+            function getCookieValue(name) {
+                const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const match = document.cookie.match('(?:^|;)\\s*' + escaped + '\\s*=\\s*([^;]+)');
+                return match ? decodeURIComponent(match[1]) : null;
+            }
+            const cfVal = getCookieValue('cf_clearance');
+            const sidVal = getCookieValue('sessionid');
+            const notAccessible = '<em style="opacity:0.7">HttpOnly / not accessible via JS</em>';
+            $('#token-cf-clearance').html(cfVal
+                ? '<span style="color:#4caf50">&#10003; Present</span> <span style="opacity:0.6;word-break:break-all">' + escapeHtml(cfVal.substring(0, 20)) + '…</span>'
+                : notAccessible);
+            $('#token-sessionid').html(sidVal
+                ? '<span style="color:#4caf50">&#10003; Present</span> <span style="opacity:0.6;word-break:break-all">' + escapeHtml(sidVal.substring(0, 20)) + '…</span>'
+                : notAccessible);
+        }
+        updateSessionTokenDisplay();
+        $('#refreshSessionTokens').on('click', updateSessionTokenDisplay);
+
         $('#matchAllTags').prop('checked', matchAllTags);
         $('#blacklisted-tags').val(blacklistedTags.join(', '));
         $('#mustAddTagsEnabled').prop('checked', mustAddTagsEnabled);
