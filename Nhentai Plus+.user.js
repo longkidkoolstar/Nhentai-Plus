@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      10.5.5
+// @version      10.5.6
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -2840,6 +2840,22 @@ if (window.location.href.includes('/settings')) {
                             <input type="password" id="password" placeholder="Password">
                         </div>
                     </div>
+                    <div style="margin-top: 15px; border-top: 1px solid var(--nh-border); padding-top: 12px;">
+                        <div class="setting-row" style="margin-bottom: 8px;">
+                            <div class="setting-info">
+                                <span class="setting-label">Session Tokens</span>
+                                <span class="setting-desc">Cloudflare &amp; session cookies stored in your browser (nhentai.net domain)</span>
+                            </div>
+                            <button type="button" id="refreshSessionTokens" class="btn btn-secondary" style="flex-shrink:0;">Refresh</button>
+                        </div>
+                        <div id="sessionTokensInfo" style="font-size:0.85em; color: var(--nh-text-muted, #aaa); background: var(--nh-input-bg, #1a1a2e); border: 1px solid var(--nh-border); border-radius:6px; padding: 10px; margin-top: 6px;">
+                            <div style="margin-bottom:6px;"><strong>cf_clearance</strong> (Cloudflare): <span id="token-cf-clearance">checking…</span></div>
+                            <div style="margin-bottom:6px;"><strong>sessionid</strong> (nhentai login): <span id="token-sessionid">checking…</span></div>
+                            <div style="margin-top:8px; font-size:0.9em; opacity:0.75;">
+                                These tokens are set automatically by nhentai.net and Cloudflare. They live in your browser's cookie store for nhentai.net — <em>not</em> in Tampermonkey storage. If they appear as <em>HttpOnly / not accessible</em>, that is normal and expected. You can inspect them in your browser's DevTools → Application → Cookies → https://nhentai.net.
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="setting-card">
@@ -3762,6 +3778,69 @@ if (window.location.href.includes('/settings')) {
         $('#pref-pages-min').val(pagesMin);
         $('#pref-pages-max').val(pagesMax);
         $('#autoLoginCredentials').toggle(autoLoginEnabled);
+
+        // Session token display helper
+        function updateSessionTokenDisplay() {
+            function escapeHtml(str) {
+                return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+            }
+            function getCookieValue(name) {
+                const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const match = document.cookie.match('(?:^|;)\\s*' + escaped + '\\s*=\\s*([^;]+)');
+                return match ? decodeURIComponent(match[1]) : null;
+            }
+            function renderToken(spanId, val) {
+                const $el = $('#' + spanId);
+                if (!val) {
+                    $el.html('<em style="opacity:0.7">HttpOnly / not accessible via JS</em>');
+                    $el.off('click').css('cursor', '');
+                    return;
+                }
+                const preview = escapeHtml(val.substring(0, 20));
+                $el.html(
+                    '<span style="color:#4caf50">&#10003; Present</span> ' +
+                    '<span class="token-preview" style="opacity:0.6;word-break:break-all;cursor:pointer;text-decoration:underline dotted" title="Click to copy full value">' +
+                    preview + '…</span>'
+                );
+                $el.off('click').on('click', function () {
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(val).then(function () {
+                            const $preview = $el.find('.token-preview');
+                            const orig = $preview.html();
+                            $preview.html('<span style="color:#4caf50">Copied!</span>');
+                            setTimeout(function () { $preview.html(orig); }, 1500);
+                        });
+                    } else {
+                        // Fallback for browsers without Clipboard API (deprecated but still widely supported)
+                        try {
+                            const ta = document.createElement('textarea');
+                            ta.value = val;
+                            ta.style.position = 'fixed';
+                            ta.style.opacity = '0';
+                            document.body.appendChild(ta);
+                            ta.select();
+                            const success = document.execCommand('copy');
+                            document.body.removeChild(ta);
+                            if (!success) { return; }
+                        } catch (e) {
+                            console.warn('NHP: clipboard copy fallback failed', e);
+                            return;
+                        }
+                        const $preview = $el.find('.token-preview');
+                        const orig = $preview.html();
+                        $preview.html('<span style="color:#4caf50">Copied!</span>');
+                        setTimeout(function () { $preview.html(orig); }, 1500);
+                    }
+                });
+            }
+            const cfVal = getCookieValue('cf_clearance');
+            const sidVal = getCookieValue('sessionid');
+            renderToken('token-cf-clearance', cfVal);
+            renderToken('token-sessionid', sidVal);
+        }
+        updateSessionTokenDisplay();
+        $('#refreshSessionTokens').on('click', updateSessionTokenDisplay);
+
         $('#matchAllTags').prop('checked', matchAllTags);
         $('#blacklisted-tags').val(blacklistedTags.join(', '));
         $('#mustAddTagsEnabled').prop('checked', mustAddTagsEnabled);

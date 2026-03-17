@@ -1,4 +1,12 @@
 {
+  "10.5.6": {
+    "date": "2026-03-17",
+    "changes": [
+      "feat(settings): add Session Tokens panel to Account settings showing cf_clearance and sessionid cookie status",
+      "feat(settings): clicking a token value copies the full value to clipboard",
+      "chore(version): bump userscript version to 10.5.6"
+    ]
+  },
   "10.5.5": {
     "date": "2026-02-18",
     "changes": [
