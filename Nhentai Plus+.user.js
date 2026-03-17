@@ -17,6 +17,7 @@
 // @grant        GM.openInTab
 // @grant        GM.listValues
 // @grant        GM.xmlHttpRequest
+// @grant        GM_cookie
 // ==/UserScript==
 
 
@@ -2852,7 +2853,7 @@ if (window.location.href.includes('/settings')) {
                             <div style="margin-bottom:6px;"><strong>cf_clearance</strong> (Cloudflare): <span id="token-cf-clearance">checking…</span></div>
                             <div style="margin-bottom:6px;"><strong>sessionid</strong> (nhentai login): <span id="token-sessionid">checking…</span></div>
                             <div style="margin-top:8px; font-size:0.9em; opacity:0.75;">
-                                These tokens are set automatically by nhentai.net and Cloudflare. They live in your browser's cookie store for nhentai.net — <em>not</em> in Tampermonkey storage. If they appear as <em>HttpOnly / not accessible</em>, that is normal and expected. You can inspect them in your browser's DevTools → Application → Cookies → https://nhentai.net.
+                                These tokens are set automatically by nhentai.net and Cloudflare. They live in your browser's cookie store for nhentai.net — <em>not</em> in Tampermonkey storage. You can also inspect them in your browser's DevTools → Application → Cookies → https://nhentai.net.
                             </div>
                         </div>
                     </div>
@@ -3780,11 +3781,27 @@ if (window.location.href.includes('/settings')) {
         $('#autoLoginCredentials').toggle(autoLoginEnabled);
 
         // Session token display helper
-        function updateSessionTokenDisplay() {
+        async function updateSessionTokenDisplay() {
             function escapeHtml(str) {
                 return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
             }
             function getCookieValue(name) {
+                // Use GM_cookie API to access HttpOnly cookies if available
+                if (typeof GM_cookie !== 'undefined' && GM_cookie.list) {
+                    return new Promise(function (resolve) {
+                        GM_cookie.list({ name: name }, function (cookies, error) {
+                            if (!error && cookies && cookies.length > 0) {
+                                resolve(cookies[0].value);
+                            } else {
+                                resolve(getDocumentCookieValue(name));
+                            }
+                        });
+                    });
+                }
+                return Promise.resolve(getDocumentCookieValue(name));
+            }
+            function getDocumentCookieValue(name) {
+                // Fallback to document.cookie (non-HttpOnly cookies only)
                 const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                 const match = document.cookie.match('(?:^|;)\\s*' + escaped + '\\s*=\\s*([^;]+)');
                 return match ? decodeURIComponent(match[1]) : null;
@@ -3792,7 +3809,7 @@ if (window.location.href.includes('/settings')) {
             function renderToken(spanId, val) {
                 const $el = $('#' + spanId);
                 if (!val) {
-                    $el.html('<em style="opacity:0.7">HttpOnly / not accessible via JS</em>');
+                    $el.html('<em style="opacity:0.7">Not found</em>');
                     $el.off('click').css('cursor', '');
                     return;
                 }
@@ -3833,8 +3850,8 @@ if (window.location.href.includes('/settings')) {
                     }
                 });
             }
-            const cfVal = getCookieValue('cf_clearance');
-            const sidVal = getCookieValue('sessionid');
+            const cfVal = await getCookieValue('cf_clearance');
+            const sidVal = await getCookieValue('sessionid');
             renderToken('token-cf-clearance', cfVal);
             renderToken('token-sessionid', sidVal);
         }
