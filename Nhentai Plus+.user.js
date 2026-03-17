@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      10.5.5
+// @version      10.5.6
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -3789,15 +3789,54 @@ if (window.location.href.includes('/settings')) {
                 const match = document.cookie.match('(?:^|;)\\s*' + escaped + '\\s*=\\s*([^;]+)');
                 return match ? decodeURIComponent(match[1]) : null;
             }
+            function renderToken(spanId, val) {
+                const $el = $('#' + spanId);
+                if (!val) {
+                    $el.html('<em style="opacity:0.7">HttpOnly / not accessible via JS</em>');
+                    $el.off('click').css('cursor', '');
+                    return;
+                }
+                const preview = escapeHtml(val.substring(0, 20));
+                $el.html(
+                    '<span style="color:#4caf50">&#10003; Present</span> ' +
+                    '<span class="token-preview" style="opacity:0.6;word-break:break-all;cursor:pointer;text-decoration:underline dotted" title="Click to copy full value">' +
+                    preview + '…</span>'
+                );
+                $el.off('click').on('click', function () {
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(val).then(function () {
+                            const $preview = $el.find('.token-preview');
+                            const orig = $preview.html();
+                            $preview.html('<span style="color:#4caf50">Copied!</span>');
+                            setTimeout(function () { $preview.html(orig); }, 1500);
+                        });
+                    } else {
+                        // Fallback for browsers without Clipboard API (deprecated but still widely supported)
+                        try {
+                            const ta = document.createElement('textarea');
+                            ta.value = val;
+                            ta.style.position = 'fixed';
+                            ta.style.opacity = '0';
+                            document.body.appendChild(ta);
+                            ta.select();
+                            const success = document.execCommand('copy');
+                            document.body.removeChild(ta);
+                            if (!success) { return; }
+                        } catch (e) {
+                            console.warn('NHP: clipboard copy fallback failed', e);
+                            return;
+                        }
+                        const $preview = $el.find('.token-preview');
+                        const orig = $preview.html();
+                        $preview.html('<span style="color:#4caf50">Copied!</span>');
+                        setTimeout(function () { $preview.html(orig); }, 1500);
+                    }
+                });
+            }
             const cfVal = getCookieValue('cf_clearance');
             const sidVal = getCookieValue('sessionid');
-            const notAccessible = '<em style="opacity:0.7">HttpOnly / not accessible via JS</em>';
-            $('#token-cf-clearance').html(cfVal
-                ? '<span style="color:#4caf50">&#10003; Present</span> <span style="opacity:0.6;word-break:break-all">' + escapeHtml(cfVal.substring(0, 20)) + '…</span>'
-                : notAccessible);
-            $('#token-sessionid').html(sidVal
-                ? '<span style="color:#4caf50">&#10003; Present</span> <span style="opacity:0.6;word-break:break-all">' + escapeHtml(sidVal.substring(0, 20)) + '…</span>'
-                : notAccessible);
+            renderToken('token-cf-clearance', cfVal);
+            renderToken('token-sessionid', sidVal);
         }
         updateSessionTokenDisplay();
         $('#refreshSessionTokens').on('click', updateSessionTokenDisplay);
