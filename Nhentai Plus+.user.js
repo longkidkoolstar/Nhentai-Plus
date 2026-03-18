@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      10.5.7
+// @version      10.5.8
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -23,7 +23,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "10.5.7";
+const CURRENT_VERSION = "10.5.8";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -10963,7 +10963,15 @@ class OnlineDataSync {
 
         for (const key of syncableKeys) {
             if (allKeys.includes(key)) {
-                syncData.data[key] = await GM.getValue(key);
+                let value = await GM.getValue(key);
+
+                // Strip bulky cached fields that can be lazily re-fetched after download.
+                // This dramatically reduces payload size without losing essential data.
+                if (key === 'bookmarkedMangas' && Array.isArray(value)) {
+                    value = value.map(({ tags: _tags, coverImageUrl: _cov, ...rest }) => rest);
+                }
+
+                syncData.data[key] = value;
             }
         }
 
@@ -11068,6 +11076,23 @@ class OnlineDataSync {
         existingData.users[userUUID] = userSyncData;
         // existingData.lastUpdated = new Date().toISOString();
         // existingData.version = CURRENT_VERSION;
+
+        // Pre-upload size guard: estimate raw JSON size and warn early rather than
+        // getting an opaque 400 from the storage backend.
+        const UPLOAD_SIZE_LIMIT_BYTES = 95 * 1024; // 95 KB — stay under jsonstorage.net's 100 KB cap
+        const rawJson = JSON.stringify(existingData);
+        const estimatedBytes = new TextEncoder().encode(rawJson).length;
+        console.log(`[NHP Sync] Pre-upload payload: ~${Math.round(estimatedBytes / 1024)} KB (${existingData.users ? Object.keys(existingData.users).length : 0} user(s))`);
+        if (estimatedBytes > UPLOAD_SIZE_LIMIT_BYTES) {
+            const kb = Math.round(estimatedBytes / 1024);
+            const userCount = existingData.users ? Object.keys(existingData.users).length : 0;
+            throw new Error(
+                `Upload payload is too large (~${kb} KB, limit ~95 KB). ` +
+                `Try: (1) reduce bookmarks/read history, ` +
+                `(2) use Private Sync with your own JSONStorage bin (no other users share the space)` +
+                (userCount > 1 ? `, (3) the public bin currently has ${userCount} users — each adds to the total size.` : '.')
+            );
+        }
 
         await provider.upload(config, existingData);
         await GM.setValue('lastSyncUpload', new Date().toISOString());
