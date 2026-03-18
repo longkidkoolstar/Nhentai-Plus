@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      10.5.6
+// @version      10.5.7
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -23,7 +23,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "10.5.5";
+const CURRENT_VERSION = "10.5.7";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -10954,6 +10954,8 @@ class OnlineDataSync {
             'bookmarkLinkEnabled', 'findSimilarType', 'bookmarkedMangas',
             // New Hide/Blacklist feature
             'hideBlacklistEnabled', 'hiddenGalleries',
+            // Read history
+            'readGalleries',
             // Inbox & Share settings
             'shareButtonEnabled', 'receiveSharesEnabled', 'receivePopupsEnabled', 'inboxPollIntervalMin', 'inboxMessages',
             'favoriteTagsList'
