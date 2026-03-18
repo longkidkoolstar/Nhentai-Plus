@@ -11389,6 +11389,27 @@ async function gzipDecompressBase64ToString(base64) {
 
 // JSONStorage.net provider implementation
 class JSONStorageProvider {
+    buildRequestUrl(config) {
+        const rawUrl = String((config && config.url) || '').trim();
+        if (!rawUrl) {
+            throw new Error('Storage URL is required');
+        }
+
+        // Keep existing query parameters and only add apiKey when needed.
+        const requestUrl = new URL(rawUrl);
+        const apiKey = config && typeof config.apiKey === 'string' ? config.apiKey.trim() : '';
+        if (apiKey && !requestUrl.searchParams.get('apiKey')) {
+            requestUrl.searchParams.set('apiKey', apiKey);
+        }
+        return requestUrl.toString();
+    }
+
+    getResponseErrorDetails(response) {
+        const body = (response && typeof response.responseText === 'string') ? response.responseText.trim() : '';
+        if (!body) return '';
+        return ` | ${body.slice(0, 300)}`;
+    }
+
     async compressUserData(userData) {
         // Return as-is if null/undefined
         if (!userData) return userData;
@@ -11495,10 +11516,11 @@ class JSONStorageProvider {
 
     async upload(config, data) {
         const processedData = await this.prepareDataForUpload(data);
+        const requestUrl = this.buildRequestUrl(config);
         return new Promise((resolve, reject) => {
             GM.xmlHttpRequest({
                 method: 'PUT',
-                url: `${config.url}?apiKey=${config.apiKey}`,
+                url: requestUrl,
                 headers: {
                     'Content-Type': 'application/json'
                 },
@@ -11507,9 +11529,10 @@ class JSONStorageProvider {
                     if (response.status === 200) {
                         resolve(JSON.parse(response.responseText));
                     } else {
-                        reject(new Error(`Upload failed: ${response.status} ${response.statusText}`));
+                        const details = this.getResponseErrorDetails(response);
+                        reject(new Error(`Upload failed: ${response.status} ${response.statusText}${details}`));
                     }
-                },
+                }.bind(this),
                 onerror: function (error) {
                     reject(new Error(`Network error: ${error}`));
                 }
@@ -11518,10 +11541,11 @@ class JSONStorageProvider {
     }
 
     async download(config) {
+        const requestUrl = this.buildRequestUrl(config);
         return new Promise((resolve, reject) => {
             GM.xmlHttpRequest({
                 method: 'GET',
-                url: `${config.url}?apiKey=${config.apiKey}`,
+                url: requestUrl,
                 headers: {
                     'Accept': 'application/json'
                 },
@@ -11532,7 +11556,8 @@ class JSONStorageProvider {
                         const processedData = await this.processDownloadedData(data);
                         resolve(processedData);
                     } else {
-                        reject(new Error(`Download failed: ${response.status} ${response.statusText}`));
+                        const details = this.getResponseErrorDetails(response);
+                        reject(new Error(`Download failed: ${response.status} ${response.statusText}${details}`));
                     }
                 },
                 onerror: function (error) {
