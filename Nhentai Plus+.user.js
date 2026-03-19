@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      10.5.9
+// @version      10.5.10
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -23,7 +23,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "10.5.9";
+const CURRENT_VERSION = "10.5.10";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -10997,7 +10997,17 @@ class OnlineDataSync {
 
         let appliedCount = 0;
         for (const [key, value] of Object.entries(syncData.data)) {
-            await GM.setValue(key, value);
+            // For pending-action queues, union-merge with the existing GM value instead of
+            // overwriting, so any items the userscript added while offline are preserved.
+            if (key === 'toFavorite' || key === 'toUnfavorite') {
+                const existing = await GM.getValue(key, []);
+                const existingArr = Array.isArray(existing) ? existing : [];
+                const incomingArr = Array.isArray(value) ? value : [];
+                const merged = [...new Set([...existingArr, ...incomingArr])];
+                await GM.setValue(key, merged);
+            } else {
+                await GM.setValue(key, value);
+            }
             appliedCount++;
         }
 
