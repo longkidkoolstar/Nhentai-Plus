@@ -1,4 +1,13 @@
 {
+  "10.6.2": {
+    "date": "2026-03-20",
+    "changes": [
+      "feat(share): allow sending by UUID even when recipient is not found in public cloud via explicit Send Anyway confirmation",
+      "feat(worker): retain share inbox messages for 30 days in KV before automatic expiration",
+      "feat(inbox): prune locally stored inbox messages older than 30 days and normalize sourceStore metadata",
+      "chore(version): bump userscript version to 10.6.2"
+    ]
+  },
   "10.6.1": {
     "date": "2026-03-20",
     "changes": [

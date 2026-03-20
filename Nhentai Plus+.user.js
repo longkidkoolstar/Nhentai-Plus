@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      10.6.1
+// @version      10.6.2
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -23,7 +23,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "10.6.1";
+const CURRENT_VERSION = "10.6.2";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -7165,18 +7165,48 @@ async function addShareButton() {
                                 return;
                             }
 
-                            // Verify recipient exists in JSONStorage public cloud
+                            // Soft-validate recipient in public cloud. Allow override when not found.
                             let recipientExists = false;
+                            let lookupFailed = false;
                             try {
                                 const users = await syncSystem.getAvailableUsers('jsonstorage', syncSystem.publicConfig);
                                 recipientExists = Array.isArray(users) && users.some(u => String(u.uuid).toUpperCase() === toUUID);
                             } catch (e) {
-                                showPopup('Could not verify recipient in cloud. Please try again.', { timeout: 4000 });
-                                return;
+                                lookupFailed = true;
                             }
+
                             if (!recipientExists) {
-                                showPopup('Recipient ID not found in cloud sync. Ask them to enable sync once.', { timeout: 5000 });
-                                return;
+                                let sendAnyway = false;
+                                const warningText = lookupFailed
+                                    ? 'Could not verify recipient in cloud right now.'
+                                    : 'Recipient ID not found in cloud sync.';
+                                const content = `
+                                    <div style="text-align:left">
+                                      <div style="font-weight:600;margin-bottom:6px;">Send anyway?</div>
+                                      <div style="font-size:12px;color:#666;">${warningText} You can still send this share by UUID.</div>
+                                    </div>
+                                `;
+
+                                await new Promise(resolve => {
+                                    showPopup(content, {
+                                        buttons: [
+                                            {
+                                                text: 'Send Anyway',
+                                                callback: () => {
+                                                    sendAnyway = true;
+                                                    resolve();
+                                                }
+                                            },
+                                            {
+                                                text: 'Cancel',
+                                                callback: () => resolve()
+                                            }
+                                        ],
+                                        timeout: 0
+                                    });
+                                });
+
+                                if (!sendAnyway) return;
                             }
 
                             // Disable while processing
