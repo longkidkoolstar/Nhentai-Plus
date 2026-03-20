@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      10.5.10
+// @version      10.6.0
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -23,7 +23,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "10.5.10";
+const CURRENT_VERSION = "10.6.0";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -7181,7 +7181,10 @@ async function addShareButton() {
                             try {
                                 let fromUUID = '';
                                 try { fromUUID = await syncSystem.getUserUUID(); } catch (_) { }
-                                const payload = { toUUID, id: galleryId, url: currentUrl, fromUUID };
+                                const privateSyncOn = await GM.getValue('privateSyncEnabled', false);
+                                const publicSyncOn = await GM.getValue('publicSyncEnabled', false);
+                                const sourceStore = (privateSyncOn && !publicSyncOn) ? 'private' : 'public';
+                                const payload = { toUUID, id: galleryId, url: currentUrl, fromUUID, sourceStore };
                                 const res = await fetch('https://nhentai-share.babykoolstar.workers.dev/send', {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json' },
@@ -7307,13 +7310,16 @@ async function fetchInboxOnce(drain = true) {
 // Helper: append messages to local Inbox storage
 async function appendToInbox(newMessages) {
     try {
+        const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
         const existing = await GM.getValue('inboxMessages', []);
-        const combined = existing.concat(newMessages.map(m => ({
+        const pruned = (Array.isArray(existing) ? existing : []).filter(m => Date.now() - (m.ts || 0) < THIRTY_DAYS_MS);
+        const combined = pruned.concat(newMessages.map(m => ({
             toUUID: m.toUUID,
             fromUUID: m.fromUUID,
             id: m.id,
             url: m.url,
-            ts: m.ts || Date.now()
+            ts: m.ts || Date.now(),
+            sourceStore: (m.sourceStore === 'private' || m.sourceStore === 'public') ? m.sourceStore : 'public'
         })));
         await GM.setValue('inboxMessages', combined);
     } catch (_) { }
@@ -7584,6 +7590,8 @@ async function getMangaCoverImage(mangaId) {
     const details = await getMangaDetails(mangaId);
     return details.coverUrl;
 }
+
+const NHP_COVER_FALLBACK_ONERROR = "const p=this.nextElementSibling;if(!this.dataset.nhpFallbacks){const m=this.src.match(/https?:\\/\\/t(\\d+)\\.nhentai\\.net\\/galleries\\/(\\d+)\\/cover\\.(jpg|webp)\\.webp/);const f=[];if(m){const id=m[2];['3','2','1'].forEach(s=>['webp.webp','jpg.webp'].forEach(ext=>{const u='https://t'+s+'.nhentai.net/galleries/'+id+'/cover.'+ext;if(u!==this.src&&!f.includes(u))f.push(u);}));['https://t.nhentai.net/galleries/'+id+'/thumb.webp','https://t.nhentai.net/galleries/'+id+'/thumb.jpg'].forEach(u=>{if(u!==this.src&&!f.includes(u))f.push(u);});}this.dataset.nhpFallbacks=JSON.stringify(f);this.dataset.nhpFallbackIndex='0';}const f=JSON.parse(this.dataset.nhpFallbacks||'[]');const i=parseInt(this.dataset.nhpFallbackIndex||'0',10);if(i<f.length){this.dataset.nhpFallbackIndex=String(i+1);this.style.display='block';this.src=f[i];}else{this.style.display='none';if(p){p.style.display='flex';Array.from(p.children).forEach(c=>c.style.display='block');}}";
 
 // Language flag URLs
 const LANGUAGE_FLAGS = {
@@ -14600,6 +14608,7 @@ class ReadMangaPageSystem {
 
         for (const galleryId of recentGalleryIds.slice(0, baseLimit)) { // Use configurable/incremental limit
             let galleryInfo = cachedData[galleryId];
+            const needsTitleRefresh = !galleryInfo || this.isPlaceholderOrMissingTitle(galleryInfo.title, galleryId);
 
             if (!galleryInfo) {
                 // Create basic data structure with gallery ID
@@ -14612,6 +14621,12 @@ class ReadMangaPageSystem {
                     url: `/g/${galleryId}/`,
                     cached: false
                 };
+            }
+
+            if (needsTitleRefresh) {
+                if (!galleryInfo.url) {
+                    galleryInfo.url = `/g/${galleryId}/`;
+                }
 
                 // Try multiple sources for gallery data
                 await this.tryFetchGalleryInfo(galleryInfo);
@@ -14623,7 +14638,7 @@ class ReadMangaPageSystem {
         // Cache any newly found data
         const updatedCache = { ...cachedData };
         galleryData.forEach(gallery => {
-            if (gallery.cached && !cachedData[gallery.id]) {
+            if (gallery.cached) {
                 updatedCache[gallery.id] = gallery;
             }
         });
@@ -14695,7 +14710,10 @@ class ReadMangaPageSystem {
             // Get title from h1 or h2
             const titleElement = document.querySelector('h1, h2');
             if (titleElement) {
-                galleryInfo.title = titleElement.textContent.trim();
+                const title = this.normalizeGalleryTitle(titleElement.textContent);
+                if (title) {
+                    galleryInfo.title = title;
+                }
             }
 
             // Get cover image from #cover
@@ -14722,11 +14740,22 @@ class ReadMangaPageSystem {
             const imgElement = galleryElement.querySelector('img');
 
             if (titleElement) {
-                galleryInfo.title = titleElement.textContent.trim();
+                const title = this.normalizeGalleryTitle(titleElement.textContent);
+                if (title) {
+                    galleryInfo.title = title;
+                }
             }
             if (imgElement && imgElement.src) {
                 galleryInfo.thumbnail = imgElement.src;
             }
+
+            if (this.isPlaceholderOrMissingTitle(galleryInfo.title, galleryId)) {
+                const fetchedTitle = await this.fetchGalleryTitleFromPage(galleryId);
+                if (fetchedTitle) {
+                    galleryInfo.title = fetchedTitle;
+                }
+            }
+
             galleryInfo.cached = true;
             return;
         }
@@ -14745,6 +14774,56 @@ class ReadMangaPageSystem {
         } catch (error) {
             // Thumbnail doesn't exist or network error, leave as null
             console.log(`Thumbnail not found for gallery ${galleryId}`);
+        }
+
+        // Method 4: Fetch real gallery title from gallery page when placeholder/blank title is shown
+        if (this.isPlaceholderOrMissingTitle(galleryInfo.title, galleryId)) {
+            const fetchedTitle = await this.fetchGalleryTitleFromPage(galleryId);
+            if (fetchedTitle) {
+                galleryInfo.title = fetchedTitle;
+                galleryInfo.cached = true;
+            }
+        }
+    }
+
+    normalizeGalleryTitle(title) {
+        const normalized = String(title || '').replace(/\s+/g, ' ').trim();
+        return normalized || null;
+    }
+
+    isPlaceholderOrMissingTitle(title, galleryId) {
+        const normalized = this.normalizeGalleryTitle(title);
+        if (!normalized) {
+            return true;
+        }
+
+        const placeholderRegex = /^gallery\s+\d+$/i;
+        if (placeholderRegex.test(normalized)) {
+            return true;
+        }
+
+        return normalized.toLowerCase() === `gallery ${String(galleryId).toLowerCase()}`;
+    }
+
+    async fetchGalleryTitleFromPage(galleryId) {
+        try {
+            const response = await fetch(`${location.origin}/g/${galleryId}/`, { credentials: 'include' });
+            if (!response.ok) {
+                return null;
+            }
+
+            const html = await response.text();
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+
+            const prettyTitle = this.normalizeGalleryTitle(doc.querySelector('h1.title .pretty')?.textContent);
+            if (prettyTitle) {
+                return prettyTitle;
+            }
+
+            const fullTitle = this.normalizeGalleryTitle(doc.querySelector('h1.title')?.textContent);
+            return fullTitle;
+        } catch (_) {
+            return null;
         }
     }
 
@@ -14807,7 +14886,7 @@ class ReadMangaPageSystem {
             ? `<img src="${gallery.thumbnail}" alt="${gallery.title}" loading="lazy"
                     style="width: 100%; height: 300px; object-fit: cover; display: block;"
                     onload="const placeholder = this.nextElementSibling; placeholder.style.display='none'; Array.from(placeholder.children).forEach(child => child.style.display='none');"
-                    onerror="this.style.display='none'; const placeholder = this.nextElementSibling; placeholder.style.display='flex'; Array.from(placeholder.children).forEach(child => child.style.display='block');">`
+                    onerror="${NHP_COVER_FALLBACK_ONERROR}">`
             : '';
 
         const noImageHtml = `
@@ -15819,7 +15898,7 @@ class QuickNutPageSystem {
         return content;
     }
     createGalleryCard(gallery) {
-        const thumbnailHtml = gallery.thumbnail ? `<img src="${gallery.thumbnail}" alt="${gallery.title}" loading="lazy" style="width: 100%; height: 300px; object-fit: cover; display: block;" onload="const placeholder = this.nextElementSibling; placeholder.style.display='none'; Array.from(placeholder.children).forEach(child => child.style.display='none');" onerror="this.style.display='none'; const placeholder = this.nextElementSibling; placeholder.style.display='flex'; Array.from(placeholder.children).forEach(child => child.style.display='block');">` : '';
+        const thumbnailHtml = gallery.thumbnail ? `<img src="${gallery.thumbnail}" alt="${gallery.title}" loading="lazy" style="width: 100%; height: 300px; object-fit: cover; display: block;" onload="const placeholder = this.nextElementSibling; placeholder.style.display='none'; Array.from(placeholder.children).forEach(child => child.style.display='none');" onerror="${NHP_COVER_FALLBACK_ONERROR}">` : '';
         const noImageHtml = `
             <div class="no-image-placeholder" style="display: ${gallery.thumbnail ? 'none !important' : 'flex'}; width: 100%; height: 300px; background: linear-gradient(135deg, #333 0%, #555 100%); align-items: center; justify-content: center; flex-direction: column; color: #999;">
                 <i class="fas fa-book" style="font-size: 48px; margin-bottom: 10px; opacity: 0.5; display: ${gallery.thumbnail ? 'none !important' : 'block'};"></i>

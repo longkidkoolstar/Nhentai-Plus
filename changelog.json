@@ -1,7 +1,18 @@
-{"10.5.10": {
+{
+  "10.6.0": {
+    "date": "2026-03-20",
+    "changes": [
+      "feat(share): add cross-bin gallery sharing between public and private storage users",
+      "feat(share): enable users to share galleries from public sync to private bin users and vice versa",
+      "feat(share): implement universal gallery sharing regardless of storage backend (public/private)",
+      "fix(share): ensure shared galleries are properly transferred across different sync systems",
+      "chore(version): bump userscript version to 10.6.0"
+    ]
+  },
+  "10.5.10": {
     "date": "2026-03-18",
     "changes": [
-      "fix(sync):merge toFavorite and toUnfavorite from jsonstorage to prevent data loss of pending favorites when offline",
+      "fix(sync): merge toFavorite and toUnfavorite from jsonstorage to prevent data loss of pending favorites when offline",
       "chore(version): bump userscript version to 10.5.10"
     ]
   },

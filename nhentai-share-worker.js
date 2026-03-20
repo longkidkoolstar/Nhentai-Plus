@@ -43,11 +43,13 @@ export default {
         finalUrl = `https://nhentai.net/g/${finalId}/`;
       }
 
+      const sourceStore = (payload && typeof payload.sourceStore === 'string' && ['public', 'private'].includes(payload.sourceStore)) ? payload.sourceStore : 'public';
+
       const key = `inbox:${toUUID}`;
       const existing = await env.INBOX.get(key);
       const messages = existing ? JSON.parse(existing) : [];
-      messages.push({ toUUID, fromUUID, id: finalId, url: finalUrl, ts: Date.now() });
-      await env.INBOX.put(key, JSON.stringify(messages), { expirationTtl: 60 * 60 * 24 }); // 24h TTL
+      messages.push({ toUUID, fromUUID, id: finalId, url: finalUrl, ts: Date.now(), sourceStore });
+      await env.INBOX.put(key, JSON.stringify(messages), { expirationTtl: 60 * 60 * 24 * 30 }); // 30-day TTL
 
       return json({ status: 'ok' });
     }
