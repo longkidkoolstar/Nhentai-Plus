@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      10.6.0
+// @version      10.6.1
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -23,7 +23,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "10.6.0";
+const CURRENT_VERSION = "10.6.1";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -681,7 +681,12 @@ addFindAltButton();
     // Read from readGalleries (the canonical store) instead of the legacy MARArray key
     GM.getValue('readGalleries', []).then((value) => {
         if (Array.isArray(value)) {
-            MARArray = value;
+            MARArray = normalizeGalleryIdList(value);
+            if (galleryIdListsDiffer(value, MARArray)) {
+                GM.setValue('readGalleries', MARArray).catch((error) => {
+                    console.warn('Failed to normalize readGalleries while bootstrapping MARArray:', error);
+                });
+            }
         }
 
         GM.addStyle(`
@@ -8425,7 +8430,7 @@ async function handleMangaPage(isLoggedIn) {
     async function updateOfflineFavoritesFromButtonState(button) {
         const shouldBeFavorited = isButtonFavorited(button);
         let currentOfflineFavorites = await GM.getValue('offlineFavorites', []);
-        if (!Array.isArray(currentOfflineFavorites)) currentOfflineFavorites = [];
+        currentOfflineFavorites = normalizeGalleryIdList(currentOfflineFavorites);
 
         const has = currentOfflineFavorites.includes(mangaId);
         if (shouldBeFavorited && !has) {
@@ -8439,19 +8444,31 @@ async function handleMangaPage(isLoggedIn) {
 
     // Get stored favorites (persisted) + pending favorites (not yet synced)
     let offlineFavorites = await GM.getValue('offlineFavorites', []);
-    if (!Array.isArray(offlineFavorites)) {
+    const normalizedOfflineFavorites = normalizeGalleryIdList(offlineFavorites);
+    if (galleryIdListsDiffer(offlineFavorites, normalizedOfflineFavorites)) {
+        offlineFavorites = normalizedOfflineFavorites;
+        await GM.setValue('offlineFavorites', offlineFavorites);
+    } else if (!Array.isArray(offlineFavorites)) {
         offlineFavorites = [];
         await GM.setValue('offlineFavorites', offlineFavorites);
     }
 
     let toFavorite = await GM.getValue('toFavorite', []);
-    if (!Array.isArray(toFavorite)) {
+    const normalizedToFavorite = normalizeGalleryIdList(toFavorite);
+    if (galleryIdListsDiffer(toFavorite, normalizedToFavorite)) {
+        toFavorite = normalizedToFavorite;
+        await GM.setValue('toFavorite', toFavorite);
+    } else if (!Array.isArray(toFavorite)) {
         toFavorite = [];
         await GM.setValue('toFavorite', toFavorite);
     }
 
     let toUnfavorite = await GM.getValue('toUnfavorite', []);
-    if (!Array.isArray(toUnfavorite)) {
+    const normalizedToUnfavorite = normalizeGalleryIdList(toUnfavorite);
+    if (galleryIdListsDiffer(toUnfavorite, normalizedToUnfavorite)) {
+        toUnfavorite = normalizedToUnfavorite;
+        await GM.setValue('toUnfavorite', toUnfavorite);
+    } else if (!Array.isArray(toUnfavorite)) {
         toUnfavorite = [];
         await GM.setValue('toUnfavorite', toUnfavorite);
     }
@@ -8496,15 +8513,13 @@ async function handleMangaPage(isLoggedIn) {
         // Get the CURRENT list of favorites (not the one from page load)
         // This ensures we have the most up-to-date list
         let currentFavorites = await GM.getValue('toFavorite', []);
-        if (!Array.isArray(currentFavorites)) {
-            currentFavorites = [];
-        }
+        currentFavorites = normalizeGalleryIdList(currentFavorites);
 
         let currentOfflineFavorites = await GM.getValue('offlineFavorites', []);
-        if (!Array.isArray(currentOfflineFavorites)) currentOfflineFavorites = [];
+        currentOfflineFavorites = normalizeGalleryIdList(currentOfflineFavorites);
 
         let currentPendingUnfavorites = await GM.getValue('toUnfavorite', []);
-        if (!Array.isArray(currentPendingUnfavorites)) currentPendingUnfavorites = [];
+        currentPendingUnfavorites = normalizeGalleryIdList(currentPendingUnfavorites);
 
         // Check if this manga is CURRENTLY in favorites
         const currentlyFavorited = currentFavorites.includes(mangaId) || currentOfflineFavorites.includes(mangaId);
@@ -9615,11 +9630,11 @@ async function handleOfflineFavoritesPage() {
                                                 text: "Undo",
                                                 callback: async () => {
                                                     let undoOfflineFavorites = await GM.getValue('offlineFavorites', []);
-                                                    if (!Array.isArray(undoOfflineFavorites)) undoOfflineFavorites = [];
+                                                    undoOfflineFavorites = normalizeGalleryIdList(undoOfflineFavorites);
                                                     let undoPendingFavorites = await GM.getValue('toFavorite', []);
-                                                    if (!Array.isArray(undoPendingFavorites)) undoPendingFavorites = [];
+                                                    undoPendingFavorites = normalizeGalleryIdList(undoPendingFavorites);
                                                     let undoPendingUnfavorites = await GM.getValue('toUnfavorite', []);
-                                                    if (!Array.isArray(undoPendingUnfavorites)) undoPendingUnfavorites = [];
+                                                    undoPendingUnfavorites = normalizeGalleryIdList(undoPendingUnfavorites);
 
                                                     if (!undoOfflineFavorites.includes(deletedMangaId)) {
                                                         undoOfflineFavorites.push(deletedMangaId);
@@ -10964,6 +10979,8 @@ class OnlineDataSync {
             'hideBlacklistEnabled', 'hiddenGalleries',
             // Read history
             'readGalleries',
+            // Pending favorite queues
+            'toFavorite', 'toUnfavorite',
             // Inbox & Share settings
             'shareButtonEnabled', 'receiveSharesEnabled', 'receivePopupsEnabled', 'inboxPollIntervalMin', 'inboxMessages',
             'favoriteTagsList'
@@ -10977,6 +10994,10 @@ class OnlineDataSync {
                 // This dramatically reduces payload size without losing essential data.
                 if (key === 'bookmarkedMangas' && Array.isArray(value)) {
                     value = value.map(({ tags: _tags, coverImageUrl: _cov, ...rest }) => rest);
+                }
+
+                if (key === 'offlineFavorites' || key === 'readGalleries' || key === 'toFavorite' || key === 'toUnfavorite') {
+                    value = normalizeGalleryIdList(value);
                 }
 
                 syncData.data[key] = value;
@@ -11005,12 +11026,18 @@ class OnlineDataSync {
 
         let appliedCount = 0;
         for (const [key, value] of Object.entries(syncData.data)) {
+            if (key === 'offlineFavorites' || key === 'readGalleries') {
+                await GM.setValue(key, normalizeGalleryIdList(value));
+                appliedCount++;
+                continue;
+            }
+
             // For pending-action queues, union-merge with the existing GM value instead of
             // overwriting, so any items the userscript added while offline are preserved.
             if (key === 'toFavorite' || key === 'toUnfavorite') {
                 const existing = await GM.getValue(key, []);
-                const existingArr = Array.isArray(existing) ? existing : [];
-                const incomingArr = Array.isArray(value) ? value : [];
+                const existingArr = normalizeGalleryIdList(existing);
+                const incomingArr = normalizeGalleryIdList(value);
                 const merged = [...new Set([...existingArr, ...incomingArr])];
                 await GM.setValue(key, merged);
             } else {
@@ -11832,6 +11859,33 @@ startShareInboxPoller();
 
 //------------------------  **Mark as Read System**  ------------------
 
+function normalizeGalleryId(value) {
+    if (value === null || value === undefined) return null;
+    const normalized = String(value).trim();
+    return /^\d+$/.test(normalized) ? normalized : null;
+}
+
+function normalizeGalleryIdList(values) {
+    if (!Array.isArray(values)) return [];
+
+    const normalized = [];
+    const seen = new Set();
+    for (const value of values) {
+        const id = normalizeGalleryId(value);
+        if (!id || seen.has(id)) continue;
+        seen.add(id);
+        normalized.push(id);
+    }
+
+    return normalized;
+}
+
+function galleryIdListsDiffer(originalValues, normalizedValues) {
+    if (!Array.isArray(originalValues)) return normalizedValues.length > 0;
+    if (originalValues.length !== normalizedValues.length) return true;
+    return originalValues.some((value, index) => String(value) !== normalizedValues[index]);
+}
+
 /**
  * Mark as Read System - Enhanced version with configurable opacity and auto-mark functionality
  */
@@ -11879,7 +11933,11 @@ class MarkAsReadSystem {
     async loadReadGalleries() {
         try {
             const readList = await GM.getValue('readGalleries', []);
-            this.readGalleries = new Set(readList);
+            const normalizedReadList = normalizeGalleryIdList(readList);
+            this.readGalleries = new Set(normalizedReadList);
+            if (galleryIdListsDiffer(readList, normalizedReadList)) {
+                await GM.setValue('readGalleries', normalizedReadList);
+            }
         } catch (error) {
             console.error('Error loading read galleries:', error);
             this.readGalleries = new Set();
@@ -11891,7 +11949,7 @@ class MarkAsReadSystem {
      */
     async saveReadGalleries() {
         try {
-            await GM.setValue('readGalleries', Array.from(this.readGalleries));
+            await GM.setValue('readGalleries', normalizeGalleryIdList(Array.from(this.readGalleries)));
         } catch (error) {
             console.error('Error saving read galleries:', error);
         }
@@ -11958,10 +12016,11 @@ class MarkAsReadSystem {
         // Process and mark as read
         let markedCount = 0;
         for (const gallery of galleries) {
-            if (gallery && gallery.id && !this.readGalleries.has(gallery.id)) {
-                this.readGalleries.add(gallery.id);
-                await this.cacheGalleryData(gallery.id, gallery.title, gallery.coverImageUrl);
-                await this.checkAndRemoveFromInbox(gallery.id); // Check inbox removal
+            const galleryId = normalizeGalleryId(gallery && gallery.id);
+            if (galleryId && !this.readGalleries.has(galleryId)) {
+                this.readGalleries.add(galleryId);
+                await this.cacheGalleryData(galleryId, gallery.title, gallery.coverImageUrl);
+                await this.checkAndRemoveFromInbox(galleryId); // Check inbox removal
                 markedCount++;
             }
         }
@@ -11991,14 +12050,15 @@ class MarkAsReadSystem {
     extractGalleryId(url) {
         if (!url) return null;
         const match = url.match(/\/g\/(\d+)\//);
-        return match ? match[1] : null;
+        return match ? normalizeGalleryId(match[1]) : null;
     }
 
     /**
      * Check if a gallery is marked as read
      */
     isRead(galleryId) {
-        return this.readGalleries.has(galleryId);
+        const normalizedGalleryId = normalizeGalleryId(galleryId);
+        return normalizedGalleryId ? this.readGalleries.has(normalizedGalleryId) : false;
     }
 
     /**
@@ -12032,29 +12092,31 @@ class MarkAsReadSystem {
      * Mark a gallery as read
      */
     async markAsRead(galleryId) {
-        if (!galleryId) return;
+        const normalizedGalleryId = normalizeGalleryId(galleryId);
+        if (!normalizedGalleryId) return;
 
-        this.readGalleries.add(galleryId);
+        this.readGalleries.add(normalizedGalleryId);
         await this.saveReadGalleries();
 
         // Remove from inbox if setting is enabled
-        await this.checkAndRemoveFromInbox(galleryId);
+        await this.checkAndRemoveFromInbox(normalizedGalleryId);
 
         // Cache gallery data for Read Manga page
-        await this.cacheGalleryData(galleryId);
+        await this.cacheGalleryData(normalizedGalleryId);
 
-        this.updateGalleryVisuals(galleryId);
+        this.updateGalleryVisuals(normalizedGalleryId);
     }
 
     /**
      * Unmark a gallery as read
      */
     async unmarkAsRead(galleryId) {
-        if (!galleryId) return;
+        const normalizedGalleryId = normalizeGalleryId(galleryId);
+        if (!normalizedGalleryId) return;
 
-        this.readGalleries.delete(galleryId);
+        this.readGalleries.delete(normalizedGalleryId);
         await this.saveReadGalleries();
-        this.updateGalleryVisuals(galleryId);
+        this.updateGalleryVisuals(normalizedGalleryId);
     }
 
     /**

@@ -1,4 +1,13 @@
 {
+  "10.6.1": {
+    "date": "2026-03-20",
+    "changes": [
+      "fix(sync): normalize gallery ID types across app and userscript boundaries so favorites and read markers imported from app display correctly in userscript UI",
+      "fix(sync): preserve and sync pending favorite queues (toFavorite/toUnfavorite) in userscript collectSyncData to avoid dropping app-origin actions on re-upload",
+      "fix(mark-as-read): normalize readGalleries at load/save and read checks to keep mixed legacy number/string IDs working",
+      "chore(version): bump userscript version to 10.6.1"
+    ]
+  },
   "10.6.0": {
     "date": "2026-03-20",
     "changes": [
