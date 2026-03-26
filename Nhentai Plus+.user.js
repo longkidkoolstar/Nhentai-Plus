@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      10.6.2
+// @version      10.6.3
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -23,7 +23,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "10.6.2";
+const CURRENT_VERSION = "10.6.3";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -8408,6 +8408,15 @@ async function init() {
 
     // Process stored favorites if user is logged in, regardless of current page
     if (isLoggedIn) {
+        const staleFavorites = await pruneStalePendingQueue('toFavorite', 'processedFavorites', 30);
+        const staleUnfavorites = await pruneStalePendingQueue('toUnfavorite', 'processedUnfavorites', 30);
+        if (staleFavorites.length || staleUnfavorites.length) {
+            console.log('Cleared stale pending queue entries (30+ days):', {
+                toFavorite: staleFavorites.length,
+                toUnfavorite: staleUnfavorites.length,
+            });
+        }
+
         const toFavorite = await GM.getValue('toFavorite', []);
         if (Array.isArray(toFavorite) && toFavorite.length > 0) {
             console.log("Found stored favorites to process:", toFavorite);
@@ -8487,20 +8496,20 @@ async function handleMangaPage(isLoggedIn) {
     const normalizedToFavorite = normalizeGalleryIdList(toFavorite);
     if (galleryIdListsDiffer(toFavorite, normalizedToFavorite)) {
         toFavorite = normalizedToFavorite;
-        await GM.setValue('toFavorite', toFavorite);
+        await savePendingQueueWithTimestamps('toFavorite', toFavorite);
     } else if (!Array.isArray(toFavorite)) {
         toFavorite = [];
-        await GM.setValue('toFavorite', toFavorite);
+        await savePendingQueueWithTimestamps('toFavorite', toFavorite);
     }
 
     let toUnfavorite = await GM.getValue('toUnfavorite', []);
     const normalizedToUnfavorite = normalizeGalleryIdList(toUnfavorite);
     if (galleryIdListsDiffer(toUnfavorite, normalizedToUnfavorite)) {
         toUnfavorite = normalizedToUnfavorite;
-        await GM.setValue('toUnfavorite', toUnfavorite);
+        await savePendingQueueWithTimestamps('toUnfavorite', toUnfavorite);
     } else if (!Array.isArray(toUnfavorite)) {
         toUnfavorite = [];
-        await GM.setValue('toUnfavorite', toUnfavorite);
+        await savePendingQueueWithTimestamps('toUnfavorite', toUnfavorite);
     }
 
     console.log("Stored favorites:", offlineFavorites);
@@ -8579,8 +8588,8 @@ async function handleMangaPage(isLoggedIn) {
                 console.log("Added manga to stored favorites:", mangaId);
             }
 
-            await GM.setValue('toFavorite', currentFavorites);
-            await GM.setValue('toUnfavorite', currentPendingUnfavorites);
+            await savePendingQueueWithTimestamps('toFavorite', currentFavorites);
+            await savePendingQueueWithTimestamps('toUnfavorite', currentPendingUnfavorites);
             await GM.setValue('offlineFavorites', currentOfflineFavorites);
             console.log("Updated pending favorites:", currentFavorites);
             console.log("Updated pending unfavorites:", currentPendingUnfavorites);
@@ -8976,16 +8985,18 @@ async function processFavorites(favorites) {
         let toUnfavorite = await GM.getValue('toUnfavorite', []);
         if (!Array.isArray(toUnfavorite)) toUnfavorite = [];
         toUnfavorite = toUnfavorite.filter(id => !successfulOnes.includes(id));
-        await GM.setValue('toUnfavorite', toUnfavorite);
+        await savePendingQueueWithTimestamps('toUnfavorite', toUnfavorite);
+
+        await appendProcessedEntries('processedFavorites', successfulOnes);
     }
 
     // Keep only the failed ones in storage
     if (failedOnes.length > 0) {
-        await GM.setValue('toFavorite', failedOnes);
+        await savePendingQueueWithTimestamps('toFavorite', failedOnes);
         console.log("Updated stored favorites with failed ones:", failedOnes);
     } else {
         // Clear stored favorites after processing
-        await GM.setValue('toFavorite', []);
+        await savePendingQueueWithTimestamps('toFavorite', []);
         console.log("Cleared stored favorites");
     }
 
@@ -9073,14 +9084,16 @@ async function processUnfavorites(unfavorites) {
         let toFavorite = await GM.getValue('toFavorite', []);
         if (!Array.isArray(toFavorite)) toFavorite = [];
         toFavorite = toFavorite.filter(id => !successfulOnes.includes(id));
-        await GM.setValue('toFavorite', toFavorite);
+        await savePendingQueueWithTimestamps('toFavorite', toFavorite);
+
+        await appendProcessedEntries('processedUnfavorites', successfulOnes);
     }
 
     if (failedOnes.length > 0) {
-        await GM.setValue('toUnfavorite', failedOnes);
+        await savePendingQueueWithTimestamps('toUnfavorite', failedOnes);
         console.log("Updated stored unfavorites with failed ones:", failedOnes);
     } else {
-        await GM.setValue('toUnfavorite', []);
+        await savePendingQueueWithTimestamps('toUnfavorite', []);
         console.log("Cleared stored unfavorites");
     }
 
@@ -11011,6 +11024,10 @@ class OnlineDataSync {
             'readGalleries',
             // Pending favorite queues
             'toFavorite', 'toUnfavorite',
+            // Pending queue timestamps for stale cleanup
+            'toFavoriteAddedAt', 'toUnfavoriteAddedAt',
+            // Userscript-managed processed confirmations
+            'processedFavorites', 'processedUnfavorites',
             // Inbox & Share settings
             'shareButtonEnabled', 'receiveSharesEnabled', 'receivePopupsEnabled', 'inboxPollIntervalMin', 'inboxMessages',
             'favoriteTagsList'
@@ -11028,6 +11045,14 @@ class OnlineDataSync {
 
                 if (key === 'offlineFavorites' || key === 'readGalleries' || key === 'toFavorite' || key === 'toUnfavorite') {
                     value = normalizeGalleryIdList(value);
+                }
+
+                if (key === 'toFavoriteAddedAt' || key === 'toUnfavoriteAddedAt') {
+                    value = normalizeQueueTimestampMap(value);
+                }
+
+                if (key === 'processedFavorites' || key === 'processedUnfavorites') {
+                    value = normalizeProcessedEntries(value);
                 }
 
                 syncData.data[key] = value;
@@ -11070,6 +11095,22 @@ class OnlineDataSync {
                 const incomingArr = normalizeGalleryIdList(value);
                 const merged = [...new Set([...existingArr, ...incomingArr])];
                 await GM.setValue(key, merged);
+
+                const timestampKey = key === 'toFavorite' ? 'toFavoriteAddedAt' : 'toUnfavoriteAddedAt';
+                const existingTs = normalizeQueueTimestampMap(await GM.getValue(timestampKey, {}));
+                const incomingTs = normalizeQueueTimestampMap(syncData.data[timestampKey]);
+                const mergedTs = mergeQueueTimestampMaps(merged, existingTs, incomingTs);
+                await GM.setValue(timestampKey, mergedTs);
+            } else if (key === 'processedFavorites' || key === 'processedUnfavorites') {
+                const incomingProcessed = normalizeProcessedEntries(value);
+                // App clears processed queues by uploading an explicit empty array.
+                if (Array.isArray(value) && value.length === 0) {
+                    await GM.setValue(key, []);
+                } else {
+                    const existingProcessed = normalizeProcessedEntries(await GM.getValue(key, []));
+                    const mergedProcessed = mergeProcessedEntries(existingProcessed, incomingProcessed);
+                    await GM.setValue(key, mergedProcessed);
+                }
             } else {
                 await GM.setValue(key, value);
             }
@@ -11908,6 +11949,127 @@ function normalizeGalleryIdList(values) {
     }
 
     return normalized;
+}
+
+function normalizeQueueTimestampMap(value) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+
+    const out = {};
+    for (const [idRaw, tsRaw] of Object.entries(value)) {
+        const id = normalizeGalleryId(idRaw);
+        const ts = Number(tsRaw);
+        if (!id || !Number.isFinite(ts) || ts <= 0) continue;
+        out[id] = Math.floor(ts);
+    }
+    return out;
+}
+
+function mergeQueueTimestampMaps(queueIds, existingMap, incomingMap) {
+    const now = Date.now();
+    const merged = {};
+    const existing = normalizeQueueTimestampMap(existingMap);
+    const incoming = normalizeQueueTimestampMap(incomingMap);
+
+    for (const id of normalizeGalleryIdList(queueIds)) {
+        merged[id] = incoming[id] || existing[id] || now;
+    }
+
+    return merged;
+}
+
+function normalizeProcessedEntries(entries) {
+    if (!Array.isArray(entries)) return [];
+
+    const byId = new Map();
+    for (const item of entries) {
+        if (item && typeof item === 'object' && !Array.isArray(item)) {
+            const id = normalizeGalleryId(item.id);
+            if (!id) continue;
+            const ts = Number(item.timestamp);
+            byId.set(id, {
+                id,
+                timestamp: Number.isFinite(ts) && ts > 0 ? Math.floor(ts) : Date.now()
+            });
+            continue;
+        }
+
+        const id = normalizeGalleryId(item);
+        if (!id) continue;
+        byId.set(id, { id, timestamp: Date.now() });
+    }
+
+    return Array.from(byId.values());
+}
+
+function mergeProcessedEntries(existingEntries, incomingEntries) {
+    const byId = new Map();
+
+    for (const entry of normalizeProcessedEntries(existingEntries)) {
+        byId.set(entry.id, entry);
+    }
+
+    for (const entry of normalizeProcessedEntries(incomingEntries)) {
+        const prev = byId.get(entry.id);
+        if (!prev || entry.timestamp > prev.timestamp) {
+            byId.set(entry.id, entry);
+        }
+    }
+
+    return Array.from(byId.values());
+}
+
+async function appendProcessedEntries(key, ids) {
+    const normalizedIds = normalizeGalleryIdList(ids);
+    if (normalizedIds.length === 0) return;
+
+    const existing = normalizeProcessedEntries(await GM.getValue(key, []));
+    const now = Date.now();
+    const incoming = normalizedIds.map((id) => ({ id, timestamp: now }));
+    const merged = mergeProcessedEntries(existing, incoming);
+    await GM.setValue(key, merged);
+}
+
+async function savePendingQueueWithTimestamps(queueKey, ids) {
+    const normalizedIds = normalizeGalleryIdList(ids);
+    const timestampKey = queueKey === 'toFavorite' ? 'toFavoriteAddedAt' : 'toUnfavoriteAddedAt';
+    const existingTs = normalizeQueueTimestampMap(await GM.getValue(timestampKey, {}));
+    const mergedTs = mergeQueueTimestampMaps(normalizedIds, existingTs, {});
+    await GM.setValue(queueKey, normalizedIds);
+    await GM.setValue(timestampKey, mergedTs);
+}
+
+async function pruneStalePendingQueue(queueKey, processedKey, days = 30) {
+    const maxAgeMs = days * 24 * 60 * 60 * 1000;
+    const timestampKey = queueKey === 'toFavorite' ? 'toFavoriteAddedAt' : 'toUnfavoriteAddedAt';
+    const queue = normalizeGalleryIdList(await GM.getValue(queueKey, []));
+    const tsMap = normalizeQueueTimestampMap(await GM.getValue(timestampKey, {}));
+    if (queue.length === 0) {
+        await GM.setValue(timestampKey, {});
+        return [];
+    }
+
+    const now = Date.now();
+    const staleIds = [];
+    const keptIds = [];
+
+    for (const id of queue) {
+        const ts = tsMap[id];
+        if (ts && now - ts >= maxAgeMs) {
+            staleIds.push(id);
+        } else {
+            keptIds.push(id);
+        }
+    }
+
+    if (staleIds.length > 0) {
+        await savePendingQueueWithTimestamps(queueKey, keptIds);
+        await appendProcessedEntries(processedKey, staleIds);
+    } else {
+        const normalizedTs = mergeQueueTimestampMaps(keptIds, tsMap, {});
+        await GM.setValue(timestampKey, normalizedTs);
+    }
+
+    return staleIds;
 }
 
 function galleryIdListsDiffer(originalValues, normalizedValues) {

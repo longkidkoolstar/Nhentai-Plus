@@ -1,4 +1,14 @@
 {
+  "10.6.3": {
+    "date": "2026-03-26",
+    "changes": [
+      "fix(sync): stop clearing app pending favorite queues immediately after upload",
+      "feat(sync): add processedFavorites/processedUnfavorites confirmation flow so app clears pending queues only after userscript confirms processing",
+      "feat(sync): sync pending queue timestamp metadata (toFavoriteAddedAt/toUnfavoriteAddedAt) across app and userscript",
+      "feat(userscript): auto-prune pending favorite/unfavorite queue entries older than 30 days and mark them as processed",
+      "chore(version): bump userscript version to 10.6.3"
+    ]
+  },
   "10.6.2": {
     "date": "2026-03-20",
     "changes": [
