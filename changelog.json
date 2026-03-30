@@ -1,4 +1,15 @@
 {
+  "10.6.4": {
+    "date": "2026-03-29",
+    "changes": [
+      "fix(nav): restore Continue Reading when nhentai removes it from header menu, including both /continue_reading/ and /continue-reading/ route variants",
+      "fix(settings): show Continue Reading in Tab Arrangement when Manga Loader signal is active",
+      "fix(nav): restore Quick Nut on custom pages through shared header recovery pipeline",
+      "fix(nav): prevent excessive header rewrite loops by only reordering tabs when links were actually added",
+      "feat(inter-script): add Manga Loader heartbeat signal (nhml_continueReading_lastSeen) with TTL to avoid stale Continue Reading restoration when loader is no longer active",
+      "chore(version): bump userscript version to 10.6.4"
+    ]
+  },
   "10.6.3": {
     "date": "2026-03-26",
     "changes": [

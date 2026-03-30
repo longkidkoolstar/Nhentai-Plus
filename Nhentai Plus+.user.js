@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      10.6.3
+// @version      10.6.4
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -23,7 +23,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "10.6.3";
+const CURRENT_VERSION = "10.6.4";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -1347,10 +1347,14 @@ if (window.location.href.indexOf('nhentai.net/settings') === -1 && window.locati
 
 async function addBookmarkButton() {
     const bookmarksPageEnabled = await GM.getValue('bookmarksPageEnabled', true);
-    if (!bookmarksPageEnabled) return;
+    if (!bookmarksPageEnabled) return false;
+    const nav = getPrimaryNav() || document.querySelector('nav');
+    if (!nav) return false;
+    if (nav.querySelector('ul.menu.left a[href="/bookmarks/"], ul.dropdown-menu a[href="/bookmarks/"]')) return false;
+
     // Create the bookmark button
     const bookmarkButtonHtml = `
-      <li>
+      <li class="desktop">
         <a href="/bookmarks/">
           <i class="fa fa-bookmark"></i>
           Bookmarks
@@ -1359,26 +1363,27 @@ async function addBookmarkButton() {
     `;
     const bookmarkButton = $(bookmarkButtonHtml);
 
-    // Append the bookmark button to the dropdown menu
-    const dropdownMenu = $('ul.dropdown-menu');
-    dropdownMenu.append(bookmarkButton);
+    // Append to main menu only; updateMenuOrder syncs the dropdown
+    const menu = $(nav).find('ul.menu.left').first();
+    menu.children('li.dropdown').length
+        ? bookmarkButton.insertBefore(menu.children('li.dropdown').first())
+        : menu.append(bookmarkButton);
 
-    // Append the bookmark button to the menu
-    const menu = $('ul.menu.left');
-    menu.append(bookmarkButton);
-
-    // Call updateMenuOrder to ensure proper tab order
-    setTimeout(updateMenuOrder, 100);
+    return true;
 }
 
 async function addOfflineFavoritesButton() {
     const offlineFavoritingEnabled = await GM.getValue('offlineFavoritingEnabled', true);
     const offlineFavoritesPageEnabled = await GM.getValue('offlineFavoritesPageEnabled', true);
     const isLoggedIn = !document.querySelector('.menu-sign-in');
+    const nav = getPrimaryNav() || document.querySelector('nav');
+    if (!nav) return false;
+    if (nav.querySelector('ul.menu.left a[href="/favorite/"], ul.dropdown-menu a[href="/favorite/"]')) return false;
+
     if (offlineFavoritingEnabled && offlineFavoritesPageEnabled && !isLoggedIn) {
         // Create the offline favorites button
         const offlineFavoritesButtonHtml = `
-          <li>
+          <li class="desktop">
             <a href="/favorite/">
               <i class="fa fa-heart"></i>
               Offline Favorites
@@ -1387,17 +1392,16 @@ async function addOfflineFavoritesButton() {
         `;
         const offlineFavoritesButton = $(offlineFavoritesButtonHtml);
 
-        // Append to dropdown menu
-        const dropdownMenu = $('ul.dropdown-menu');
-        dropdownMenu.append(offlineFavoritesButton);
+        // Append to main menu only; updateMenuOrder syncs the dropdown
+        const menu = $(nav).find('ul.menu.left').first();
+        menu.children('li.dropdown').length
+            ? offlineFavoritesButton.insertBefore(menu.children('li.dropdown').first())
+            : menu.append(offlineFavoritesButton);
 
-        // Append to main menu
-        const menu = $('ul.menu.left');
-        menu.append(offlineFavoritesButton);
-
-        // Call updateMenuOrder to ensure proper tab order
-        setTimeout(updateMenuOrder, 100);
+        return true;
     }
+
+    return false;
 }
 
 addBookmarkButton(); // Call the function to add the bookmark button
@@ -1410,11 +1414,11 @@ async function addReadMangaButton() {
 
     if (markAsReadEnabled && readMangaPageEnabled) {
         // Check if link already exists
-        if (document.querySelector('a[href="/read-manga/"]')) return;
+        if (document.querySelector('a[href="/read-manga/"], a[href="/read-manga"]')) return false;
 
         // Create the read manga button
         const readMangaButtonHtml = `
-          <li>
+          <li class="desktop">
             <a href="/read-manga/">
               <i class="fas fa-book-open"></i> Read Manga
             </a>
@@ -1422,28 +1426,146 @@ async function addReadMangaButton() {
         `;
         const readMangaButton = $(readMangaButtonHtml);
 
-        // Append to dropdown menu
-        const dropdownMenu = $('ul.dropdown-menu');
-        dropdownMenu.append(readMangaButton);
-
-        // Append to main menu
-        const menu = $('ul.menu.left');
-        menu.append(readMangaButton);
+        // Append to main menu only; updateMenuOrder syncs the dropdown
+        const nav = getPrimaryNav() || document.querySelector('nav');
+        const menu = nav ? $(nav).find('ul.menu.left').first() : $('ul.menu.left');
+        menu.children('li.dropdown').length
+            ? readMangaButton.insertBefore(menu.children('li.dropdown').first())
+            : menu.append(readMangaButton);
 
         // Add click handler for navigation
         readMangaButton.find('a').on('click', (e) => {
             e.preventDefault();
             if (window.readMangaPageSystem) {
                 window.readMangaPageSystem.navigateToReadMangaPage();
+            } else {
+                window.location.href = '/read-manga/';
             }
         });
 
-        // Call updateMenuOrder to ensure proper tab order
-        setTimeout(updateMenuOrder, 100);
+        return true;
+    }
+
+    return false;
+}
+
+async function addContinueReadingButton() {
+    if (!wasContinueReadingOriginallyPresent()) return false;
+    const nav = getPrimaryNav() || document.querySelector('nav');
+    if (!nav) return false;
+
+    const existingMenuLink = nav.querySelector('ul.menu.left a[href="/continue_reading/"], ul.menu.left a[href="/continue-reading/"]');
+    if (existingMenuLink) {
+        const li = existingMenuLink.closest('li');
+        if (li) li.classList.add('desktop');
+        return false;
+    }
+
+    const continueReadingButtonHtml = `
+      <li class="desktop">
+        <a href="/continue_reading/">
+          <i class="fa fa-history"></i> Continue Reading
+        </a>
+      </li>
+    `;
+    const continueReadingButton = $(continueReadingButtonHtml);
+
+    const menu = $(nav).find('ul.menu.left').first();
+    menu.children('li.dropdown').length
+        ? continueReadingButton.insertBefore(menu.children('li.dropdown').first())
+        : menu.append(continueReadingButton);
+
+    return true;
+}
+addReadMangaButton(); // Call the function to add the read manga button
+
+const NHML_CONTINUE_READING_HEARTBEAT_KEY = 'nhml_continueReading_lastSeen';
+const NHML_CONTINUE_READING_TTL_MS = 120000;
+
+function isNhmlContinueReadingSignalFresh() {
+    try {
+        const lastSeenRaw = localStorage.getItem(NHML_CONTINUE_READING_HEARTBEAT_KEY);
+        const lastSeen = Number(lastSeenRaw || 0);
+        if (!Number.isFinite(lastSeen) || lastSeen <= 0) {
+            return false;
+        }
+        return (Date.now() - lastSeen) <= NHML_CONTINUE_READING_TTL_MS;
+    } catch (_) {
+        return false;
     }
 }
 
-addReadMangaButton(); // Call the function to add the read manga button
+function wasContinueReadingOriginallyPresent() {
+    // Check short-lived signal set by Nhentai Manga Loader
+    if (isNhmlContinueReadingSignalFresh()) return true;
+
+    // Check if MangaLoader already injected it into the DOM
+    const nav = getPrimaryNav() || document.querySelector('nav');
+    return !!(nav && nav.querySelector(
+        'a[href="/continue_reading/"], a[href="/continue-reading/"]'
+    ));
+}
+
+function normalizeCustomDesktopNavItems() {
+    const nav = getPrimaryNav() || document.querySelector('nav');
+    if (!nav) return;
+
+    const desktopHrefs = [
+        '/bookmarks/',
+        '/favorite/',
+        '/read-manga/',
+        '/settings/',
+        '/quick-nut/',
+        '/continue_reading/',
+        '/continue-reading/'
+    ];
+
+    desktopHrefs.forEach(href => {
+        const link = nav.querySelector(`ul.menu.left a[href="${href}"]`);
+        const item = link ? link.closest('li') : null;
+        if (item) {
+            item.classList.add('desktop');
+        }
+    });
+}
+
+async function addQuickNutButton() {
+    const enabled = await GM.getValue('quickNutPageEnabled', true);
+    if (!enabled) return false;
+    const nav = getPrimaryNav() || document.querySelector('nav');
+    if (!nav) return false;
+
+    const existingLink = nav.querySelector('ul.menu.left a[href="/quick-nut/"]');
+    if (existingLink) {
+        const li = existingLink.closest('li');
+        if (li) li.classList.add('desktop');
+        return false;
+    }
+
+    const btnHtml = `
+      <li class="desktop">
+        <a href="/quick-nut/">
+          <i class="fas fa-bolt"></i> Quick Nut
+        </a>
+      </li>
+    `;
+    const btn = $(btnHtml);
+    const menu = $(nav).find('ul.menu.left').first();
+    menu.children('li.dropdown').length
+        ? btn.insertBefore(menu.children('li.dropdown').first())
+        : menu.append(btn);
+
+    btn.find('a').on('click', (e) => {
+        e.preventDefault();
+        if (window.quickNutPageSystem) {
+            window.quickNutPageSystem.navigateToQuickNutPage();
+        } else {
+            window.location.href = '/quick-nut/';
+        }
+    });
+
+    return true;
+}
 
 
 // Delete error message on unsupported bookmarks page
@@ -2456,15 +2578,237 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
 })();
 //------------------------  **Nhentai Auto Login**  --------------------------
 
+//------------------------  **Header Nav Fallback**  --------------------------
+
+function getPrimaryNav() {
+    const navs = Array.from(document.querySelectorAll('nav')).filter(nav =>
+        nav.querySelector('ul.menu.left, ul.dropdown-menu, form.search, a.logo')
+    );
+    if (navs.length === 0) return null;
+
+    const usableNavs = navs.filter(nav => nav.querySelector('ul.menu.left') && nav.querySelector('ul.dropdown-menu'));
+    const preferredNative = usableNavs.find(nav => nav.dataset.nhpInjected !== '1');
+
+    return preferredNative || usableNavs[0] || navs[0];
+}
+
+function reconcileDuplicateNavs() {
+    const navs = Array.from(document.querySelectorAll('nav')).filter(nav =>
+        nav.querySelector('ul.menu.left, ul.dropdown-menu, form.search, a.logo')
+    );
+    if (navs.length <= 1) return getPrimaryNav();
+
+    const keepNav = getPrimaryNav();
+    navs.forEach(nav => {
+        if (nav !== keepNav) {
+            nav.remove();
+        }
+    });
+
+    return keepNav;
+}
+
+async function applyCustomNavLinks() {
+    let changed = false;
+    normalizeCustomDesktopNavItems();
+    if (typeof addBookmarkButton === 'function') {
+        try { changed = (await addBookmarkButton()) || changed; } catch (e) { console.warn('addBookmarkButton retry failed:', e); }
+    }
+    if (typeof addOfflineFavoritesButton === 'function') {
+        try { changed = (await addOfflineFavoritesButton()) || changed; } catch (e) { console.warn('addOfflineFavoritesButton retry failed:', e); }
+    }
+    if (typeof addReadMangaButton === 'function') {
+        try { changed = (await addReadMangaButton()) || changed; } catch (e) { console.warn('addReadMangaButton retry failed:', e); }
+    }
+    if (typeof addContinueReadingButton === 'function') {
+        try { changed = (await addContinueReadingButton()) || changed; } catch (e) { console.warn('addContinueReadingButton retry failed:', e); }
+    }
+    if (typeof addSettingsButton === 'function') {
+        try { changed = addSettingsButton() || changed; } catch (e) { console.warn('addSettingsButton retry failed:', e); }
+    }
+    if (typeof addQuickNutButton === 'function') {
+        try { changed = (await addQuickNutButton()) || changed; } catch (e) { console.warn('addQuickNutButton retry failed:', e); }
+    }
+    if (changed && typeof updateMenuOrder === 'function') {
+        try { await updateMenuOrder(); } catch (e) { console.warn('updateMenuOrder retry failed:', e); }
+    }
+
+    return changed;
+}
+
+function bindFallbackNavInteractions(navRoot) {
+    const nav = navRoot || getPrimaryNav();
+    if (!nav || nav.dataset.nhpBound === '1') return;
+
+    const hamburger = nav.querySelector('#hamburger');
+    const collapse = nav.querySelector('.collapse');
+    if (hamburger && collapse) {
+        hamburger.addEventListener('click', function () {
+            collapse.classList.toggle('open');
+        });
+    }
+
+    const dropdownButton = nav.querySelector('#dropdown');
+    const dropdownMenu = nav.querySelector('.dropdown-menu');
+    if (dropdownButton && dropdownMenu) {
+        dropdownButton.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const isOpen = dropdownMenu.classList.toggle('open');
+            dropdownMenu.style.display = isOpen ? 'block' : '';
+        });
+
+        document.addEventListener('click', function (e) {
+            if (!dropdownMenu.classList.contains('open')) return;
+            if (nav.contains(e.target)) return;
+            dropdownMenu.classList.remove('open');
+            dropdownMenu.style.display = '';
+        });
+    }
+
+    nav.dataset.nhpBound = '1';
+}
+
+async function ensureHeaderNavForCustomRoutes() {
+    const customRouteRegex = /^\/(settings|read-manga|quick-nut|continue-reading|continue_reading|bookmarks|favorite)\/?$/;
+    let nav = reconcileDuplicateNavs() || document.querySelector('nav');
+
+    if (!customRouteRegex.test(window.location.pathname)) {
+        if (nav) bindFallbackNavInteractions(nav);
+        await applyCustomNavLinks();
+        return;
+    }
+
+    const navLooksUsable = nav && nav.querySelector('ul.menu.left') && nav.querySelector('ul.menu.right') && nav.querySelector('ul.dropdown-menu');
+    if (!navLooksUsable) {
+        try {
+            const res = await fetch('/', { credentials: 'include' });
+            if (res.ok) {
+                const html = await res.text();
+                const doc = new DOMParser().parseFromString(html, 'text/html');
+                const fetchedNav = doc.querySelector('nav');
+                if (fetchedNav) {
+                    fetchedNav.dataset.nhpInjected = '1';
+                    if (nav) {
+                        nav.replaceWith(fetchedNav);
+                    } else {
+                        document.body.insertAdjacentElement('afterbegin', fetchedNav);
+                    }
+                    nav = fetchedNav;
+                }
+            }
+        } catch (e) {
+            console.warn('Header nav fallback fetch failed:', e);
+        }
+    }
+
+    if (nav) {
+        bindFallbackNavInteractions(nav);
+    }
+
+    await applyCustomNavLinks();
+}
+
+ensureHeaderNavForCustomRoutes();
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', ensureHeaderNavForCustomRoutes, { once: true });
+}
+
+let nhpNavHealthTimer = null;
+let nhpNavMutating = false;
+let nhpNavLastCheckAt = 0;
+let nhpNavLastRoute = '';
+function scheduleNavHealthCheck(force = false) {
+    if (nhpNavMutating) return;          // ignore self-triggered mutations
+    const now = Date.now();
+    const routeKey = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    const routeChanged = routeKey !== nhpNavLastRoute;
+
+    // Prevent continuous re-runs from framework churn; allow immediate run on route change.
+    if (!force && !routeChanged && (now - nhpNavLastCheckAt) < 2500) return;
+
+    if (nhpNavHealthTimer) {
+        clearTimeout(nhpNavHealthTimer);
+    }
+    nhpNavHealthTimer = setTimeout(async () => {
+        nhpNavMutating = true;
+        nhpNavLastCheckAt = Date.now();
+        nhpNavLastRoute = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+        try {
+            await ensureHeaderNavForCustomRoutes();
+        } catch (e) {
+            console.warn('Nav health check failed:', e);
+        } finally {
+            nhpNavMutating = false;
+        }
+    }, routeChanged ? 100 : 700);
+}
+
+if (!window.__nhpNavObserverAttached) {
+    window.__nhpNavObserverAttached = true;
+    // Only watch direct children of <body> for nav additions/removals
+    const navObserver = new MutationObserver((mutations) => {
+        const navChanged = mutations.some(m =>
+            Array.from(m.addedNodes).concat(Array.from(m.removedNodes)).some(n =>
+                n.nodeName === 'NAV' || (n.nodeType === 1 && n.querySelector && n.querySelector('nav'))
+            )
+        );
+        if (navChanged) scheduleNavHealthCheck();
+    });
+    navObserver.observe(document.body, { childList: true, subtree: false });
+
+    // Also watch inside the existing nav for link removals
+    const watchNavContent = () => {
+        const nav = getPrimaryNav();
+        if (!nav || nav.__nhpContentObserver) return;
+        const contentObserver = new MutationObserver(() => {
+            const nav = getPrimaryNav();
+            if (!nav) return;
+
+            const shouldHaveContinue = wasContinueReadingOriginallyPresent();
+            const hasContinue = !!nav.querySelector('a[href="/continue_reading/"], a[href="/continue-reading/"]');
+            if (shouldHaveContinue && !hasContinue) {
+                scheduleNavHealthCheck(true);
+                return;
+            }
+
+            const hasCoreCustom = !!nav.querySelector('a[href="/bookmarks/"], a[href="/settings/"], a[href="/read-manga/"], a[href="/favorite/"], a[href="/quick-nut/"]');
+            if (!hasCoreCustom) scheduleNavHealthCheck();
+        });
+        contentObserver.observe(nav, { childList: true, subtree: true });
+        nav.__nhpContentObserver = true;
+    };
+    watchNavContent();
+    // Re-attach when nav changes
+    const bodyObserver = new MutationObserver(() => watchNavContent());
+    bodyObserver.observe(document.body, { childList: true });
+
+    window.addEventListener('popstate', scheduleNavHealthCheck, { passive: true });
+    window.addEventListener('nhml-continue-reading-ready', () => scheduleNavHealthCheck(true), { passive: true });
+    window.addEventListener('storage', (e) => {
+        if (e && (e.key === NHML_CONTINUE_READING_HEARTBEAT_KEY || e.key === 'nhml_continueReading') && isNhmlContinueReadingSignalFresh()) {
+            scheduleNavHealthCheck(true);
+        }
+    }, { passive: true });
+}
+
+//------------------------  **Header Nav Fallback**  --------------------------
+
 
 
 //----------------------------**Settings**-----------------------------
 
 // Function to add the settings button to the menu
 function addSettingsButton() {
+    const nav = getPrimaryNav() || document.querySelector('nav');
+    if (!nav) return false;
+    if (nav.querySelector('ul.menu.left a[href="/settings/"], ul.dropdown-menu a[href="/settings/"]')) {
+        return false;
+    }
+
     // Create the settings button
     const settingsButtonHtml = `
-          <li>
+          <li class="desktop">
             <a href="/settings/">
               <i class="fa fa-cog"></i>
               Settings
@@ -2473,12 +2817,13 @@ function addSettingsButton() {
         `;
     const settingsButton = $(settingsButtonHtml);
 
-    // Append the settings button to the dropdown menu and the left menu
-    const dropdownMenu = $('ul.dropdown-menu');
-    dropdownMenu.append(settingsButton);
+    // Append to main menu only; updateMenuOrder syncs the dropdown
+    const menu = $(nav).find('ul.menu.left').first();
+    menu.children('li.dropdown').length
+        ? settingsButton.insertBefore(menu.children('li.dropdown').first())
+        : menu.append(settingsButton);
 
-    const menu = $('ul.menu.left');
-    menu.append(settingsButton);
+    return true;
 }
 
 // Call the function to add the settings button
@@ -3633,8 +3978,16 @@ if (window.location.href.includes('/settings')) {
 </div>
 `;
 
-    // Append settings form to the container
-    $('div.container').append(settingsHtml);
+    // Append settings form to the best available mount point (layout changed on new nhentai update)
+    const settingsMountPoint = document.querySelector('div.container') ||
+        document.querySelector('#content') ||
+        document.querySelector('main') ||
+        document.body;
+
+    if (settingsMountPoint !== document.body) {
+        settingsMountPoint.innerHTML = '';
+    }
+    settingsMountPoint.insertAdjacentHTML('beforeend', settingsHtml);
 
     const settingsLastTabKey = 'settingsLastTab';
 
@@ -3726,7 +4079,14 @@ if (window.location.href.includes('/settings')) {
         const privateApiKey = await GM.getValue('privateApiKey', '');
         const autoSyncEnabled = await GM.getValue('autoSyncEnabled', false);
         const syncInterval = await GM.getValue('syncInterval', 30);
-        const userUUID = await syncSystem.getUserUUID();
+        let userUUID = await GM.getValue('userUUID', '');
+        if (!userUUID && globalThis.syncSystem && typeof globalThis.syncSystem.getUserUUID === 'function') {
+            try {
+                userUUID = await globalThis.syncSystem.getUserUUID();
+            } catch (e) {
+                console.warn('Sync UUID bootstrap fallback failed:', e);
+            }
+        }
         const lastSyncUpload = await GM.getValue('lastSyncUpload', null);
         const lastSyncDownload = await GM.getValue('lastSyncDownload', null);
         const bookmarksPageEnabled = await GM.getValue('bookmarksPageEnabled', true);
@@ -4036,8 +4396,10 @@ if (window.location.href.includes('/settings')) {
         $('#public-sync-options').toggle(publicSyncEnabled);
         $('#private-sync-options').toggle(privateSyncEnabled);
 
-        // Initialize AutoSync Manager
-        await autoSyncManager.initialize();
+        // Initialize AutoSync Manager (guarded for early-layout/script timing)
+        if (globalThis.autoSyncManager && typeof globalThis.autoSyncManager.initialize === 'function') {
+            await globalThis.autoSyncManager.initialize();
+        }
 
         // Add event handlers for sync functionality
         $('#publicSyncEnabled').on('change', function () {
@@ -4234,7 +4596,9 @@ if (window.location.href.includes('/settings')) {
 
             try {
                 button.prop('disabled', true).text('Syncing...');
-                await autoSyncManager.performAutoSync();
+                if (globalThis.autoSyncManager && typeof globalThis.autoSyncManager.performAutoSync === 'function') {
+                    await globalThis.autoSyncManager.performAutoSync();
+                }
 
                 // Update status display
                 const lastAutoSync = await GM.getValue('lastAutoSync', null);
@@ -5026,7 +5390,9 @@ if (window.location.href.includes('/settings')) {
         await GM.setValue('syncInterval', syncIntervalForm);
 
         // Update AutoSync Manager with new settings
-        await autoSyncManager.updateSettings(autoSyncEnabledForm, syncIntervalForm);
+        if (globalThis.autoSyncManager && typeof globalThis.autoSyncManager.updateSettings === 'function') {
+            await globalThis.autoSyncManager.updateSettings(autoSyncEnabledForm, syncIntervalForm);
+        }
 
 
 
@@ -5072,16 +5438,25 @@ if (window.location.href.includes('/settings')) {
 
     // Add event listeners to buttons on the settings page
     function setupBookmarkButtons() {
+        const exportBtn = document.getElementById('exportBookmarks');
+        const importBtn = document.getElementById('importBookmarks');
+        const importFileInput = document.getElementById('importBookmarksFile');
+
+        if (!exportBtn || !importBtn || !importFileInput) {
+            console.warn('Settings import/export controls were not found; skipping bookmark button setup.');
+            return;
+        }
+
         // Export Button
-        document.getElementById('exportBookmarks').addEventListener('click', exportBookmarkedPages);
+        exportBtn.addEventListener('click', exportBookmarkedPages);
 
         // Import Button
-        document.getElementById('importBookmarks').addEventListener('click', () => {
-            document.getElementById('importBookmarksFile').click();
+        importBtn.addEventListener('click', () => {
+            importFileInput.click();
         });
 
         // Handle file selection for import
-        document.getElementById('importBookmarksFile').addEventListener('change', (event) => {
+        importFileInput.addEventListener('change', (event) => {
             const file = event.target.files[0];
             if (file) {
                 importBookmarkedPages(file);
@@ -5118,43 +5493,60 @@ if (window.location.href.includes('/settings')) {
 
     // Refresh storage button
     const refreshBtn = document.getElementById('refresh-storage');
-    refreshBtn.addEventListener('click', refreshStorageData);
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', refreshStorageData);
+    }
 
     // Modal controls
     const editModal = document.getElementById('edit-value-modal');
     const cancelEditBtn = document.getElementById('cancel-edit');
     const saveEditBtn = document.getElementById('save-edit');
 
-    cancelEditBtn.addEventListener('click', function () {
-        editModal.style.display = 'none';
-    });
+    if (cancelEditBtn && editModal) {
+        cancelEditBtn.addEventListener('click', function () {
+            editModal.style.display = 'none';
+        });
+    }
 
-    saveEditBtn.addEventListener('click', function () {
-        const keyName = document.getElementById('editing-key-name').dataset.key;
-        const newValue = document.getElementById('edit-value-textarea').value;
+    if (saveEditBtn && editModal) {
+        saveEditBtn.addEventListener('click', function () {
+            const keyNameElement = document.getElementById('editing-key-name');
+            const editValueTextarea = document.getElementById('edit-value-textarea');
 
-        try {
-            // Try to parse the JSON to validate it
-            const parsedValue = JSON.parse(newValue);
+            if (!keyNameElement || !editValueTextarea) {
+                showPopup('Storage editor elements are missing on this layout.');
+                return;
+            }
 
-            // Save the changes to GM storage
-            GM.setValue(keyName, parsedValue)
-                .then(() => {
-                    alert('Value saved successfully!');
-                    editModal.style.display = 'none';
-                    refreshStorageData();
-                })
-                .catch(err => {
-                    alert('Error saving value: ' + err.message);
-                });
-        } catch (e) {
-            alert('Invalid JSON format. Please check your input.');
-        }
-    });
+            const keyName = keyNameElement.dataset.key;
+            const newValue = editValueTextarea.value;
+
+            try {
+                // Try to parse the JSON to validate it
+                const parsedValue = JSON.parse(newValue);
+
+                // Save the changes to GM storage
+                GM.setValue(keyName, parsedValue)
+                    .then(() => {
+                        alert('Value saved successfully!');
+                        editModal.style.display = 'none';
+                        refreshStorageData();
+                    })
+                    .catch(err => {
+                        alert('Error saving value: ' + err.message);
+                    });
+            } catch (e) {
+                alert('Invalid JSON format. Please check your input.');
+            }
+        });
+    }
 
     // Function to refresh storage data with mobile-friendly layout
     function refreshStorageData() {
         const keysList = document.getElementById('storage-keys-list');
+        if (!keysList) {
+            return;
+        }
         keysList.innerHTML = '<p>Loading storage data...</p>';
 
         // Use GM.listValues() to get all keys
@@ -5738,7 +6130,8 @@ async function updateMenuOrder() {
             // Regular case for internal links
             return href.includes(`/${tabId}/`) ||
                 (tabId === 'read_manga' && href.includes('/read-manga/')) ||
-                (tabId === 'quick_nut' && href.includes('/quick-nut/'));
+                (tabId === 'quick_nut' && href.includes('/quick-nut/')) ||
+                (tabId === 'continue_reading' && (href.includes('/continue_reading/') || href.includes('/continue-reading/')));
         });
 
         // If found, move it to our temporary container
@@ -5781,7 +6174,8 @@ async function updateMenuOrder() {
             // Regular case for internal links
             return href.includes(`/${tabId}/`) ||
                 (tabId === 'read_manga' && href.includes('/read-manga/')) ||
-                (tabId === 'quick_nut' && href.includes('/quick-nut/'));
+                (tabId === 'quick_nut' && href.includes('/quick-nut/')) ||
+                (tabId === 'continue_reading' && (href.includes('/continue_reading/') || href.includes('/continue-reading/')));
         });
 
         if (desktopItem) {
@@ -5842,10 +6236,12 @@ function initializeTabSorting() {
             // Only create continue reading tab item if it exists in the actual menu and not in the DOM
             const continueReadingInMenu = Array.from(menu.querySelectorAll('li')).some(li => {
                 const link = li.querySelector('a');
-                return link && link.getAttribute('href').includes('/continue_reading/');
+                return link && (link.getAttribute('href').includes('/continue_reading/') || link.getAttribute('href').includes('/continue-reading/'));
             });
 
-            if (continueReadingInMenu && continueReadingExists) {
+            const continueReadingFromSignal = isNhmlContinueReadingSignalFresh();
+
+            if ((continueReadingInMenu || continueReadingFromSignal) && continueReadingExists) {
                 const continueReadingTabItem = document.createElement('li');
                 continueReadingTabItem.className = 'tab-item';
                 continueReadingTabItem.dataset.tab = 'continue_reading';
@@ -5917,10 +6313,12 @@ function initializeTabSorting() {
         // Check for Continue Reading
         const continueReadingItem = Array.from(menu.querySelectorAll('li')).find(li => {
             const link = li.querySelector('a');
-            return link && link.getAttribute('href').includes('/continue_reading/');
+            return link && (link.getAttribute('href').includes('/continue_reading/') || link.getAttribute('href').includes('/continue-reading/'));
         });
 
-        if (continueReadingItem && !tabList.querySelector('[data-tab="continue_reading"]')) {
+        const continueReadingFromSignal = isNhmlContinueReadingSignalFresh();
+
+        if ((continueReadingItem || continueReadingFromSignal) && !tabList.querySelector('[data-tab="continue_reading"]')) {
             const continueReadingTabItem = document.createElement('li');
             continueReadingTabItem.className = 'tab-item';
             continueReadingTabItem.dataset.tab = 'continue_reading';
@@ -9398,8 +9796,15 @@ async function handleOfflineFavoritesPage() {
     galleryContainer.className = 'gallery-container';
     container.appendChild(galleryContainer);
 
-    // Add container to page
-    document.getElementById('content').appendChild(container);
+    // Add container to page (layout changed on new nhentai update)
+    const favMountPoint = document.getElementById('content') ||
+        document.querySelector('div.container') ||
+        document.querySelector('main') ||
+        document.body;
+    if (favMountPoint !== document.body) {
+        favMountPoint.innerHTML = '';
+    }
+    favMountPoint.appendChild(container);
 
     // Add CSS styles
     // Add CSS styles
@@ -10350,8 +10755,8 @@ setTimeout(async function () {
     // Removed: bootstrapKnownMultiwordTagsFromStorage(); (Smart Tag now relies on GitHub taxonomy)
 
     // Fetch taxonomy daily and assimilate known artists
-    if (typeof taxonomyManager !== 'undefined' && !taxonomyManager.isMobile) {
-        taxonomyManager.fetchIfStale().catch(e => console.warn('Taxonomy fetch failed', e));
+    if (globalThis.taxonomyManager && !globalThis.taxonomyManager.isMobile) {
+        globalThis.taxonomyManager.fetchIfStale().catch(e => console.warn('Taxonomy fetch failed', e));
     }
 
     // Update manga cache when limit changes
@@ -10381,7 +10786,9 @@ async function bootstrapKnownMultiwordTagsFromStorage() {
 }
 
 // Handle form submissions
-document.querySelector('form.search').addEventListener('submit', async function (e) {
+const nhpSearchForm = document.querySelector('form.search');
+if (nhpSearchForm) {
+    nhpSearchForm.addEventListener('submit', async function (e) {
     e.preventDefault();
     const searchInput = this.querySelector('input[name="q"]');
     let raw = (searchInput.value || '').trim();
@@ -10394,8 +10801,8 @@ document.querySelector('form.search').addEventListener('submit', async function 
     }
     const mustAddTagsEnabled = await GM.getValue('mustAddTagsEnabled', false);
     const mustAddTags = (await GM.getValue('mustAddTags', [])).map(tag => tag.toLowerCase());
-    if (typeof taxonomyManager !== 'undefined') {
-        await taxonomyManager.ensureLoaded();
+    if (globalThis.taxonomyManager && typeof globalThis.taxonomyManager.ensureLoaded === 'function') {
+        await globalThis.taxonomyManager.ensureLoaded();
     }
 
     function isLanguage(str) {
@@ -10700,7 +11107,25 @@ document.querySelector('form.search').addEventListener('submit', async function 
     }
 
     window.location.href = `/search/?q=${encodeURIComponent(finalQuery)}`;
-});
+    });
+}
+
+function removeBuiltInErrorPage() {
+    const errorPage = document.querySelector('.error-page');
+    if (!errorPage) return;
+
+    const errorMessage = errorPage.querySelector('.error-message');
+    if (!errorMessage || !/page not found/i.test(errorMessage.textContent || '')) return;
+
+    errorPage.remove();
+}
+
+removeBuiltInErrorPage();
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', removeBuiltInErrorPage, { once: true });
+}
+const nhpErrorPageObserver = new MutationObserver(() => removeBuiltInErrorPage());
+nhpErrorPageObserver.observe(document.documentElement, { childList: true, subtree: true });
 
 function deSmartTagQuery(q) {
     const text = String(q || '').trim();
@@ -11916,8 +12341,11 @@ class AutoSyncManager {
 
 // Initialize sync system
 const syncSystem = new OnlineDataSync();
+globalThis.syncSystem = syncSystem;
 const autoSyncManager = new AutoSyncManager(syncSystem);
 const taxonomyManager = new TaxonomyManager(syncSystem);
+globalThis.autoSyncManager = autoSyncManager;
+globalThis.taxonomyManager = taxonomyManager;
 
 // Helper function to save data and trigger autosync
 async function setValueWithAutoSync(key, value) {
@@ -12460,7 +12888,7 @@ class MarkAsReadSystem {
      */
     addMarkAsReadButtons() {
         // Don't add mark-as-read buttons on the read-manga page
-        if (window.location.pathname === '/read-manga/' ||
+        if (/^\/read-manga\/?$/.test(window.location.pathname) ||
             window.location.hash === '#read-manga' ||
             document.body.classList.contains('read-manga-active') ||
             document.querySelector('.read-manga-page')) {
@@ -13154,7 +13582,7 @@ class HideBlacklistSystem {
     }
 
     addHideButtons() {
-        if (window.location.pathname === '/read-manga/' ||
+        if (/^\/read-manga\/?$/.test(window.location.pathname) ||
             window.location.hash === '#read-manga' ||
             document.body.classList.contains('read-manga-active') ||
             document.querySelector('.read-manga-page')) {
@@ -14733,7 +15161,7 @@ class ReadMangaPageSystem {
         if (!enabled) return;
 
         // Check if link already exists
-        if (document.querySelector('a[href="/read-manga/"]')) return;
+        if (document.querySelector('a[href="/read-manga/"], a[href="/read-manga"]')) return;
 
         // Create the read manga button following the same pattern as other nav items
         const readMangaButtonHtml = `
@@ -14782,8 +15210,11 @@ class ReadMangaPageSystem {
      * Handle page routing for the read manga page
      */
     handlePageRouting() {
+        const normalizedPath = window.location.pathname.replace(/\/+$/, '') || '/';
+        const readMangaPath = this.pageUrl.replace(/\/+$/, '');
+
         // Check if we're on the read manga page
-        if (window.location.pathname === this.pageUrl ||
+        if (normalizedPath === readMangaPath ||
             window.location.hash === '#read-manga') {
             this.renderReadMangaPage();
         }
@@ -15928,19 +16359,28 @@ class QuickNutPageSystem {
     async addNavigationLink() {
         const enabled = await GM.getValue('quickNutPageEnabled', true);
         if (!enabled) return;
-        if (document.querySelector('a[href="/quick-nut/"]')) return;
+                const nav = getPrimaryNav() || document.querySelector('nav');
+                if (!nav) return;
+
+                const existingMenuLink = nav.querySelector('ul.menu.left a[href="/quick-nut/"]');
+                if (existingMenuLink) {
+                        const existingItem = existingMenuLink.closest('li');
+                        if (existingItem) existingItem.classList.add('desktop');
+                        return;
+                }
+
         const btnHtml = `
-          <li>
+                    <li class="desktop">
             <a href="/quick-nut/">
               <i class="fas fa-bolt"></i> Quick Nut
             </a>
           </li>
         `;
         const btn = $(btnHtml);
-        const dropdownMenu = $('ul.dropdown-menu');
-        dropdownMenu.append(btn);
-        const menu = $('ul.menu.left');
-        menu.append(btn);
+                const menu = $(nav).find('ul.menu.left').first();
+                menu.children('li.dropdown').length
+                        ? btn.insertBefore(menu.children('li.dropdown').first())
+                        : menu.append(btn);
         btn.find('a').on('click', (e) => {
             e.preventDefault();
             this.navigateToQuickNutPage();
