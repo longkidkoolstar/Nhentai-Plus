@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      10.6.4
+// @version      10.6.5
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -23,7 +23,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "10.6.4";
+const CURRENT_VERSION = "10.6.5";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -325,6 +325,8 @@ async function createFindSimilarButton() {
     const findSimilarEnabled = await GM.getValue('findSimilarEnabled', true);
     if (!findSimilarEnabled) return;
 
+    if (document.getElementById('find-similar-button')) return;
+
     if (isNaN(maxTagsToSelect)) {
         maxTagsToSelect = await GM.getValue('maxTagsToSelect');
         if (maxTagsToSelect === undefined) {
@@ -340,7 +342,7 @@ async function createFindSimilarButton() {
     }
 
     const findSimilarButtonHtml = `
-        <a class="btn btn-primary btn-disabled tooltip find-similar">
+        <a class="btn btn-primary btn-disabled tooltip find-similar" id="find-similar-button">
             <i class="fas fa-search"></i>
             <span>Find Similar</span>
             <div class="top">Click to find similar hentai<i></i></div>
@@ -351,13 +353,13 @@ async function createFindSimilarButton() {
 
     // Insert 'Find Similar' button next to the download button
     // Find the "Find Alt." button
-    const findAltButton = document.querySelector('a.btn.btn-primary.btn-disabled.tooltip.find-similar');
+    const findAltButton = document.getElementById('find-alt-button');
 
     // Insert 'Find Similar' button next to the "Find Alt." button
     if (findAltButton && downloadButton) {
         $(findAltButton).after(findSimilarButton);
     } else {
-        console.log('Download button or Find Alt. button not found.');
+        $(downloadButton).after(findSimilarButton);
     }
 
     $('#lockedTagsCount').hide();
@@ -605,6 +607,8 @@ async function addFindAltButton() {
     const findAltmangaEnabled = await GM.getValue('findAltmangaEnabled', true);
     if (!findAltmangaEnabled) return;
 
+    if (document.getElementById('find-alt-button')) return;
+
     // Get the download button
     const downloadButton = document.getElementById('download');
     if (!downloadButton) {
@@ -613,7 +617,7 @@ async function addFindAltButton() {
     }
 
     const copyTitleButtonHtml = `
-        <a class="btn btn-primary btn-disabled tooltip find-similar">
+        <a class="btn btn-primary btn-disabled tooltip find-similar" id="find-alt-button">
             <i class="fas fa-code-branch"></i>
             <span>Find Alt.</span>
             <div class="top">Click to find alternative manga to this one<i></i></div>
@@ -7389,6 +7393,10 @@ function mangaBookmarking() {
         return;
     }
 
+    if (document.getElementById('bookmark-button')) {
+        return;
+    }
+
     // Check if the manga bookmarking button is enabled in settings
     async function getMangaBookMarkingButtonEnabled() {
         return await GM.getValue('mangaBookMarkingButtonEnabled', true);
@@ -7656,6 +7664,136 @@ async function addShareButton() {
 // Initialize Share button on page load
 addShareButton();
 //----------------------------**Share Gallery Button**---------------------------------
+
+//----------------------------**Gallery Action Buttons Recovery**---------------------------------
+function isGalleryPagePath() {
+    return /\/g\/\d+\/?$/.test(String(window.location.pathname || ''));
+}
+
+function hasGalleryButtonHost() {
+    return !!document.querySelector('#info .buttons.btn-group, #info .buttons, #info > div');
+}
+
+async function ensureGalleryActionButtons() {
+    if (!isGalleryPagePath()) return;
+    if (!hasGalleryButtonHost()) return;
+    if (!document.getElementById('download')) return;
+
+    const currentGalleryId = getMangaIdFromUrl();
+
+    try {
+        await addFindAltButton();
+    } catch (e) {
+        console.warn('Find Alt button restore failed:', e);
+    }
+
+    try {
+        await createFindSimilarButton();
+    } catch (e) {
+        console.warn('Find Similar button restore failed:', e);
+    }
+
+    try {
+        await addShareButton();
+    } catch (e) {
+        console.warn('Share button restore failed:', e);
+    }
+
+    try {
+        mangaBookmarking();
+    } catch (e) {
+        console.warn('Bookmark button restore failed:', e);
+    }
+
+    try {
+        const marSystem = globalThis.markAsReadSystem;
+        if (marSystem && currentGalleryId && typeof marSystem.addGalleryPageMarkButton === 'function') {
+            marSystem.addGalleryPageMarkButton(currentGalleryId);
+        }
+    } catch (e) {
+        console.warn('Mark-as-read button restore failed:', e);
+    }
+
+    try {
+        const hbSystem = globalThis.hideBlacklistSystem;
+        if (hbSystem && typeof hbSystem.addGalleryPageHideButton === 'function') {
+            hbSystem.addGalleryPageHideButton();
+        }
+    } catch (e) {
+        console.warn('Hide/Blacklist button restore failed:', e);
+    }
+}
+
+if (!window.__nhpGalleryButtonsRecoveryAttached) {
+    window.__nhpGalleryButtonsRecoveryAttached = true;
+
+    let galleryButtonsTimer = null;
+    let galleryButtonsRunning = false;
+    let galleryButtonsLastRunAt = 0;
+
+    const scheduleGalleryButtonsRecovery = (force = false) => {
+        if (galleryButtonsRunning) return;
+        const now = Date.now();
+        if (!force && (now - galleryButtonsLastRunAt) < 2500) return;
+
+        if (galleryButtonsTimer) clearTimeout(galleryButtonsTimer);
+        galleryButtonsTimer = setTimeout(async () => {
+            galleryButtonsRunning = true;
+            galleryButtonsLastRunAt = Date.now();
+            try {
+                await ensureGalleryActionButtons();
+            } finally {
+                galleryButtonsRunning = false;
+            }
+        }, force ? 100 : 350);
+    };
+
+    scheduleGalleryButtonsRecovery(true);
+    // nhentai often hydrates twice and removes injected buttons on first paint.
+    // Run a short burst of forced checks so enabled buttons always settle back in.
+    [300, 800, 1500, 2500, 4000].forEach(delay => {
+        setTimeout(() => scheduleGalleryButtonsRecovery(true), delay);
+    });
+
+    const galleryButtonObserver = new MutationObserver((mutations) => {
+        if (!isGalleryPagePath()) return;
+
+        const watchIds = new Set([
+            'info',
+            'download',
+            'bookmark-button',
+            'share-gallery-button',
+            'find-alt-button',
+            'find-similar-button',
+            'nhi-mar-button',
+            'nhi-hide-button'
+        ]);
+
+        const relevantChange = mutations.some(m =>
+            Array.from(m.addedNodes).concat(Array.from(m.removedNodes)).some(n => {
+                if (!n || n.nodeType !== 1) return false;
+                const el = n;
+
+                if (watchIds.has(el.id)) return true;
+                if (el.matches && el.matches('#info, #info .buttons, #info .buttons.btn-group, #info .buttons .btn')) return true;
+                if (el.closest && el.closest('#info .buttons, #info .buttons.btn-group')) return true;
+                if (el.querySelector && el.querySelector('#info, #download, #bookmark-button, #share-gallery-button, #find-alt-button, #find-similar-button, #nhi-mar-button, #nhi-hide-button')) return true;
+
+                return false;
+            })
+        );
+
+        if (relevantChange) {
+            scheduleGalleryButtonsRecovery(false);
+        }
+    });
+    galleryButtonObserver.observe(document.body, { childList: true, subtree: true });
+
+    window.addEventListener('popstate', () => scheduleGalleryButtonsRecovery(true), { passive: true });
+    window.addEventListener('nhp-mark-read-ready', () => scheduleGalleryButtonsRecovery(true), { passive: true });
+    window.addEventListener('nhp-hide-blacklist-ready', () => scheduleGalleryButtonsRecovery(true), { passive: true });
+}
+//----------------------------**Gallery Action Buttons Recovery**---------------------------------
 
 //----------------------------**Share Inbox Poller**---------------------------------
 async function startShareInboxPoller() {
@@ -8845,12 +8983,40 @@ async function handleMangaPage(isLoggedIn) {
         return;
     }
 
-    // Get favorite button
-    const favoriteBtn = document.querySelector("#info > div")?.firstElementChild;
-    // Set up interval to log favorite button every 5 seconds
-    /*setInterval(() => {
-        console.log("Favorite button:", favoriteBtn);
-    }, 5000);*/
+    function getFavoriteButton() {
+        const candidates = Array.from(document.querySelectorAll('#info .buttons .btn, #info .buttons.btn-group .btn, #info > div .btn, #info .buttons button.btn, #info .buttons.btn-group button.btn'));
+        return candidates.find(btn => {
+            if (!btn) return false;
+
+            const id = btn.id || '';
+            if (id === 'download' ||
+                id === 'bookmark-button' ||
+                id === 'share-gallery-button' ||
+                id === 'find-alt-button' ||
+                id === 'find-similar-button' ||
+                id === 'nhi-mar-button' ||
+                id === 'nhi-hide-button') {
+                return false;
+            }
+
+            if (btn.querySelector('i.fa-heart, i.fas.fa-heart, i.far.fa-heart')) return true;
+
+            const text = String(btn.textContent || '').toLowerCase();
+            return text.includes('favorite') || text.includes('unfavorite');
+        }) || null;
+    }
+
+    function unlockFavoriteButtonForOffline(button) {
+        if (!button || isLoggedIn) return;
+        button.classList.remove('btn-disabled');
+        button.classList.add('btn-enabled');
+        if ('disabled' in button) {
+            button.disabled = false;
+        }
+        button.removeAttribute('disabled');
+    }
+
+    const favoriteBtn = getFavoriteButton();
     if (!favoriteBtn) {
         console.log("Could not find favorite button, exiting manga-specific handling");
         return;
@@ -8918,11 +9084,8 @@ async function handleMangaPage(isLoggedIn) {
     const isFavorited = offlineFavorites.includes(mangaId) || toFavorite.includes(mangaId);
     console.log("Current manga in stored favorites:", isFavorited);
 
-    // Enable button if disabled
-    if (favoriteBtn.classList.contains('btn-disabled') && !isLoggedIn) {
-        favoriteBtn.classList.remove('btn-disabled');
-        console.log("Favorite button enabled");
-    }
+    // Enable button if disabled/locked by the site while logged out
+    unlockFavoriteButtonForOffline(favoriteBtn);
 
     // Update button state if it's in our favorites
     if (isFavorited && !isLoggedIn) {
@@ -8933,13 +9096,20 @@ async function handleMangaPage(isLoggedIn) {
         await updateOfflineFavoritesFromButtonState(favoriteBtn);
     }
 
-    // Add click event to favorite button
-    favoriteBtn.addEventListener('click', async function (e) {
+    async function bindOfflineFavoriteHandler(button) {
+        if (!button || button.dataset.nhpOfflineBound === '1') return;
+        button.dataset.nhpOfflineBound = '1';
+
+        unlockFavoriteButtonForOffline(button);
+
+        button.addEventListener('click', async function (e) {
         console.log("Favorite button clicked");
+        const activeButton = e.currentTarget;
 
         if (isLoggedIn) {
             setTimeout(() => {
-                updateOfflineFavoritesFromButtonState(favoriteBtn);
+                const currentButton = getFavoriteButton() || activeButton;
+                updateOfflineFavoritesFromButtonState(currentButton);
             }, 350);
             return;
         }
@@ -8974,7 +9144,7 @@ async function handleMangaPage(isLoggedIn) {
                     currentPendingUnfavorites.push(mangaId);
                 }
 
-                updateButtonToUnfavorited(favoriteBtn);
+                updateButtonToUnfavorited(activeButton);
                 console.log("Removed manga from stored favorites:", mangaId);
             } else {
                 if (!currentFavorites.includes(mangaId)) currentFavorites.push(mangaId);
@@ -8982,7 +9152,7 @@ async function handleMangaPage(isLoggedIn) {
 
                 currentPendingUnfavorites = currentPendingUnfavorites.filter(id => id !== mangaId);
 
-                updateButtonToFavorited(favoriteBtn);
+                updateButtonToFavorited(activeButton);
                 console.log("Added manga to stored favorites:", mangaId);
             }
 
@@ -8993,7 +9163,22 @@ async function handleMangaPage(isLoggedIn) {
             console.log("Updated pending unfavorites:", currentPendingUnfavorites);
             console.log("Updated stored favorites:", currentOfflineFavorites);
         }
-    });
+        });
+    }
+
+    await bindOfflineFavoriteHandler(favoriteBtn);
+
+    if (!window.__nhpOfflineFavoriteObserverAttached) {
+        window.__nhpOfflineFavoriteObserverAttached = true;
+        const offlineFavoriteObserver = new MutationObserver(() => {
+            if (!window.location.pathname.includes('/g/')) return;
+            const currentButton = getFavoriteButton();
+            if (!currentButton) return;
+            unlockFavoriteButtonForOffline(currentButton);
+            bindOfflineFavoriteHandler(currentButton).catch(err => console.warn('Failed to bind offline favorite handler:', err));
+        });
+        offlineFavoriteObserver.observe(document.body, { childList: true, subtree: true });
+    }
 }
 
 // Helper function to get manga ID from URL
@@ -9064,6 +9249,8 @@ function updateButtonToUnfavorited(button) {
 
 // Modified sendFavoriteRequest function with improved CSRF token handling
 async function sendFavoriteRequest(mangaId) {
+    const favoriteV2Url = `https://nhentai.net/api/v2/galleries/${mangaId}/favorite`;
+    const favoriteLegacyUrl = `https://nhentai.net/api/gallery/${mangaId}/favorite`;
     const isIOSDevice = await GM.getValue('isIOSDevice', false);
     if (isIOSDevice) {
         // For iOS, we'll use a more compatible method
@@ -9081,7 +9268,7 @@ async function sendFavoriteRequest(mangaId) {
             // Create a temporary form to submit
             const form = document.createElement('form');
             form.method = 'POST';
-            form.action = `https://nhentai.net/api/gallery/${mangaId}/favorite`;
+            form.action = favoriteV2Url;
             form.style.display = 'none';
 
             // Add CSRF token to form
@@ -9153,7 +9340,7 @@ async function sendFavoriteRequest(mangaId) {
 
             // Use fetch API instead of GM.xmlHttpRequest for iOS compatibility
             // Note: This requires Tampermonkey to grant fetch permissions
-            fetch(`https://nhentai.net/api/gallery/${mangaId}/favorite`, {
+            fetch(favoriteV2Url, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/x-www-form-urlencoded",
@@ -9170,6 +9357,31 @@ async function sendFavoriteRequest(mangaId) {
                     if (response.status === 200) {
                         resolve(response);
                     } else {
+                        if (response.status === 404 || response.status === 405) {
+                            // Fallback for environments still on legacy endpoint behavior.
+                            fetch(favoriteLegacyUrl, {
+                                method: "POST",
+                                headers: {
+                                    "Content-Type": "application/x-www-form-urlencoded",
+                                    "X-CSRFToken": csrfToken,
+                                    "Referer": "https://nhentai.net/g/" + mangaId + "/",
+                                    "User-Agent": navigator.userAgent
+                                },
+                                body: `csrf_token=${encodeURIComponent(csrfToken)}`,
+                                credentials: "include",
+                                mode: "cors"
+                            })
+                                .then(legacyResponse => {
+                                    console.log("Favorite legacy fallback response for manga " + mangaId + ":", legacyResponse.status);
+                                    if (legacyResponse.status === 200) {
+                                        resolve(legacyResponse);
+                                    } else {
+                                        reject(new Error(`Request failed with status ${legacyResponse.status}`));
+                                    }
+                                })
+                                .catch(reject);
+                            return;
+                        }
                         console.error("Favorite request failed for manga " + mangaId + ":", response.status);
                         reject(new Error(`Request failed with status ${response.status}`));
                     }
@@ -9183,6 +9395,8 @@ async function sendFavoriteRequest(mangaId) {
 }
 
 async function sendUnfavoriteRequest(mangaId) {
+    const unfavoriteV2Url = `https://nhentai.net/api/v2/galleries/${mangaId}/favorite`;
+    const unfavoriteLegacyUrl = `https://nhentai.net/api/gallery/${mangaId}/unfavorite`;
     return new Promise((resolve, reject) => {
         console.log("Sending unfavorite request for manga:", mangaId);
 
@@ -9193,8 +9407,8 @@ async function sendUnfavoriteRequest(mangaId) {
             return;
         }
 
-        fetch(`https://nhentai.net/api/gallery/${mangaId}/unfavorite`, {
-            method: "POST",
+        fetch(unfavoriteV2Url, {
+            method: "DELETE",
             headers: {
                 "Content-Type": "application/x-www-form-urlencoded",
                 "X-CSRFToken": csrfToken,
@@ -9210,6 +9424,31 @@ async function sendUnfavoriteRequest(mangaId) {
                 if (response.status === 200) {
                     resolve(response);
                 } else {
+                    if (response.status === 404 || response.status === 405) {
+                        // Fallback for environments still on legacy endpoint behavior.
+                        fetch(unfavoriteLegacyUrl, {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/x-www-form-urlencoded",
+                                "X-CSRFToken": csrfToken,
+                                "Referer": "https://nhentai.net/g/" + mangaId + "/",
+                                "User-Agent": navigator.userAgent
+                            },
+                            body: `csrf_token=${encodeURIComponent(csrfToken)}`,
+                            credentials: "include",
+                            mode: "cors"
+                        })
+                            .then(legacyResponse => {
+                                console.log("Unfavorite legacy fallback response for manga " + mangaId + ":", legacyResponse.status);
+                                if (legacyResponse.status === 200) {
+                                    resolve(legacyResponse);
+                                } else {
+                                    reject(new Error(`Request failed with status ${legacyResponse.status}`));
+                                }
+                            })
+                            .catch(reject);
+                        return;
+                    }
                     console.error("Unfavorite request failed for manga " + mangaId + ":", response.status);
                     reject(new Error(`Request failed with status ${response.status}`));
                 }
@@ -13765,6 +14004,8 @@ async function initMarkAsReadSystem() {
     const enabled = await GM.getValue('markAsReadEnabled', true);
     if (enabled) {
         markAsReadSystem = new MarkAsReadSystem();
+        globalThis.markAsReadSystem = markAsReadSystem;
+        window.dispatchEvent(new Event('nhp-mark-read-ready'));
     }
 }
 
@@ -13782,6 +14023,8 @@ async function initHideBlacklistSystem() {
     const enabled = await GM.getValue('hideBlacklistEnabled', true);
     if (enabled) {
         hideBlacklistSystem = new HideBlacklistSystem();
+        globalThis.hideBlacklistSystem = hideBlacklistSystem;
+        window.dispatchEvent(new Event('nhp-hide-blacklist-ready'));
     }
 }
 
