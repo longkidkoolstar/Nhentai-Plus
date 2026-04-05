@@ -1,4 +1,21 @@
 {
+  "10.7.0": {
+    "date": "2026-04-01",
+    "changes": [
+      "fix(v2-compat): scope gallery-grid CSS to script-only pages to stop breaking nhentai v2 search/listing layout",
+      "fix(v2-compat): update flag URLs from imgur GIFs to nhentai.net SVGs (gb, jp, cn, kr, es)",
+      "fix(v2-compat): skip script flag injection when nhentai v2 provides native lang-* flags",
+      "fix(v2-compat): harden button injection against v2 delayed hydration with extended burst timings",
+      "fix(v2-compat): re-apply offline favorite button visual state after v2 hydration",
+      "fix(v2-compat): protect page number display and find-alt-version buttons from v2 hydration removal",
+      "fix(v2-compat): override nhentai v2 white background and blur on Read Manga, Quick Nut, and Offline Favorites pages",
+      "fix(v2-compat): auto-remove error-container on settings and custom pages",
+      "fix(nav): fix Read Manga page not clearing when navigating away",
+      "fix(v2-compat): recover flip button after v2 hydration removes related-container content",
+      "fix(ui): fix mark-as-read button not shifting down when page numbers are enabled",
+      "chore(version): bump userscript version to 10.7.0"
+    ]
+  },
   "10.6.5": {
     "date": "2026-03-29",
     "changes": [

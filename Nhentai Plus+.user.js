@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      10.6.5
+// @version      10.7.0
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -23,7 +23,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "10.6.5";
+const CURRENT_VERSION = "10.7.0";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -671,9 +671,9 @@ addFindAltButton();
     const findAltMangaThumbnailEnabled = await GM.getValue('findAltMangaThumbnailEnabled', true); // Default to true if not set
     if (!findAltMangaThumbnailEnabled) return; // Exit if the feature is not enabled
 
-    const flagEn = "https://i.imgur.com/vSnHmmi.gif";
-    const flagJp = "https://i.imgur.com/GlArpuS.gif";
-    const flagCh = "https://i.imgur.com/7B55DYm.gif";
+    const flagEn = "https://nhentai.net/flags/gb.svg";
+    const flagJp = "https://nhentai.net/flags/jp.svg";
+    const flagCh = "https://nhentai.net/flags/cn.svg";
     const non_english_fade_opacity = 0.3;
     const partially_fade_all_non_english = true;
     const mark_as_read_system_enabled = true;
@@ -897,16 +897,21 @@ addFindAltButton();
                         }
 
                         const dataTags = $result.attr("data-tags") || "";
+                        const hasNativeFlag = /\blang-\w+\b/.test($result.attr("class") || "");
 
-                        if (dataTags.includes("12227")) {
-                            $result.find(".caption").append(`<img class="overlayFlag" src="` + flagEn + `">`);
-                            $result.find(".cover > img, .cover > .caption").css("opacity", "1");
-                        } else {
-                            if (dataTags.includes("6346")) {
+                        if (!hasNativeFlag) {
+                            if (dataTags.includes("12227")) {
+                                $result.find(".caption").append(`<img class="overlayFlag" src="` + flagEn + `">`);
+                            } else if (dataTags.includes("6346")) {
                                 $result.find(".caption").append(`<img class="overlayFlag" src="` + flagJp + `">`);
                             } else if (dataTags.includes("29963")) {
                                 $result.find(".caption").append(`<img class="overlayFlag" src="` + flagCh + `">`);
                             }
+                        }
+
+                        if (dataTags.includes("12227")) {
+                            $result.find(".cover > img, .cover > .caption").css("opacity", "1");
+                        } else {
                             if (!partially_fade_all_non_english) {
                                 $result.find(".cover > img, .cover > .caption").css("opacity", "1");
                             }
@@ -981,16 +986,21 @@ addFindAltButton();
                             }
 
                             const dataTags = $item.attr("data-tags") || "";
+                            const hasNativeFlag = /\blang-\w+\b/.test($item.attr("class") || "");
 
-                            if (dataTags.includes("12227")) {
-                                $item.find(".caption").append(`<img class="overlayFlag" src="` + flagEn + `">`);
-                                $item.find(".cover > img, .cover > .caption").css("opacity", "1");
-                            } else {
-                                if (dataTags.includes("6346")) {
+                            if (!hasNativeFlag) {
+                                if (dataTags.includes("12227")) {
+                                    $item.find(".caption").append(`<img class="overlayFlag" src="` + flagEn + `">`);
+                                } else if (dataTags.includes("6346")) {
                                     $item.find(".caption").append(`<img class="overlayFlag" src="` + flagJp + `">`);
                                 } else if (dataTags.includes("29963")) {
                                     $item.find(".caption").append(`<img class="overlayFlag" src="` + flagCh + `">`);
                                 }
+                            }
+
+                            if (dataTags.includes("12227")) {
+                                $item.find(".cover > img, .cover > .caption").css("opacity", "1");
+                            } else {
                                 if (!partially_fade_all_non_english) {
                                     $item.find(".cover > img, .cover > .caption").css("opacity", "1");
                                 }
@@ -1082,15 +1092,20 @@ addFindAltButton();
                             $(found[i]).find(".cover > img, .cover > .caption").css("opacity", non_english_fade_opacity);
                         }
 
-                        if ($(found[i]).attr("data-tags").includes("12227")) {
-                            $(found[i]).find(".caption").append(`<img class="overlayFlag" src="` + flagEn + `">`);
-                            $(found[i]).find(".cover > img, .cover > .caption").css("opacity", "1");
-                        } else {
-                            if ($(found[i]).attr("data-tags").includes("6346")) {
+                        const foundNativeFlag = /\blang-\w+\b/.test($(found[i]).attr("class") || "");
+                        if (!foundNativeFlag) {
+                            if ($(found[i]).attr("data-tags").includes("12227")) {
+                                $(found[i]).find(".caption").append(`<img class="overlayFlag" src="` + flagEn + `">`);
+                            } else if ($(found[i]).attr("data-tags").includes("6346")) {
                                 $(found[i]).find(".caption").append(`<img class="overlayFlag" src="` + flagJp + `">`);
                             } else if ($(found[i]).attr("data-tags").includes("29963")) {
                                 $(found[i]).find(".caption").append(`<img class="overlayFlag" src="` + flagCh + `">`);
                             }
+                        }
+
+                        if ($(found[i]).attr("data-tags").includes("12227")) {
+                            $(found[i]).find(".cover > img, .cover > .caption").css("opacity", "1");
+                        } else {
                             if (!partially_fade_all_non_english) {
                                 $(found[i]).find(".cover > img, .cover > .caption").css("opacity", "1");
                             }
@@ -1209,6 +1224,61 @@ addFindAltButton();
                 let n = $(this).parent().find(".numOfVersions");
                 n.text((Number(n.text().split("/")[0]) + 1) + "/" + n.text().split("/")[1]);
             });
+
+            // Re-inject Find Alt Version buttons after v2 hydration removes them
+            function reInjectFindAltButtons() {
+                $(".cover").each(function () {
+                    const $parent = $(this).parent();
+                    if ($parent.find('.findVersionButton').length === 0) {
+                        $parent.append("<div class='findVersionButton'>Find Alt Versions</div>");
+                        $parent.append("<div class='numOfVersions'>1/1</div>");
+                        $parent.append("<div class='versionNextButton'>►</div>");
+                        $parent.append("<div class='versionPrevButton'>◄</div>");
+
+                        $parent.find(".findVersionButton").last().click(function (e) {
+                            e.preventDefault();
+                            AddAltVersionsToThis($(this));
+                        });
+                        $parent.find(".versionPrevButton").last().click(function (e) {
+                            e.preventDefault();
+                            let toHide = $(this).parent().find(".cover").filter(":visible");
+                            let toShow = toHide.prev();
+                            if (!toShow || toShow.length <= 0) return;
+                            if (!toShow.is(".cover")) toShow = toHide.prevUntil(".cover", ":last").prev();
+                            if (!toShow || toShow.length <= 0) return;
+                            toHide.hide(100);
+                            toShow.show(100);
+                            let n = $(this).parent().find(".numOfVersions");
+                            n.text((Number(n.text().split("/")[0]) - 1) + "/" + n.text().split("/")[1]);
+                        });
+                        $parent.find(".versionNextButton").last().click(function (e) {
+                            e.preventDefault();
+                            let toHide = $(this).parent().find(".cover").filter(":visible");
+                            let toShow = toHide.next();
+                            if (!toShow || toShow.length <= 0) return;
+                            if (!toShow.is(".cover")) toShow = toHide.nextUntil(".cover", ":last").next();
+                            if (!toShow || toShow.length <= 0) return;
+                            toHide.hide(100);
+                            toShow.show(100);
+                            let n = $(this).parent().find(".numOfVersions");
+                            n.text((Number(n.text().split("/")[0]) + 1) + "/" + n.text().split("/")[1]);
+                        });
+                    }
+                });
+            }
+
+            // Burst schedule to catch v2 delayed hydration removing these buttons
+            [2000, 4000, 6000, 10000].forEach(delay => {
+                setTimeout(reInjectFindAltButtons, delay);
+            });
+
+            const findAltObserver = new MutationObserver(() => {
+                if ($(".container.index-container, #favcontainer.container, #recent-favorites-container, #related-container").length === 0) return;
+                if ($(".findVersionButton").length === 0 && $(".cover").length > 0) {
+                    reInjectFindAltButtons();
+                }
+            });
+            findAltObserver.observe(document.body, { childList: true, subtree: true });
         }
     });
 
@@ -2713,17 +2783,41 @@ async function ensureHeaderNavForCustomRoutes() {
     await applyCustomNavLinks();
 }
 
-ensureHeaderNavForCustomRoutes();
+function nhpAfterHydration(callback) {
+    const isV2 = () => !!document.querySelector('#__nuxt, #__app, [data-v-app]');
+    if (!isV2()) {
+        callback();
+        return;
+    }
+    const run = () => {
+        if (typeof requestIdleCallback === 'function') {
+            requestIdleCallback(callback, { timeout: 2000 });
+        } else {
+            setTimeout(callback, 800);
+        }
+    };
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', run, { once: true });
+    } else {
+        run();
+    }
+}
+
+nhpAfterHydration(ensureHeaderNavForCustomRoutes);
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', ensureHeaderNavForCustomRoutes, { once: true });
+    document.addEventListener('DOMContentLoaded', () => nhpAfterHydration(ensureHeaderNavForCustomRoutes), { once: true });
 }
 
 let nhpNavHealthTimer = null;
 let nhpNavMutating = false;
 let nhpNavLastCheckAt = 0;
 let nhpNavLastRoute = '';
+let nhpHydrationReady = false;
+nhpAfterHydration(() => { nhpHydrationReady = true; });
+
 function scheduleNavHealthCheck(force = false) {
-    if (nhpNavMutating) return;          // ignore self-triggered mutations
+    if (nhpNavMutating) return;
+    if (!nhpHydrationReady) return;
     const now = Date.now();
     const routeKey = `${window.location.pathname}${window.location.search}${window.location.hash}`;
     const routeChanged = routeKey !== nhpNavLastRoute;
@@ -2846,6 +2940,10 @@ if (window.location.href.includes('/settings')) {
         notFoundMessage.remove();
     }
 
+    // Remove v2 error-container (500 error page)
+    const errorContainer = document.querySelector('.error-container');
+    if (errorContainer) errorContainer.remove();
+
     // Add settings form and random hentai preferences
     const settingsHtml = `
 <style>
@@ -2860,7 +2958,7 @@ if (window.location.href.includes('/settings')) {
         --nh-border: #333;
     }
 
-    #content {
+    #nhp-settings-root {
         background: transparent !important;
         padding: 0 !important;
         border: none !important;
@@ -3147,7 +3245,7 @@ if (window.location.href.includes('/settings')) {
     }
 </style>
 
-<div id="content">
+<div id="nhp-settings-root" class="nhp-custom-page-root" data-nhp-custom-page="settings">
     <div class="settings-wrapper">
         <!-- Sidebar -->
         <div class="settings-sidebar">
@@ -4958,6 +5056,12 @@ if (window.location.href.includes('/settings')) {
 
         async function fetchGalleryPrettyTitle(id) {
             try {
+                const apiData = await nhpFetchGalleryV2(id);
+                if (apiData && apiData.title) {
+                    const cleaned = cleanPrettyTitle(apiData.title);
+                    if (cleaned) return cleaned;
+                }
+
                 const url = `${location.origin}/g/${id}/`;
                 const res = await fetch(url, { credentials: 'include' });
                 if (!res || !res.ok) return null;
@@ -7722,6 +7826,14 @@ async function ensureGalleryActionButtons() {
     } catch (e) {
         console.warn('Hide/Blacklist button restore failed:', e);
     }
+
+    try {
+        if (typeof replaceRelatedWithBookmarks === 'function') {
+            await replaceRelatedWithBookmarks();
+        }
+    } catch (e) {
+        console.warn('Related bookmarks/flip button restore failed:', e);
+    }
 }
 
 if (!window.__nhpGalleryButtonsRecoveryAttached) {
@@ -7749,11 +7861,32 @@ if (!window.__nhpGalleryButtonsRecoveryAttached) {
     };
 
     scheduleGalleryButtonsRecovery(true);
-    // nhentai often hydrates twice and removes injected buttons on first paint.
-    // Run a short burst of forced checks so enabled buttons always settle back in.
-    [300, 800, 1500, 2500, 4000].forEach(delay => {
+    // nhentai v2 hydrates once after initial load, removing injected buttons.
+    // Extended burst schedule to catch late hydration.
+    [300, 800, 1500, 2500, 4000, 6000, 8000, 12000].forEach(delay => {
         setTimeout(() => scheduleGalleryButtonsRecovery(true), delay);
     });
+
+    // Watch for v2 hydration signature: site re-rendering #info or its button container
+    let v2HydrationDetected = false;
+    const hydrationObserver = new MutationObserver((mutations) => {
+        if (!isGalleryPagePath() || v2HydrationDetected) return;
+        const isHydration = mutations.some(m => {
+            const target = m.target;
+            if (!target || target.nodeType !== 1) return false;
+            const id = target.id || '';
+            if (id === 'info' || id === 'gallery-info') return true;
+            if (target.matches && target.matches('#info, #info .buttons, #info .buttons.btn-group')) return true;
+            return Array.from(m.addedNodes).some(n =>
+                n.nodeType === 1 && n.querySelector && n.querySelector('#download, .btn[id]')
+            );
+        });
+        if (isHydration) {
+            v2HydrationDetected = true;
+            [200, 600, 1200].forEach(d => setTimeout(() => scheduleGalleryButtonsRecovery(true), d));
+        }
+    });
+    hydrationObserver.observe(document.body, { childList: true, subtree: true });
 
     const galleryButtonObserver = new MutationObserver((mutations) => {
         if (!isGalleryPagePath()) return;
@@ -7969,7 +8102,8 @@ async function addMonthFilter() {
 
     const path = window.location.pathname;
 
-    if (/^\/(search|tag|artist|character|parody)\//.test(path)) {
+    // v2 uses /search (no trailing slash) as well as /search/
+    if (/^\/(search|tag|artist|character|parody|group|category)(\/|$)/.test(path)) {
         const sortTypes = document.getElementsByClassName("sort-type");
         if (sortTypes.length > 1) {
 
@@ -8067,14 +8201,14 @@ function initMonthFilterReinjector() {
     const content = document.getElementById('content');
     if (content) {
         const observer = new MutationObserver(() => schedule());
-        observer.observe(content, { childList: true, subtree: false });
+        observer.observe(content, { childList: true, subtree: true });
     } else {
         const observer = new MutationObserver(() => {
             const c = document.getElementById('content');
             if (!c) return;
             observer.disconnect();
             const innerObserver = new MutationObserver(() => schedule());
-            innerObserver.observe(c, { childList: true, subtree: false });
+            innerObserver.observe(c, { childList: true, subtree: true });
             schedule();
         });
         observer.observe(document.documentElement, { childList: true, subtree: false });
@@ -8089,16 +8223,77 @@ initMonthFilterReinjector();
 
 //--------------------------- **Replace Related Manga with Bookmarks** ---------------------------
 
+// v2 API gallery cache (in-memory, per-session)
+const NHP_V2_GALLERY_CACHE = new Map();
+
+async function nhpFetchGalleryV2(galleryId) {
+    const id = String(galleryId);
+    if (NHP_V2_GALLERY_CACHE.has(id)) return NHP_V2_GALLERY_CACHE.get(id);
+    try {
+        const res = await fetch(`/api/v2/galleries/${id}`, { credentials: 'include' });
+        if (!res.ok) return null;
+        const data = await res.json();
+
+        const mediaId = data.media_id;
+        const coverPath = data.cover?.path;
+        const thumbPath = data.thumbnail?.path;
+        const coverUrl = coverPath && mediaId ? `https://t.nhentai.net/galleries/${mediaId}/${coverPath}` : null;
+        const thumbUrl = thumbPath && mediaId ? `https://t.nhentai.net/galleries/${mediaId}/${thumbPath}` : null;
+
+        let language = null;
+        if (data.tags) {
+            for (const tag of data.tags) {
+                if (tag.type === 'language') {
+                    const name = (tag.name || tag.slug || '').toLowerCase();
+                    if (name === 'english') { language = 'english'; break; }
+                    if (name === 'japanese') { language = 'japanese'; break; }
+                    if (name === 'chinese') { language = 'chinese'; break; }
+                }
+            }
+        }
+
+        const title = data.title?.pretty || data.title?.english || data.title?.japanese || null;
+
+        const result = {
+            id: data.id,
+            media_id: mediaId,
+            cover_url: coverUrl,
+            thumb_url: thumbUrl,
+            title,
+            num_pages: data.num_pages,
+            language,
+            tags: data.tags || []
+        };
+
+        NHP_V2_GALLERY_CACHE.set(id, result);
+        return result;
+    } catch (e) {
+        console.warn(`nhpFetchGalleryV2 failed for ${id}:`, e);
+        return null;
+    }
+}
+
 // Function to get manga details (cover image and title)
 async function getMangaDetails(mangaId) {
     try {
-        // First check if we have details cached
         const cachedDetails = await GM.getValue(`manga_details_${mangaId}`, null);
-        if (cachedDetails) {
+        if (cachedDetails && cachedDetails.coverUrl) {
             return cachedDetails;
         }
 
-        // If not cached, fetch it from the page
+        // Primary: v2 API (same-origin, no CORS issues, returns correct media_id)
+        const apiData = await nhpFetchGalleryV2(mangaId);
+        if (apiData && (apiData.cover_url || apiData.title)) {
+            const details = {
+                coverUrl: apiData.cover_url || apiData.thumb_url,
+                title: apiData.title,
+                language: apiData.language
+            };
+            await GM.setValue(`manga_details_${mangaId}`, details);
+            return details;
+        }
+
+        // Fallback: scrape the gallery page
         const response = await fetch(`https://nhentai.net/g/${mangaId}/`);
         if (!response.ok) {
             console.error(`Failed to fetch manga page for ${mangaId}: ${response.status}`);
@@ -8109,20 +8304,14 @@ async function getMangaDetails(mangaId) {
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
 
-        // Get the cover image
         const coverImg = doc.querySelector("#cover > a > img");
         const coverUrl = coverImg ? (coverImg.getAttribute('data-src') || coverImg.getAttribute('src')) : null;
 
-        // Get the manga title
         let title = null;
-
-        // Try to get the title from the span.before element
         const titleSpan = doc.querySelector("#info > h1 > a > u > span.before");
         if (titleSpan) {
             title = titleSpan.textContent.trim();
         }
-
-        // If not found, try the main h1 title
         if (!title) {
             const mainTitle = doc.querySelector("#info > h1");
             if (mainTitle) {
@@ -8130,12 +8319,9 @@ async function getMangaDetails(mangaId) {
             }
         }
 
-        // Extract all tags from the page
         const allTags = Array.from(doc.querySelectorAll('#tags span.name')).map(span =>
             span.textContent.trim().toLowerCase()
         );
-
-        // Determine language from tags
         let language = null;
         if (allTags.includes('english')) {
             language = 'english';
@@ -8145,10 +8331,8 @@ async function getMangaDetails(mangaId) {
             language = 'chinese';
         }
 
-        // Cache the details
         const details = { coverUrl, title, language };
         await GM.setValue(`manga_details_${mangaId}`, details);
-
         return details;
     } catch (error) {
         console.error(`Error getting manga details for ${mangaId}:`, error);
@@ -8162,13 +8346,27 @@ async function getMangaCoverImage(mangaId) {
     return details.coverUrl;
 }
 
-const NHP_COVER_FALLBACK_ONERROR = "const p=this.nextElementSibling;if(!this.dataset.nhpFallbacks){const m=this.src.match(/https?:\\/\\/t(\\d+)\\.nhentai\\.net\\/galleries\\/(\\d+)\\/cover\\.(jpg|webp)\\.webp/);const f=[];if(m){const id=m[2];['3','2','1'].forEach(s=>['webp.webp','jpg.webp'].forEach(ext=>{const u='https://t'+s+'.nhentai.net/galleries/'+id+'/cover.'+ext;if(u!==this.src&&!f.includes(u))f.push(u);}));['https://t.nhentai.net/galleries/'+id+'/thumb.webp','https://t.nhentai.net/galleries/'+id+'/thumb.jpg'].forEach(u=>{if(u!==this.src&&!f.includes(u))f.push(u);});}this.dataset.nhpFallbacks=JSON.stringify(f);this.dataset.nhpFallbackIndex='0';}const f=JSON.parse(this.dataset.nhpFallbacks||'[]');const i=parseInt(this.dataset.nhpFallbackIndex||'0',10);if(i<f.length){this.dataset.nhpFallbackIndex=String(i+1);this.style.display='block';this.src=f[i];}else{this.style.display='none';if(p){p.style.display='flex';Array.from(p.children).forEach(c=>c.style.display='block');}}";
+window.__nhpV2CoverRecover = async function(img) {
+    const a = img.closest('a[href*="/g/"]');
+    if (!a) return;
+    const gid = (a.getAttribute('href') || '').match(/\/g\/(\d+)/)?.[1];
+    if (!gid || typeof nhpFetchGalleryV2 !== 'function') return;
+    const d = await nhpFetchGalleryV2(gid);
+    const url = d?.cover_url || d?.thumb_url;
+    if (url && url !== img.src) {
+        img.dataset.nhpFallbacks = '[]';
+        img.style.display = 'block';
+        img.src = url;
+    }
+};
+
+const NHP_COVER_FALLBACK_ONERROR = "const p=this.nextElementSibling;if(!this.dataset.nhpFallbacks){const m=this.src.match(/https?:\\/\\/t(\\d*)\\.nhentai\\.net\\/galleries\\/(\\d+)\\/(cover|thumb)\\.(jpg|webp)(\\.webp)?/);const f=[];if(m){const id=m[2];['3','2','1',''].forEach(s=>['cover.webp','cover.jpg','cover.webp.webp','cover.jpg.webp'].forEach(file=>{const u='https://t'+s+'.nhentai.net/galleries/'+id+'/'+file;if(u!==this.src&&!f.includes(u))f.push(u);}));['thumb.webp','thumb.jpg'].forEach(file=>{const u='https://t.nhentai.net/galleries/'+id+'/'+file;if(u!==this.src&&!f.includes(u))f.push(u);});}this.dataset.nhpFallbacks=JSON.stringify(f);this.dataset.nhpFallbackIndex='0';}const f=JSON.parse(this.dataset.nhpFallbacks||'[]');const i=parseInt(this.dataset.nhpFallbackIndex||'0',10);if(i<f.length){this.dataset.nhpFallbackIndex=String(i+1);this.style.display='block';this.src=f[i];}else if(typeof window.__nhpV2CoverRecover==='function'&&!this.dataset.nhpV2Tried){this.dataset.nhpV2Tried='1';window.__nhpV2CoverRecover(this);}else{this.style.display='none';if(p){p.style.display='flex';Array.from(p.children).forEach(c=>c.style.display='block');}}";
 
 // Language flag URLs
 const LANGUAGE_FLAGS = {
-    english: "https://i.imgur.com/vSnHmmi.gif",
-    japanese: "https://i.imgur.com/GlArpuS.gif",
-    chinese: "https://i.imgur.com/7B55DYm.gif"
+    english: "https://nhentai.net/flags/gb.svg",
+    japanese: "https://nhentai.net/flags/jp.svg",
+    chinese: "https://nhentai.net/flags/cn.svg"
 };
 
 // Function to replace the related manga section with bookmarked content
@@ -8185,8 +8383,31 @@ async function replaceRelatedWithBookmarks() {
     const relatedContainer = document.querySelector("#related-container");
     if (!relatedContainer || !window.location.pathname.includes('/g/')) return;
 
-    // Store original content for flipping back
-    const originalContent = relatedContainer.innerHTML;
+    const currentMangaId = window.location.pathname.match(/\/g\/(\d+)/)?.[1];
+    if (!currentMangaId) return;
+
+    // Preserve true native related HTML once per gallery (recovery must not snapshot our custom UI)
+    const origCacheKey = `__nhpRelatedOriginalHtml_${currentMangaId}`;
+    let originalContent = globalThis[origCacheKey];
+    if (originalContent == null) {
+        if (relatedContainer.querySelector('[data-nhp-related-bookmarks-root]')) {
+            return;
+        }
+        originalContent = relatedContainer.innerHTML;
+        globalThis[origCacheKey] = originalContent;
+    }
+
+    // Already replaced for this gallery and UI still present — skip (prevents duplicate flips / glitchy re-runs from hydration recovery)
+    if (relatedContainer.dataset.nhpRelatedBookmarksGalleryId === currentMangaId &&
+        relatedContainer.querySelector('[data-nhp-related-bookmarks-root]')) {
+        return;
+    }
+
+    // Skip if a build is already in progress (concurrent document.ready + recovery)
+    const loadingH2 = relatedContainer.querySelector('h2');
+    if (loadingH2 && /Finding Related Manga/i.test(loadingH2.textContent || '')) {
+        return;
+    }
 
     // State management for flip functionality (only if flip button is enabled)
     let isShowingBookmarks = true; // Default to showing bookmarks when enabled
@@ -8205,10 +8426,6 @@ async function replaceRelatedWithBookmarks() {
             }
         </style>
     `;
-
-    // Get the current manga ID
-    const currentMangaId = window.location.pathname.match(/\/g\/(\d+)/)?.[1];
-    if (!currentMangaId) return;
 
     // Get the current manga's tags
     const tagsContainer = document.querySelector("#tags");
@@ -8395,6 +8612,7 @@ async function replaceRelatedWithBookmarks() {
 
     // Create a header container for the section with flip button
     const headerContainer = document.createElement('div');
+    headerContainer.setAttribute('data-nhp-related-bookmarks-root', '1');
     headerContainer.style.display = 'flex';
     headerContainer.style.alignItems = 'center';
     headerContainer.style.justifyContent = 'center';
@@ -8413,6 +8631,8 @@ async function replaceRelatedWithBookmarks() {
     if (enableRelatedFlipButton) {
         // Create flip button
         flipButton = document.createElement('button');
+        flipButton.setAttribute('data-nhp-related-flip', '1');
+        flipButton.type = 'button';
         flipButton.textContent = 'Flip';
         flipButton.style.cssText = `
             background: #ed2553;
@@ -8506,17 +8726,17 @@ async function replaceRelatedWithBookmarks() {
                             }
                         }
 
-                        // If all sources fail, try to reconstruct the URL
+                        // If all sources fail, use v2 API to get correct CDN URL
                         const galleryLink = img.closest('a');
                         if (galleryLink && galleryLink.href) {
                             const mangaId = galleryLink.href.match(/\/g\/(\d+)/)?.[1];
                             if (mangaId) {
-                                const reconstructedUrl = `https://t.nhentai.net/galleries/${mangaId}/thumb.jpg`;
+                                const apiData = await nhpFetchGalleryV2(mangaId);
+                                const reconstructedUrl = apiData?.cover_url || apiData?.thumb_url || `https://t.nhentai.net/galleries/${mangaId}/thumb.jpg`;
                                 try {
                                     await loadImage(reconstructedUrl);
-                                    console.log(`Successfully loaded reconstructed image ${index + 1}:`, reconstructedUrl);
                                 } catch (error) {
-                                    console.log(`Failed to load reconstructed image ${index + 1}:`, reconstructedUrl);
+                                    console.log(`Failed to load image ${index + 1} for gallery ${mangaId}`);
                                 }
                             }
                         }
@@ -8557,9 +8777,10 @@ async function replaceRelatedWithBookmarks() {
 
             // Add a flip button to the original content to switch back (only if flip button is enabled)
             const originalHeader = relatedContainer.querySelector('h2');
-            if (originalHeader && enableRelatedFlipButton) {
+            if (originalHeader && enableRelatedFlipButton && !originalHeader.closest('[data-nhp-original-header-wrap]')) {
                 // Create container for original header with flip button
                 const originalHeaderContainer = document.createElement('div');
+                originalHeaderContainer.setAttribute('data-nhp-original-header-wrap', '1');
                 originalHeaderContainer.style.display = 'flex';
                 originalHeaderContainer.style.alignItems = 'center';
                 originalHeaderContainer.style.justifyContent = 'center';
@@ -8573,6 +8794,8 @@ async function replaceRelatedWithBookmarks() {
 
                 // Create flip button for original content
                 const originalFlipButton = document.createElement('button');
+                originalFlipButton.setAttribute('data-nhp-related-flip', '1');
+                originalFlipButton.type = 'button';
                 originalFlipButton.textContent = 'Flip';
                 originalFlipButton.style.cssText = `
                     background: #ed2553;
@@ -8609,8 +8832,8 @@ async function replaceRelatedWithBookmarks() {
             // Switch back to bookmarked content
             if (bookmarkedContent) {
                 relatedContainer.innerHTML = bookmarkedContent;
-                // Re-attach event listener to the new flip button
-                const newFlipButton = relatedContainer.querySelector('button');
+                // Re-attach event listener to the new flip button (only our Flip, not random buttons)
+                const newFlipButton = relatedContainer.querySelector('[data-nhp-related-flip]');
                 if (newFlipButton) {
                     newFlipButton.addEventListener('click', toggleContent);
                     // Re-add hover effects
@@ -8712,6 +8935,7 @@ async function replaceRelatedWithBookmarks() {
 
     // Store the bookmarked content after all galleries are added
     storeBookmarkedContent();
+    relatedContainer.dataset.nhpRelatedBookmarksGalleryId = currentMangaId;
 }
 
 // Call the function when the page is loaded
@@ -9170,14 +9394,59 @@ async function handleMangaPage(isLoggedIn) {
 
     if (!window.__nhpOfflineFavoriteObserverAttached) {
         window.__nhpOfflineFavoriteObserverAttached = true;
+        let offlineFavObserverDebounce = null;
         const offlineFavoriteObserver = new MutationObserver(() => {
             if (!window.location.pathname.includes('/g/')) return;
-            const currentButton = getFavoriteButton();
-            if (!currentButton) return;
-            unlockFavoriteButtonForOffline(currentButton);
-            bindOfflineFavoriteHandler(currentButton).catch(err => console.warn('Failed to bind offline favorite handler:', err));
+            if (offlineFavObserverDebounce) clearTimeout(offlineFavObserverDebounce);
+            offlineFavObserverDebounce = setTimeout(async () => {
+                const currentButton = getFavoriteButton();
+                if (!currentButton) return;
+                unlockFavoriteButtonForOffline(currentButton);
+                await bindOfflineFavoriteHandler(currentButton).catch(err => console.warn('Failed to bind offline favorite handler:', err));
+
+                // Re-apply visual state after v2 hydration replaces the button
+                try {
+                    const storedFavorites = await GM.getValue('offlineFavorites', []);
+                    const pendingFavorites = await GM.getValue('toFavorite', []);
+                    const currentMangaId = getMangaIdFromUrl();
+                    if (currentMangaId && !isLoggedIn) {
+                        const shouldBeFavorited = (Array.isArray(storedFavorites) && storedFavorites.includes(currentMangaId)) ||
+                                                  (Array.isArray(pendingFavorites) && pendingFavorites.includes(currentMangaId));
+                        if (shouldBeFavorited && !isButtonFavorited(currentButton)) {
+                            updateButtonToFavorited(currentButton);
+                        } else if (!shouldBeFavorited && isButtonFavorited(currentButton)) {
+                            updateButtonToUnfavorited(currentButton);
+                        }
+                    }
+                } catch (err) {
+                    console.warn('Failed to re-apply offline favorite visual state:', err);
+                }
+            }, 150);
         });
         offlineFavoriteObserver.observe(document.body, { childList: true, subtree: true });
+
+        // Burst schedule to catch v2 delayed hydration
+        [500, 1500, 3000, 5000, 8000].forEach(delay => {
+            setTimeout(async () => {
+                if (!window.location.pathname.includes('/g/')) return;
+                const btn = getFavoriteButton();
+                if (!btn) return;
+                unlockFavoriteButtonForOffline(btn);
+                await bindOfflineFavoriteHandler(btn).catch(() => {});
+                try {
+                    const storedFavorites = await GM.getValue('offlineFavorites', []);
+                    const pendingFavorites = await GM.getValue('toFavorite', []);
+                    const currentMangaId = getMangaIdFromUrl();
+                    if (currentMangaId && !isLoggedIn) {
+                        const shouldBeFavorited = (Array.isArray(storedFavorites) && storedFavorites.includes(currentMangaId)) ||
+                                                  (Array.isArray(pendingFavorites) && pendingFavorites.includes(currentMangaId));
+                        if (shouldBeFavorited && !isButtonFavorited(btn)) {
+                            updateButtonToFavorited(btn);
+                        }
+                    }
+                } catch (_) {}
+            }, delay);
+        });
     }
 }
 
@@ -10044,10 +10313,24 @@ async function handleOfflineFavoritesPage() {
         favMountPoint.innerHTML = '';
     }
     favMountPoint.appendChild(container);
+    document.body.classList.add('offline-favorites-active');
 
     // Add CSS styles
-    // Add CSS styles
     GM.addStyle(`
+        body.offline-favorites-active #content {
+            background: transparent !important;
+            background-color: transparent !important;
+            backdrop-filter: none !important;
+            -webkit-backdrop-filter: none !important;
+            filter: none !important;
+            -webkit-filter: none !important;
+        }
+
+        body.offline-favorites-active #content * {
+            filter: none !important;
+            -webkit-filter: none !important;
+        }
+
         #offline-favorites-container {
             padding: 20px 0;
             max-width: 1200px;
@@ -10477,6 +10760,9 @@ applyNonEnglishStyles(); // Apply styles on initial load
 
 // -----------------------------------------------**Thumbnail-Page-Numbers**--------------------------------------------------------
 
+/** Session cache: full gallery URL -> page count (avoids re-fetch when v2 removes the badge) */
+const NHP_THUMB_PAGE_COUNT_CACHE = new Map();
+
 // Function to add page numbers to manga thumbnails
 async function addPageNumbersToThumbnails() {
     // Check if the feature is enabled
@@ -10502,19 +10788,30 @@ async function addPageNumbersToThumbnails() {
     `;
     GM.addStyle(pageNumberCSS);
 
-    // Function to extract page count from a manga page
     async function getPageCount(url) {
+        if (NHP_THUMB_PAGE_COUNT_CACHE.has(url)) {
+            return NHP_THUMB_PAGE_COUNT_CACHE.get(url);
+        }
         try {
+            const idMatch = url.match(/\/g\/(\d+)/);
+            if (idMatch) {
+                const apiData = await nhpFetchGalleryV2(idMatch[1]);
+                if (apiData && apiData.num_pages) {
+                    NHP_THUMB_PAGE_COUNT_CACHE.set(url, apiData.num_pages);
+                    return apiData.num_pages;
+                }
+            }
+
             const response = await fetch(url);
             const html = await response.text();
             const parser = new DOMParser();
             const doc = parser.parseFromString(html, 'text/html');
 
-            // Look for the page count in the tags section
             const pageElement = doc.querySelector('#tags .tag-container:nth-last-child(2) .name');
             if (pageElement) {
                 const pageCount = parseInt(pageElement.textContent.trim(), 10);
                 if (!isNaN(pageCount)) {
+                    NHP_THUMB_PAGE_COUNT_CACHE.set(url, pageCount);
                     return pageCount;
                 }
             }
@@ -10523,6 +10820,15 @@ async function addPageNumbersToThumbnails() {
             console.error('Error fetching page count:', error);
             return null;
         }
+    }
+
+    function appendPageNumberDisplay(coverLink, pageCount) {
+        if (!coverLink || coverLink.querySelector('.page-number-display')) return;
+        const pageNumberDisplay = document.createElement('div');
+        pageNumberDisplay.className = 'page-number-display';
+        pageNumberDisplay.textContent = `${pageCount} ${pageCount === 1 ? 'page' : 'pages'}`;
+        coverLink.style.position = 'relative';
+        coverLink.appendChild(pageNumberDisplay);
     }
 
     // Function to add page number display to a gallery item
@@ -10551,23 +10857,19 @@ async function addPageNumbersToThumbnails() {
         const fullUrl = `https://nhentai.net${mangaUrl}`;
 
         try {
-            // Try to get page count
-            const pageCount = await getPageCount(fullUrl);
-            if (pageCount) {
-                // Double-check that no page number display was added while we were fetching
+            const cached = NHP_THUMB_PAGE_COUNT_CACHE.get(fullUrl);
+            if (cached != null) {
                 if (!coverLink.querySelector('.page-number-display')) {
-                    // Create and add the page number display
-                    const pageNumberDisplay = document.createElement('div');
-                    pageNumberDisplay.className = 'page-number-display';
-                    pageNumberDisplay.textContent = `${pageCount} ${pageCount === 1 ? 'page' : 'pages'}`;
-
-                    // Add to the cover element
-                    coverLink.style.position = 'relative';
-                    coverLink.appendChild(pageNumberDisplay);
+                    appendPageNumberDisplay(coverLink, cached);
                 }
+                return;
+            }
+
+            const pageCount = await getPageCount(fullUrl);
+            if (pageCount && !coverLink.querySelector('.page-number-display')) {
+                appendPageNumberDisplay(coverLink, pageCount);
             }
         } finally {
-            // Always clear the processing flag
             coverLink.dataset.pageNumberProcessing = 'false';
         }
     }
@@ -10583,12 +10885,26 @@ async function addPageNumbersToThumbnails() {
     // Initial processing
     processGalleryItems();
 
-    // Set up a MutationObserver to handle dynamically added content
+    // Re-process galleries that lost their page numbers (e.g. after v2 hydration)
+    function reprocessGalleriesMissingPageNumbers() {
+        const galleryItems = document.querySelectorAll('.gallery');
+        galleryItems.forEach(galleryItem => {
+            const coverLink = galleryItem.querySelector('.cover');
+            if (coverLink && !coverLink.querySelector('.page-number-display') &&
+                coverLink.dataset.pageNumberProcessing !== 'true') {
+                coverLink.dataset.pageNumberProcessing = 'false';
+                addPageNumberToGallery(galleryItem);
+            }
+        });
+    }
+
+    // Set up a MutationObserver to handle dynamically added/re-rendered content
+    let pageNumberObserverDebounce = null;
     const observer = new MutationObserver(mutations => {
+        let needsReprocess = false;
         mutations.forEach(mutation => {
             if (mutation.addedNodes && mutation.addedNodes.length > 0) {
                 mutation.addedNodes.forEach(node => {
-                    // Check if the added node is a gallery or contains galleries
                     if (node.classList && node.classList.contains('gallery')) {
                         addPageNumberToGallery(node);
                     } else if (node.querySelectorAll) {
@@ -10599,15 +10915,37 @@ async function addPageNumbersToThumbnails() {
                     }
                 });
             }
+            if (mutation.removedNodes && mutation.removedNodes.length > 0) {
+                mutation.removedNodes.forEach(node => {
+                    if (node.nodeType === 1 && node.classList && node.classList.contains('page-number-display')) {
+                        needsReprocess = true;
+                    }
+                });
+            }
         });
+        if (needsReprocess) {
+            if (pageNumberObserverDebounce) clearTimeout(pageNumberObserverDebounce);
+            pageNumberObserverDebounce = setTimeout(reprocessGalleriesMissingPageNumbers, 300);
+        }
     });
 
-    // Start observing the document with the configured parameters
     observer.observe(document.body, { childList: true, subtree: true });
+
+    // Burst schedule to recover page numbers after v2 hydration
+    [2000, 5000, 8000, 12000].forEach(delay => {
+        setTimeout(reprocessGalleriesMissingPageNumbers, delay);
+    });
 }
 
 // Call the function to add page numbers to thumbnails
 addPageNumbersToThumbnails();
+
+// Shift mark-as-read buttons down when page number displays are present (runs unconditionally)
+setInterval(function () {
+    if ($('.page-number-display').length > 0) {
+        $('.mark-as-read-btn').css('top', '40px');
+    }
+}, 1000);
 
 // -----------------------------------------------**Thumbnail-Page-Numbers**--------------------------------------------------------
 
@@ -11024,9 +11362,23 @@ async function bootstrapKnownMultiwordTagsFromStorage() {
     // No-op: legacy GM tag bootstrap removed
 }
 
-// Handle form submissions
-const nhpSearchForm = document.querySelector('form.search');
-if (nhpSearchForm) {
+/** Resolve search form for Smart Tags (nhentai v2 may omit class "search"). */
+function getNhentaiSearchForm() {
+    const byClass = document.querySelector('form.search');
+    if (byClass) return byClass;
+    const byAction = document.querySelector('form[action*="/search"], form[action*="search"]');
+    if (byAction) return byAction;
+    const byRole = document.querySelector('form[role="search"]');
+    if (byRole) return byRole;
+    const qInput = document.querySelector('header input[name="q"], nav input[name="q"], input[name="q"]');
+    return qInput ? qInput.closest('form') : null;
+}
+
+function bindSmartTagSearchForm() {
+    const nhpSearchForm = getNhentaiSearchForm();
+    if (!nhpSearchForm || nhpSearchForm.dataset.nhpSmartTagBound === '1') return;
+    nhpSearchForm.dataset.nhpSmartTagBound = '1';
+
     nhpSearchForm.addEventListener('submit', async function (e) {
     e.preventDefault();
     const searchInput = this.querySelector('input[name="q"]');
@@ -11349,6 +11701,19 @@ if (nhpSearchForm) {
     });
 }
 
+bindSmartTagSearchForm();
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bindSmartTagSearchForm, { once: true });
+}
+let nhpSmartTagBindDebounce = null;
+new MutationObserver(() => {
+    if (nhpSmartTagBindDebounce) return;
+    nhpSmartTagBindDebounce = setTimeout(() => {
+        nhpSmartTagBindDebounce = null;
+        bindSmartTagSearchForm();
+    }, 250);
+}).observe(document.documentElement, { childList: true, subtree: true });
+
 function removeBuiltInErrorPage() {
     const errorPage = document.querySelector('.error-page');
     if (!errorPage) return;
@@ -11466,7 +11831,7 @@ function deSmartTagQuery(q) {
     cancel.addEventListener('click', () => overlay.remove());
     overlay.addEventListener('click', (evt) => { if (evt.target === overlay) overlay.remove(); });
     retry.addEventListener('click', async () => {
-        const form = document.querySelector('form.search');
+        const form = getNhentaiSearchForm();
         const input = form ? form.querySelector('input[name="q"]') : null;
         const fallback = deSmartTagQuery(q);
         if (input) input.value = fallback;
@@ -11493,6 +11858,7 @@ function deSmartTagQuery(q) {
     window.__nhPlusErrorImageRemovalInit = true;
 
     const selector = '#content > div > img.error-image.error-image-light';
+    const errorContainerSelector = '.error-container';
 
     function isTargetPage() {
         const path = String(window.location.pathname || '');
@@ -11511,6 +11877,8 @@ function deSmartTagQuery(q) {
         if (!isTargetPage()) return;
         const img = document.querySelector(selector);
         if (img) img.remove();
+        const errContainer = document.querySelector(errorContainerSelector);
+        if (errContainer) errContainer.remove();
     }
 
     removeOnce();
@@ -13513,8 +13881,6 @@ class MarkAsReadSystem {
     async cacheGalleryDataFromFirstPage(galleryId) {
         try {
             const cachedData = await GM.getValue('readGalleriesCache', {});
-
-            // Skip if already cached
             if (cachedData[galleryId]) return;
 
             const galleryInfo = {
@@ -13529,66 +13895,53 @@ class MarkAsReadSystem {
             // Try to get data from current page first (we might be on a gallery page)
             const galleryMatch = window.location.pathname.match(/\/g\/(\d+)\//);
             if (galleryMatch && galleryMatch[1] === galleryId) {
-                // Get title from h1 or h2
                 const titleElement = document.querySelector('h1, h2');
                 if (titleElement) {
                     galleryInfo.title = titleElement.textContent.trim();
                 }
-
-                // Get page count from page number button
                 const pageNumberButton = document.querySelector('.page-number.btn.btn-unstyled .num-pages');
                 if (pageNumberButton) {
                     galleryInfo.pages = pageNumberButton.textContent.trim();
                 }
             }
 
-            // For auto-mark scenarios, try to fetch the cover from the first page
-            try {
-                const firstPageUrl = `/g/${galleryId}/1/`;
-                console.log(`Fetching cover image from first page: ${firstPageUrl}`);
-
-                const response = await fetch(firstPageUrl);
-                if (response.ok) {
-                    const html = await response.text();
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(html, 'text/html');
-
-                    // Get the cover image from #image-container img
-                    const coverImg = doc.querySelector('#image-container img');
-                    if (coverImg && coverImg.src) {
-                        galleryInfo.thumbnail = coverImg.src;
-                        console.log(`Found cover image: ${coverImg.src}`);
-                    }
-
-                    // Also try to get title if we don't have it
-                    if (galleryInfo.title === `Gallery ${galleryId}`) {
-                        const titleElement = doc.querySelector('h1, h2');
-                        if (titleElement) {
-                            galleryInfo.title = titleElement.textContent.trim();
+            // Primary: v2 API (same-origin, correct media_id for CDN URLs)
+            const apiData = await nhpFetchGalleryV2(galleryId);
+            if (apiData) {
+                if (!galleryInfo.thumbnail && (apiData.cover_url || apiData.thumb_url)) {
+                    galleryInfo.thumbnail = apiData.cover_url || apiData.thumb_url;
+                }
+                if (galleryInfo.title === `Gallery ${galleryId}` && apiData.title) {
+                    galleryInfo.title = apiData.title;
+                }
+                if (apiData.num_pages) {
+                    galleryInfo.pages = String(apiData.num_pages);
+                }
+            } else {
+                // Fallback: scrape the first page
+                try {
+                    const response = await fetch(`/g/${galleryId}/1/`);
+                    if (response.ok) {
+                        const html = await response.text();
+                        const doc = new DOMParser().parseFromString(html, 'text/html');
+                        const coverImg = doc.querySelector('#image-container img');
+                        if (coverImg && coverImg.src) {
+                            galleryInfo.thumbnail = coverImg.src;
+                        }
+                        if (galleryInfo.title === `Gallery ${galleryId}`) {
+                            const titleElement = doc.querySelector('h1, h2');
+                            if (titleElement) {
+                                galleryInfo.title = titleElement.textContent.trim();
+                            }
                         }
                     }
-                }
-            } catch (fetchError) {
-                console.log(`Could not fetch first page for gallery ${galleryId}:`, fetchError);
-
-                // Fallback: try to construct thumbnail URL
-                const thumbnailUrl = `https://t.nhentai.net/galleries/${galleryId}/thumb.jpg`;
-                try {
-                    const thumbResponse = await fetch(thumbnailUrl, { method: 'HEAD' });
-                    if (thumbResponse.ok) {
-                        galleryInfo.thumbnail = thumbnailUrl;
-                        console.log(`Using fallback thumbnail: ${thumbnailUrl}`);
-                    }
-                } catch (thumbError) {
-                    console.log(`Fallback thumbnail also failed for gallery ${galleryId}`);
+                } catch (fetchError) {
+                    console.log(`Could not fetch first page for gallery ${galleryId}:`, fetchError);
                 }
             }
 
-            // Save to cache
             cachedData[galleryId] = galleryInfo;
             await GM.setValue('readGalleriesCache', cachedData);
-
-            console.log(`Cached gallery data from first page for ${galleryId}:`, galleryInfo);
         } catch (error) {
             console.error('Error caching gallery data from first page:', error);
         }
@@ -14431,6 +14784,9 @@ class LanguageDetectionSystem {
      * Add language flag to gallery
      */
     addLanguageFlag(gallery, language) {
+        // Skip if nhentai v2 already provides a native flag via lang-* class
+        if (gallery.className && /\blang-\w+\b/.test(gallery.className)) return;
+
         const caption = gallery.querySelector('.caption');
         if (!caption) return;
 
@@ -14478,12 +14834,11 @@ class LanguageDetectionSystem {
         }
 
         const flagUrls = {
-            english: "https://i.imgur.com/vSnHmmi.gif",
-            japanese: "https://i.imgur.com/GlArpuS.gif",
-            chinese: "https://i.imgur.com/7B55DYm.gif",
-            korean: "https://i.imgur.com/placeholder-kr.gif", // Add actual Korean flag URL
-            spanish: "https://i.imgur.com/placeholder-es.gif", // Add actual Spanish flag URL
-            // Add more flag URLs as needed
+            english: "https://nhentai.net/flags/gb.svg",
+            japanese: "https://nhentai.net/flags/jp.svg",
+            chinese: "https://nhentai.net/flags/cn.svg",
+            korean: "https://nhentai.net/flags/kr.svg",
+            spanish: "https://nhentai.net/flags/es.svg",
         };
 
         if (flagUrls[language]) {
@@ -15376,6 +15731,81 @@ if (document.readyState === 'loading') {
 
 //------------------------  **Read Manga Page System**  ------------------
 
+// Tear down script-injected pages when nhentai v2 SPA navigates away (otherwise custom DOM stays and new layout stacks below it).
+function nhpNormalizedPathname() {
+    return (window.location.pathname || '').replace(/\/+$/, '') || '/';
+}
+
+function nhpIsVirtualCustomRoute() {
+    const raw = window.location.pathname || '';
+    const p = nhpNormalizedPathname();
+    const h = window.location.hash || '';
+    if (raw.includes('/settings')) return true;
+    if (p === '/read-manga' || raw.startsWith('/read-manga/')) return true;
+    if (p === '/quick-nut' || raw.startsWith('/quick-nut/')) return true;
+    if (raw.includes('/bookmarks')) return true;
+    if (raw.startsWith('/favorite')) return true;
+    if (/continue[-_]?reading/i.test(raw)) return true;
+    if (h === '#read-manga' || h === '#quick-nut') return true;
+    return false;
+}
+
+function nhpHasStaleCustomPageDom() {
+    return !!(
+        document.querySelector('.read-manga-page, #nhp-settings-root, .nhp-custom-page-root, #offline-favorites-container') ||
+        document.body.classList.contains('read-manga-active') ||
+        document.body.classList.contains('quick-nut-active') ||
+        document.body.classList.contains('offline-favorites-active')
+    );
+}
+
+function nhpTeardownStaleCustomPages() {
+    document.querySelectorAll('.read-manga-page').forEach((el) => {
+        try { el.remove(); } catch (_) { /* ignore */ }
+    });
+    document.querySelectorAll('.nhp-custom-page-root, #nhp-settings-root').forEach((el) => {
+        try { el.remove(); } catch (_) { /* ignore */ }
+    });
+    const ofc = document.getElementById('offline-favorites-container');
+    if (ofc) {
+        try { ofc.remove(); } catch (_) { /* ignore */ }
+    }
+    document.body.classList.remove('read-manga-active', 'quick-nut-active', 'offline-favorites-active');
+}
+
+function nhpOnMaybeLeftCustomPage() {
+    if (nhpIsVirtualCustomRoute()) return;
+    if (!nhpHasStaleCustomPageDom()) return;
+    nhpTeardownStaleCustomPages();
+    window.location.reload();
+}
+
+function nhpEnsureCustomPageLeaveGuard() {
+    if (window.__nhpCustomPageLeaveGuard) return;
+    window.__nhpCustomPageLeaveGuard = true;
+
+    const wrapPush = (orig) => function () {
+        const ret = orig.apply(this, arguments);
+        setTimeout(nhpOnMaybeLeftCustomPage, 0);
+        return ret;
+    };
+    history.pushState = wrapPush(history.pushState);
+    history.replaceState = wrapPush(history.replaceState);
+
+    window.addEventListener('popstate', () => setTimeout(nhpOnMaybeLeftCustomPage, 0), { passive: true });
+
+    let moTimer = null;
+    const scheduleFromContentMutation = () => {
+        if (nhpIsVirtualCustomRoute()) return;
+        if (moTimer) clearTimeout(moTimer);
+        moTimer = setTimeout(nhpOnMaybeLeftCustomPage, 150);
+    };
+    const contentEl = document.getElementById('content');
+    if (contentEl) {
+        new MutationObserver(scheduleFromContentMutation).observe(contentEl, { childList: true, subtree: true });
+    }
+}
+
 /**
  * Read Manga Page System
  * Creates a dedicated page to view all read manga
@@ -15393,6 +15823,15 @@ class ReadMangaPageSystem {
      */
     async init() {
         this.handlePageRouting();
+        this.setupNavigationCleanup();
+    }
+
+    /**
+     * Register global leave guard (settings / read manga / quick nut / offline favorites).
+     * v2 SPA often appends new layout instead of replacing #content; we remove stale DOM then reload.
+     */
+    setupNavigationCleanup() {
+        nhpEnsureCustomPageLeaveGuard();
     }
 
     /**
@@ -15688,23 +16127,26 @@ class ReadMangaPageSystem {
             return;
         }
 
-        // Method 3: Try to construct thumbnail URL from gallery ID
-        // nhentai thumbnail pattern: https://t.nhentai.net/galleries/{id}/thumb.jpg
-        const thumbnailUrl = `https://t.nhentai.net/galleries/${galleryId}/thumb.jpg`;
-
-        // Test if the thumbnail exists
-        try {
-            const response = await fetch(thumbnailUrl, { method: 'HEAD' });
-            if (response.ok) {
-                galleryInfo.thumbnail = thumbnailUrl;
-                galleryInfo.cached = true;
+        // Method 3: v2 API (same-origin, returns correct media_id for CDN URLs)
+        const apiData = await nhpFetchGalleryV2(galleryId);
+        if (apiData) {
+            if (!galleryInfo.thumbnail && (apiData.cover_url || apiData.thumb_url)) {
+                galleryInfo.thumbnail = apiData.cover_url || apiData.thumb_url;
             }
-        } catch (error) {
-            // Thumbnail doesn't exist or network error, leave as null
-            console.log(`Thumbnail not found for gallery ${galleryId}`);
+            if (this.isPlaceholderOrMissingTitle(galleryInfo.title, galleryId) && apiData.title) {
+                galleryInfo.title = apiData.title;
+            }
+            if ((!galleryInfo.pages || galleryInfo.pages === 'Unknown') && apiData.num_pages) {
+                galleryInfo.pages = String(apiData.num_pages);
+            }
+            if (apiData.language) {
+                galleryInfo.language = apiData.language;
+            }
+            galleryInfo.cached = true;
+            return;
         }
 
-        // Method 4: Fetch real gallery title from gallery page when placeholder/blank title is shown
+        // Method 4 (fallback): Fetch gallery title from gallery page
         if (this.isPlaceholderOrMissingTitle(galleryInfo.title, galleryId)) {
             const fetchedTitle = await this.fetchGalleryTitleFromPage(galleryId);
             if (fetchedTitle) {
@@ -15788,7 +16230,7 @@ class ReadMangaPageSystem {
                     </div>
                 </div>
 
-                <div class="gallery-grid read-manga-gallery-grid">
+                <div class="gallery-grid nhp-gallery-grid read-manga-gallery-grid">
                     ${galleryData.map(gallery => this.createGalleryCard(gallery)).join('')}
                 </div>
 
@@ -15980,6 +16422,45 @@ class ReadMangaPageSystem {
      */
     addReadMangaPageCSS() {
         const css = `
+            /* Override nhentai v2 #content styling for script custom pages */
+            body.read-manga-active #content,
+            body.quick-nut-active #content,
+            body.offline-favorites-active #content {
+                background: transparent !important;
+                background-color: transparent !important;
+                backdrop-filter: none !important;
+                -webkit-backdrop-filter: none !important;
+                filter: none !important;
+                -webkit-filter: none !important;
+            }
+
+            body.read-manga-active #content *,
+            body.quick-nut-active #content *,
+            body.offline-favorites-active #content * {
+                filter: none !important;
+                -webkit-filter: none !important;
+            }
+
+            body.read-manga-active #content h1,
+            body.read-manga-active .read-manga-page h1,
+            body.quick-nut-active #content h1,
+            body.offline-favorites-active #content h1 {
+                filter: none !important;
+                -webkit-filter: none !important;
+                opacity: 1 !important;
+                visibility: visible !important;
+                color: inherit;
+            }
+
+            body.read-manga-active #content h1 .nobold,
+            body.quick-nut-active #content h1 .nobold,
+            body.offline-favorites-active #content h1 .nobold {
+                filter: none !important;
+                -webkit-filter: none !important;
+                opacity: 1 !important;
+                visibility: visible !important;
+            }
+
             /* Read Manga Page Container */
             .read-manga-page {
                 min-height: 100vh;
@@ -16788,16 +17269,18 @@ class QuickNutPageSystem {
     }
     async fetchFirstPageImageUrl(id) {
         try {
+            const apiData = await nhpFetchGalleryV2(id);
+            if (apiData && (apiData.cover_url || apiData.thumb_url)) {
+                return apiData.cover_url || apiData.thumb_url;
+            }
+
             const firstPageUrl = `https://nhentai.net/g/${id}/1/`;
-            console.log('[QuickNut] fetch first page', { id, url: firstPageUrl });
             const res = await this.fetchWithRetry(firstPageUrl, { credentials: 'include' }, 1, 10000);
-            if (!res || !res.ok) { console.log('[QuickNut] first page failed', { id, ok: res && res.ok, status: res && res.status }); return null; }
+            if (!res || !res.ok) return null;
             const html = await res.text();
             const doc = new DOMParser().parseFromString(html, 'text/html');
             const img = doc.querySelector('#image-container img');
-            const src = img && img.getAttribute('src') ? img.getAttribute('src') : null;
-            console.log('[QuickNut] first page img', { id, src });
-            return src;
+            return img && img.getAttribute('src') ? img.getAttribute('src') : null;
         } catch (_) {
             return null;
         }
@@ -16827,7 +17310,7 @@ class QuickNutPageSystem {
                     <button id="quick-nut-refresh" class="btn btn-secondary">Refresh</button>
                 </div>
                 <h1>Quick Nut <span class="nobold">(${items.length})</span></h1>
-                <div class="gallery-grid read-manga-gallery-grid">
+                <div class="gallery-grid nhp-gallery-grid read-manga-gallery-grid">
                     ${items.map(g => this.createGalleryCard(g)).join('')}
                 </div>
             </div>
@@ -16930,8 +17413,8 @@ function addEnhancedCSS() {
         }
         */
 
-        /* Gallery Grid Layout */
-        .gallery-grid {
+        /* Gallery Grid Layout - scoped to script-only pages to avoid breaking nhentai v2 native .gallery-grid */
+        .nhp-gallery-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
             gap: 25px;
@@ -16941,7 +17424,7 @@ function addEnhancedCSS() {
         }
 
         @media (max-width: 768px) {
-            .gallery-grid {
+            .nhp-gallery-grid {
                 grid-template-columns: repeat(auto-fill, minmax(115px, 1fr));
                 gap: 15px;
                 padding: 15px 5px;
@@ -16949,7 +17432,7 @@ function addEnhancedCSS() {
         }
 
         @media (min-width: 1400px) {
-            .gallery-grid {
+            .nhp-gallery-grid {
                 grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
                 gap: 30px;
             }
@@ -17352,19 +17835,18 @@ function addEnhancedCSS() {
     GM.addStyle(css);
 }
 
-// Override website's default gallery sizing for gallery-grid
+// Override gallery sizing - scoped to script-only pages (.nhp-gallery-grid) to avoid breaking nhentai v2 native layout
 GM.addStyle(`
     @media screen and (min-width: 980px) {
-        .gallery-grid .gallery,
-        .gallery-grid .gallery-favorite,
-        .gallery-grid .thumb-container {
+        .nhp-gallery-grid .gallery,
+        .nhp-gallery-grid .gallery-favorite,
+        .nhp-gallery-grid .thumb-container {
             width: 19% !important;
             margin: 3px !important;
         }
     }
 
-    /* Ensure gallery-grid uses flexbox layout for better control */
-    .gallery-grid {
+    .nhp-gallery-grid {
         display: flex !important;
         flex-wrap: wrap !important;
         justify-content: flex-start !important;
@@ -17376,18 +17858,18 @@ GM.addStyle(`
     }
 
     @media (max-width: 979px) {
-        .gallery-grid .gallery,
-        .gallery-grid .gallery-favorite,
-        .gallery-grid .thumb-container {
+        .nhp-gallery-grid .gallery,
+        .nhp-gallery-grid .gallery-favorite,
+        .nhp-gallery-grid .thumb-container {
             width: 48% !important;
             margin: 1% !important;
         }
     }
 
     @media (max-width: 600px) {
-        .gallery-grid .gallery,
-        .gallery-grid .gallery-favorite,
-        .gallery-grid .thumb-container {
+        .nhp-gallery-grid .gallery,
+        .nhp-gallery-grid .gallery-favorite,
+        .nhp-gallery-grid .thumb-container {
             width: 100% !important;
             margin: 5px 0 !important;
         }
@@ -18151,3 +18633,7 @@ $(document).ready(async function () {
 });
 
 //----------------------------------------------------------**Manga-Sync**--------------------------------------------------------------------
+
+// Ensure custom-page teardown runs even if Read Manga system is disabled (settings / quick nut still need it).
+nhpEnsureCustomPageLeaveGuard();
+
