@@ -1,4 +1,15 @@
 {
+  "10.7.1": {
+    "date": "2026-04-21",
+    "changes": [
+      "fix(perf): disable Show Page Numbers feature and UI due to rate limiting issues",
+      "fix(perf): disable eager background fetching of bookmark metadata (titles, covers, tags)",
+      "fix(perf): force disable aggressive background bookmark processing and sync tasks",
+      "fix(perf): modify metadata fetching to use cache only to avoid network requests",
+      "fix(perf): disable background sync timers to prevent background network spikes",
+      "chore(version): bump userscript version to 10.7.1"
+    ]
+  },
   "10.7.0": {
     "date": "2026-04-01",
     "changes": [

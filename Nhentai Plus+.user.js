@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      10.7.0
+// @version      10.7.1
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -23,7 +23,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "10.7.0";
+const CURRENT_VERSION = "10.7.1";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -1658,7 +1658,7 @@ async function addQuickNutButton() {
         }
 
         // Function to fetch the title of a webpage with caching and retries
-        async function fetchTitleWithCacheAndRetry(url, retries = 3) {
+        async function fetchTitleWithCacheAndRetry(url) {
             // Check if we have cached manga IDs for this bookmark
             const mangaIds = await GM.getValue(`bookmark_manga_ids_${url}`, []);
 
@@ -1667,10 +1667,10 @@ async function addQuickNutButton() {
                 // For bookmarks with multiple manga, we'll show a count
                 if (mangaIds.length > 1) {
                     let itemCount = mangaIds.length;
-                    let itemSuffix = itemCount > 25 ? `+` : ``;
+                    let itemSuffix = itemCount >= 25 ? `+` : ``;
                     return `${url} (${itemCount}${itemSuffix} items)`;
                 }
-                // For a single manga, fetch its details
+                // For a single manga, check its details
                 else {
                     const mangaId = mangaIds[0];
                     const mangaInfo = await GM.getValue(`manga_${mangaId}`);
@@ -1681,37 +1681,20 @@ async function addQuickNutButton() {
                 }
             }
 
-            // If no cached data found, fetch the title directly
-            for (let i = 0; i < retries; i++) {
-                try {
-                    const response = await fetch(url);
-                    if (response.status === 429) {
-                        // If we get a 429, wait for a bit before retrying
-                        await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
-                        continue;
-                    }
-                    const text = await response.text();
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(text, 'text/html');
-                    let title = doc.querySelector('title').innerText;
-
-                    // Remove "» nhentai: hentai doujinshi and manga" from the title
-                    const unwantedPart = "» nhentai: hentai doujinshi and manga";
-                    if (title.includes(unwantedPart)) {
-                        title = title.replace(unwantedPart, '').trim();
-                    }
-
-                    // We no longer cache the title directly with the URL as the key
-                    // Instead, we'll create proper relationships when manga data is saved
-
-                    return title;
-                } catch (error) {
-                    console.error(`Error fetching title for: ${url}. Attempt ${i + 1} of ${retries}`, error);
-                    if (i === retries - 1) {
-                        return url; // Fallback to URL if all retries fail
-                    }
+            // NETWORK FETCHING REMOVED to prevent rate limiting.
+            // If no cached data found, just return a formatted version of the URL.
+            try {
+                const urlObj = new URL(url);
+                const pathParts = urlObj.pathname.split('/').filter(p => p);
+                if (pathParts.length > 0) {
+                    // Try to generate a readable title from the URL path
+                    const lastPart = pathParts[pathParts.length - 1];
+                    return lastPart.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
                 }
+            } catch (e) {
+                console.error("Error parsing URL:", e);
             }
+            return url;
         }
 
         // Function to display bookmarked pages with active loading for unfetched bookmarks
@@ -2118,51 +2101,18 @@ async function addQuickNutButton() {
 
                     (async () => {  // Immediately invoked async function
                         const mangaBookMarkingType = await GM.getValue('mangaBookMarkingType', 'cover');
-                        let title = manga.title;
-                        let coverImage = manga.coverImageUrl;
-
-                        if (!title || !coverImage) {
-                            try {
-                                const info = await fetchMangaInfoWithCacheAndRetry(manga.url);
-                                title = info.title;
-                            } catch (error) {
-                                console.error(`Error fetching info for: ${manga.url}`, error);
-                                listItem.html(`<span class="error-text">Failed to fetch data</span>`);
-                                return; // Stop processing this item if fetching fails
-                            }
-                        }
-
-                        // Fetch and store tags — stored inline on the manga object to avoid separate GM keys
+                        let title = manga.title || "Unknown Title";
+                        let coverImage = manga.coverImageUrl || "";
                         let tags = Array.isArray(manga.tags) ? manga.tags : [];
-                        if (tags.length === 0) {
-                            try {
-                                const response = await fetch(manga.url);
-                                const html = await response.text();
-                                const doc = new DOMParser().parseFromString(html, 'text/html');
-                                tags = Array.from(doc.querySelectorAll('#tags .tag')).map(tag => {
-                                    // Remove popularity numbers and format the tag
-                                    return tag.textContent.replace(/\d+K?$/, '').trim().replace(/\b\w/g, char => char.toUpperCase());
-                                });
-                                console.log(`Fetched tags for ${manga.url}:`, tags);
-                                // Save tags inline on the manga object in bookmarkedMangas
-                                manga.tags = tags;
-                                const updatedMangas = bookmarkedMangas.map(m => m.url === manga.url ? manga : m);
-                                await GM.setValue('bookmarkedMangas', updatedMangas);
-                                await addKnownMultiwordTags(tags);
-                            } catch (error) {
-                                console.error(`Error fetching tags for: ${manga.url}`, error);
-                                tags = []; // Default to empty if fetch fails
-                            }
-                        } else {
-                            console.log(`Retrieved cached tags for ${manga.url}:`, tags);
-                            await addKnownMultiwordTags(tags);
-                        }
+
+                        // BACKGROUND FETCHING REMOVED to prevent rate limiting.
+                        // Metadata should be saved at the time of bookmarking.
 
                         let content = "";
                         if (mangaBookMarkingType === 'cover') {
                             content = `
                         <div class="cover-container">
-                            <img src="${coverImage}" alt="${title}" class="cover-image">
+                            ${coverImage ? `<img src="${coverImage}" alt="${title}" class="cover-image">` : `<div class="no-cover">No Cover</div>`}
                             <div class="title-overlay">${title}</div>
                         </div>`;
                         } else if (mangaBookMarkingType === 'title') {
@@ -2170,7 +2120,7 @@ async function addQuickNutButton() {
                         } else if (mangaBookMarkingType === 'both') {
                             content = `
                         <div class="cover-with-title">
-                            <img src="${coverImage}" alt="${title}" class="cover-image-small">
+                            ${coverImage ? `<img src="${coverImage}" alt="${title}" class="cover-image-small">` : `<div class="no-cover-small">N/A</div>`}
                             <span class="title-text">${title}</span>
                         </div>`;
                         }
@@ -2178,11 +2128,13 @@ async function addQuickNutButton() {
                         const updatedListItem = $(`<li class="bookmark-item ${mangaBookMarkingType}-mode"><a href="${manga.url}" class="bookmark-link">${content}</a><button class="delete-button">✖</button></li>`);
                         listItem.replaceWith(updatedListItem);
 
-                        // Add title attribute with tags for hover tooltip
-                        const tooltipText = `${title}\n\nTags: ${tags.join(', ')}`;
-                        const galleryCaptionTooltipsEnabled = await GM.getValue('galleryCaptionTooltipsEnabled', true);
-                        if (galleryCaptionTooltipsEnabled) {
-                            updatedListItem.find('.bookmark-link').attr('title', tooltipText);
+                        // Add title attribute with tags for hover tooltip if available
+                        if (tags.length > 0) {
+                            const tooltipText = `${title}\n\nTags: ${tags.join(', ')}`;
+                            const galleryCaptionTooltipsEnabled = await GM.getValue('galleryCaptionTooltipsEnabled', true);
+                            if (galleryCaptionTooltipsEnabled) {
+                                updatedListItem.find('.bookmark-link').attr('title', tooltipText);
+                            }
                         }
 
                         // Add delete functionality
@@ -2555,20 +2507,9 @@ async function addQuickNutButton() {
                 return cachedInfo;
             }
 
-            try {
-                const response = await fetch(manga);
-                const html = await response.text();
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(html, 'text/html');
-                const title = doc.querySelector('h1.title').textContent;
-                const coverImage = doc.querySelector('#cover img').src;
-                const info = { title, coverImage };
-                await GM.setValue(cacheKey, info);
-                return info;
-            } catch (error) {
-                console.error(`Error fetching manga info for: ${manga}`, error);
-                throw error;
-            }
+            // NETWORK FETCHING REMOVED to prevent rate limiting.
+            // If data is missing, we'll return a placeholder to avoid breaking the UI.
+            return { title: "Unknown Title", coverImage: "" };
         }
 
         // Call the function to display bookmarked pages with active loading
@@ -3358,12 +3299,12 @@ if (window.location.href.includes('/settings')) {
                     <h3>Interface</h3>
                     <div class="setting-row">
                         <div class="setting-info">
-                            <span class="setting-label">Show Page Numbers</span>
-                            <span class="setting-desc">Display page count on manga thumbnails</span>
+                            <span class="setting-label" style="text-decoration: line-through; opacity: 0.6;">Show Page Numbers</span>
+                            <span class="setting-desc" style="color: #ff4d4d; font-weight: bold;">[DISABLED] This feature is temporarily closed due to rate limiting issues. It will return in a future update.</span>
                         </div>
                         <label class="toggle-switch">
-                            <input type="checkbox" id="showPageNumbersEnabled">
-                            <span class="toggle-slider"></span>
+                            <input type="checkbox" id="showPageNumbersEnabled" disabled>
+                            <span class="toggle-slider" style="opacity: 0.5; cursor: not-allowed;"></span>
                         </label>
                     </div>
                     <div class="setting-row">
@@ -10767,6 +10708,8 @@ const NHP_THUMB_PAGE_COUNT_CACHE = new Map();
 async function addPageNumbersToThumbnails() {
     // Check if the feature is enabled
     const showPageNumbersEnabled = await GM.getValue('showPageNumbersEnabled', true);
+    // FORCE DISABLED due to rate limiting issues
+    return;
     if (!showPageNumbersEnabled) return;
 
     // Add CSS for page number display
@@ -10954,6 +10897,8 @@ setInterval(function () {
 setTimeout(async function () {
     // Function to fetch and process bookmarked pages
     async function processBookmarkedPages(isBackgroundProcess = false) {
+        // FORCE DISABLED due to rate limiting issues
+        return;
         // Get all bookmarked pages from storage
         const bookmarkedPages = await GM.getValue('bookmarkedPages', []);
 
@@ -11299,35 +11244,18 @@ setTimeout(async function () {
         }
     }
 
-    // Set up periodic background processing
+    // Background processing DISABLED due to rate limiting issues.
+    // Bookmarks will only be processed when the user is on the bookmarks page.
     function setupBackgroundProcessing() {
-        // Process bookmarks in the background every hour
-        setInterval(async () => {
-            console.log('Starting background bookmark processing...');
-            await processBookmarkedPages(true);
-        }, 3600000); // 1 hour in milliseconds
-
-        // Also run once at startup after a short delay
-        setTimeout(async () => {
-            console.log('Running initial background bookmark processing...');
-            await processBookmarkedPages(true);
-        }, 30000); // 30 seconds after page load
+        console.log('Background bookmark processing is disabled to prevent rate limiting.');
     }
 
-    // Process bookmarks on any page, but with different behavior
-    // If we're on the bookmarks page, process immediately with DOM integration
-    // Otherwise, process in background mode after a short delay
+    // Process bookmarks only if we're on the bookmarks page
     if (window.location.href.includes('/bookmarks')) {
         processBookmarkedPages(false); // Process with DOM integration
-    } else {
-        // On other pages, process in background mode after a short delay
-        setTimeout(() => {
-            processBookmarkedPages(true); // Process in background mode
-        }, 5000); // 5 second delay to not interfere with page loading
     }
 
-    // Set up background processing regardless of current page
-    setupBackgroundProcessing();
+    // setupBackgroundProcessing(); // Disabled background tasks
 
     // Removed: bootstrapKnownMultiwordTagsFromStorage(); (Smart Tag now relies on GitHub taxonomy)
 
