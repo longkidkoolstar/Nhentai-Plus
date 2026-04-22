@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      10.7.1
+// @version      10.8.0
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -23,7 +23,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "10.7.1";
+const CURRENT_VERSION = "10.8.0";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -194,6 +194,434 @@ $(document).ready(async function () {
     $("<style>").html(styles).appendTo("head");
 });
 //--------------------------**Fix Menu OverFlow**------------------------------------
+
+// ---- Persistent NHP Styles (injected into <head> to survive Svelte navigation) ----
+(function injectPersistentNhpStyles() {
+    if (document.getElementById('nhp-persistent-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'nhp-persistent-styles';
+    style.textContent = `
+        /* Page number display on gallery thumbnails */
+        .page-number-display {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background-color: rgba(0, 0, 0, 0.65);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: bold;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        /* Gallery card positioning for overlays */
+        .gallery {
+            position: relative;
+        }
+        .gallery .cover {
+            position: relative;
+        }
+    `;
+    document.head.appendChild(style);
+})();
+
+// ---- nhentai Dark Theme Fallback for Custom/404 Pages ----
+// On custom routes (/settings/, /bookmarks/, /read-manga/, etc.), nhentai's Svelte CSS
+// bundles aren't loaded because these are 404 pages. This injects the core dark theme
+// so the nav, text, and page elements look correct.
+(function injectCustomPageThemeFallback() {
+    const customRouteRegex = /^\/(settings|read-manga|quick-nut|continue-reading|continue_reading|bookmarks|favorite)\/?/;
+    if (!customRouteRegex.test(window.location.pathname)) return;
+    if (document.getElementById('nhp-custom-page-theme')) return;
+
+    const style = document.createElement('style');
+    style.id = 'nhp-custom-page-theme';
+    style.textContent = `
+        /* ===== nhentai Dark Theme Fallback for Custom Pages ===== */
+
+        /* Base page colors */
+        html, body {
+            background-color: #1a1a2e !important;
+            color: #f1f1f1 !important;
+            font-family: "Source Sans Pro", Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Prevent any horizontal scroll */
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
+        /* Hide Svelte root and 404 error styling on custom pages */
+        .error-container, #app, #__app, #__nuxt {
+            display: none !important;
+        }
+
+        /* ===== Navigation Bar ===== */
+        nav {
+            background: #1b1b2f;
+            border-bottom: 2px solid #ed2553;
+            padding: 10px 15px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            box-sizing: border-box !important;
+            position: relative;
+            z-index: 1000;
+            width: 100% !important;
+            max-width: 100% !important;
+        }
+
+        nav a.logo {
+            display: flex;
+            align-items: center;
+            text-decoration: none;
+            flex-shrink: 0;
+            margin-right: 15px;
+            margin-left: 0px; /* Push logo inwards to prevent off-screen */
+        }
+
+        nav a.logo img {
+            height: 26px; /* Shrunk slightly */
+            width: auto;
+            max-width: 100%;
+        }
+
+        /* Search form */
+        nav .search {
+            display: flex;
+            flex: 1;
+            min-width: 100px;
+            max-width: 400px;
+            margin-right: 15px;
+        }
+
+        nav .search input[type="search"] {
+            flex: 1;
+            min-width: 0;
+            padding: 8px 12px;
+            border: 1px solid #333;
+            border-right: none;
+            border-radius: 4px 0 0 4px;
+            background: #2a2a3e;
+            color: #f1f1f1;
+            font-size: 14px;
+            outline: none;
+        }
+
+        nav .search input[type="search"]::placeholder {
+            color: #888;
+        }
+
+        nav .search input[type="search"]:focus {
+            border-color: #ed2553;
+            background: #2a2a44;
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 12px;
+            border: 1px solid transparent;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background-color 0.2s, opacity 0.2s;
+            line-height: 1.4;
+            gap: 6px;
+            color: #f1f1f1;
+        }
+
+        .btn-primary {
+            background-color: #ed2553;
+            color: #fff;
+            border-color: #ed2553;
+        }
+
+        .btn-primary:hover {
+            background-color: #d91e48;
+        }
+
+        .btn-secondary {
+            background-color: #2a2a3e;
+            color: #f1f1f1;
+            border-color: #444;
+        }
+
+        .btn-secondary:hover {
+            background-color: #3a3a4e;
+        }
+
+        .btn-square {
+            width: 36px;
+            height: 36px;
+            padding: 0;
+            flex-shrink: 0;
+        }
+
+        /* Hamburger menu button — hidden on desktop via media query */
+        #hamburger {
+            display: none;
+            flex-direction: column;
+            gap: 4px;
+            flex-shrink: 0;
+        }
+
+        #hamburger .line {
+            display: block;
+            width: 20px;
+            height: 2px;
+            background: #f1f1f1;
+        }
+
+        /* Collapse menu */
+        nav .collapse {
+            display: flex;
+            flex: 1;
+            min-width: 0;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        /* Menu lists */
+        ul.menu {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+
+        ul.menu.left {
+            flex: 1;
+        }
+
+        ul.menu li {
+            display: flex;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        ul.menu a {
+            color: #f1f1f1;
+            text-decoration: none;
+            padding: 8px 10px;
+            font-size: 13px;
+            white-space: nowrap;
+            transition: color 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        ul.menu a:hover {
+            color: #ed2553;
+        }
+
+        ul.menu a i {
+            font-size: 14px;
+        }
+
+        /* Color icon for favorites heart */
+        .color-icon {
+            color: #ed2553;
+        }
+
+        /* Username in nav */
+        .username {
+            color: #f1f1f1;
+        }
+
+        .nav-avatar {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            vertical-align: middle;
+            margin-right: 4px;
+        }
+
+        /* Dropdown */
+        li.dropdown {
+            position: relative;
+        }
+
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: #2a2a3e;
+            border: 1px solid #444;
+            border-radius: 4px;
+            min-width: 160px;
+            z-index: 1001;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            padding: 4px 0;
+        }
+
+        .dropdown-menu.open {
+            display: block;
+        }
+
+        .dropdown-menu li {
+            display: block;
+        }
+
+        .dropdown-menu a {
+            display: block;
+            padding: 10px 16px;
+            color: #f1f1f1;
+            font-size: 14px;
+        }
+
+        .dropdown-menu a:hover {
+            background: #3a3a4e;
+            color: #ed2553;
+        }
+
+        /* Right menu alignment */
+        ul.menu.right {
+            margin-left: auto;
+            flex-shrink: 0;
+            flex-wrap: wrap;
+        }
+
+        /* Container */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #f1f1f1;
+        }
+
+        /* Links */
+        a {
+            color: #89b4fa;
+        }
+        a:hover {
+            color: #b4d0ff;
+        }
+
+        /* Headers */
+        h1, h2, h3, h4, h5, h6 {
+            color: #f1f1f1;
+        }
+
+        /* Generic text elements */
+        p, span, div, label, li {
+            color: inherit;
+        }
+
+        /* Form elements */
+        input, textarea, select {
+            background: #2a2a3e;
+            color: #f1f1f1;
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 6px 10px;
+        }
+
+        input:focus, textarea:focus, select:focus {
+            border-color: #ed2553;
+            outline: none;
+        }
+
+        /* ===== Responsive — Match nhentai native mobile layout ===== */
+
+        /* Desktop: hamburger hidden, collapse inline */
+        @media (min-width: 769px) {
+            #hamburger {
+                display: none !important;
+            }
+
+            li.dropdown {
+                display: none;
+            }
+        }
+
+        /* Mobile: hamburger visible, collapse toggles, items stack vertically */
+        @media (max-width: 768px) {
+            nav {
+                padding: 8px 10px;
+                gap: 8px;
+            }
+
+            #hamburger {
+                display: flex !important;
+            }
+
+            nav a.logo {
+                margin-right: 0;
+            }
+
+            /* Search stays inline with logo and hamburger */
+            nav .search {
+                flex: 1;
+                min-width: 0;
+                max-width: none;
+                margin-right: 0;
+            }
+
+            /* Collapse is hidden by default, shown when .open */
+            nav .collapse {
+                display: none;
+                flex-basis: 100%;
+                width: 100%;
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            nav .collapse.open {
+                display: flex;
+            }
+
+            /* Menu items stack vertically */
+            ul.menu {
+                flex-direction: column;
+                width: 100%;
+                gap: 0;
+            }
+
+            ul.menu.right {
+                margin-left: 0;
+                border-top: 1px solid #333;
+                padding-top: 5px;
+                margin-top: 5px;
+            }
+
+            ul.menu li {
+                width: 100%;
+            }
+
+            ul.menu a {
+                padding: 10px 15px;
+                width: 100%;
+                font-size: 14px;
+            }
+
+            /* Show all desktop items in mobile dropdown */
+            li.desktop {
+                display: flex !important;
+            }
+
+            /* Hide the compact dropdown on mobile — items are shown individually */
+            li.dropdown {
+                display: none !important;
+            }
+        }
+    `;
+    document.head.appendChild(style);
+})();
 
 /**
  * Detects and removes old-format cache entries while preserving important data.
@@ -763,6 +1191,11 @@ addFindAltButton();
                 display: none;
                 cursor: pointer;
             }
+            /* Drop top-left/top-right overlay buttons when alt controls are visible */
+            .gallery.nhp-alt-controls-visible .hide-manga-btn,
+            .gallery.nhp-alt-controls-visible .mark-as-read-btn {
+                top: 40px !important;
+            }
             .newTabButton {
                 border-radius: 10px;
                 padding: 5px 10px;
@@ -795,6 +1228,24 @@ addFindAltButton();
                 if (!!searches[i] && searches[i].length > 0 && !string.includes(searches[i])) return false;
             }
             return true;
+        }
+
+        function getGalleryLanguageMeta($gallery) {
+            const className = String($gallery.attr("class") || "");
+            const dataTags = String($gallery.attr("data-tags") || "");
+
+            // Prefer modern language class markers first, then fallback to legacy tag ids.
+            if (/\blang-(gb|us|en)\b/.test(className) || dataTags.includes("12227")) {
+                return { lang: "en", flagSrc: flagEn, isEnglish: true };
+            }
+            if (/\blang-(jp|ja)\b/.test(className) || dataTags.includes("6346")) {
+                return { lang: "jp", flagSrc: flagJp, isEnglish: false };
+            }
+            if (/\blang-(cn|zh)\b/.test(className) || dataTags.includes("29963")) {
+                return { lang: "cn", flagSrc: flagCh, isEnglish: false };
+            }
+
+            return { lang: null, flagSrc: null, isEnglish: false };
         }
 
         async function AddAltVersionsToThis(target) {
@@ -862,7 +1313,7 @@ addFindAltButton();
                         const text = await response.text();
                         const parser = new DOMParser();
                         const doc = parser.parseFromString(text, 'text/html');
-                        const found = doc.querySelectorAll(".container > .gallery");
+                        const found = doc.querySelectorAll(".gallery-grid > .gallery, .container > .gallery");
 
                         if (found && found.length > 0) {
                             // Add unique results to allResults
@@ -896,20 +1347,15 @@ addFindAltButton();
                             $result.find(".cover > img, .cover > .caption").css("opacity", non_english_fade_opacity);
                         }
 
-                        const dataTags = $result.attr("data-tags") || "";
-                        const hasNativeFlag = /\blang-\w+\b/.test($result.attr("class") || "");
+                        const langMeta = getGalleryLanguageMeta($result);
 
-                        if (!hasNativeFlag) {
-                            if (dataTags.includes("12227")) {
-                                $result.find(".caption").append(`<img class="overlayFlag" src="` + flagEn + `">`);
-                            } else if (dataTags.includes("6346")) {
-                                $result.find(".caption").append(`<img class="overlayFlag" src="` + flagJp + `">`);
-                            } else if (dataTags.includes("29963")) {
-                                $result.find(".caption").append(`<img class="overlayFlag" src="` + flagCh + `">`);
-                            }
+                        // Covers are re-mounted without the source gallery classes, so always add overlay flag explicitly.
+                        $result.find(".caption .overlayFlag, .caption .language-flag").remove();
+                        if (langMeta.flagSrc) {
+                            $result.find(".caption").append(`<img class="overlayFlag" src="` + langMeta.flagSrc + `">`);
                         }
 
-                        if (dataTags.includes("12227")) {
+                        if (langMeta.isEnglish) {
                             $result.find(".cover > img, .cover > .caption").css("opacity", "1");
                         } else {
                             if (!partially_fade_all_non_english) {
@@ -951,6 +1397,7 @@ addFindAltButton();
                 place.parent().find(".cover:not(:first)").css("display", "none");
                 place.parent().find(".versionPrevButton, .versionNextButton, .numOfVersions").show(200);
                 place.parent().find(".numOfVersions").text("1/" + (allResults.length));
+                place.parent().addClass("nhp-alt-controls-visible");
                 place.hide(200);
             }
 
@@ -966,7 +1413,7 @@ addFindAltButton();
                     const text = await response.text();
                     const parser = new DOMParser();
                     const doc = parser.parseFromString(text, 'text/html');
-                    const foundElements = doc.querySelectorAll(".container > .gallery");
+                    const foundElements = doc.querySelectorAll(".gallery-grid > .gallery, .container > .gallery");
 
                     if (!foundElements || foundElements.length <= 0) {
                         alert("Error reading data");
@@ -985,20 +1432,14 @@ addFindAltButton();
                                 $item.find(".cover > img, .cover > .caption").css("opacity", non_english_fade_opacity);
                             }
 
-                            const dataTags = $item.attr("data-tags") || "";
-                            const hasNativeFlag = /\blang-\w+\b/.test($item.attr("class") || "");
+                            const langMeta = getGalleryLanguageMeta($item);
 
-                            if (!hasNativeFlag) {
-                                if (dataTags.includes("12227")) {
-                                    $item.find(".caption").append(`<img class="overlayFlag" src="` + flagEn + `">`);
-                                } else if (dataTags.includes("6346")) {
-                                    $item.find(".caption").append(`<img class="overlayFlag" src="` + flagJp + `">`);
-                                } else if (dataTags.includes("29963")) {
-                                    $item.find(".caption").append(`<img class="overlayFlag" src="` + flagCh + `">`);
-                                }
+                            $item.find(".caption .overlayFlag, .caption .language-flag").remove();
+                            if (langMeta.flagSrc) {
+                                $item.find(".caption").append(`<img class="overlayFlag" src="` + langMeta.flagSrc + `">`);
                             }
 
-                            if (dataTags.includes("12227")) {
+                            if (langMeta.isEnglish) {
                                 $item.find(".cover > img, .cover > .caption").css("opacity", "1");
                             } else {
                                 if (!partially_fade_all_non_english) {
@@ -1039,6 +1480,7 @@ addFindAltButton();
                     place.parent().find(".cover:not(:first)").css("display", "none");
                     place.parent().find(".versionPrevButton, .versionNextButton, .numOfVersions").show(200);
                     place.parent().find(".numOfVersions").text("1/" + (found.length));
+                    place.parent().addClass("nhp-alt-controls-visible");
                     place.hide(200);
                 } catch (e) {
                     alert("Error getting data: " + e);
@@ -1069,11 +1511,11 @@ addFindAltButton();
             const mangagroupingenabled = await GM.getValue('mangagroupingenabled', true);
             if (!mangagroupingenabled) return;
             let i = 0;
-            let found = $(".container > .gallery");
+            let found = $(".gallery-grid > .gallery, .container > .gallery");
             while (!!found && i < found.length) {
                 AddAltVersionsToThisFromPage(found[i]);
                 i++;
-                found = $(".container > .gallery");
+                found = $(".gallery-grid > .gallery, .container > .gallery");
             }
         }
 
@@ -1082,7 +1524,7 @@ addFindAltButton();
             place.addClass("ignoreThis");
             let title = place.find(".cover > .caption").text();
             if (!title || title.length <= 0) return;
-            let found = $(".container > .gallery:not(.ignoreThis)");
+            let found = $(".gallery-grid > .gallery:not(.ignoreThis), .container > .gallery:not(.ignoreThis)");
             let numOfValid = 0;
             for (let i = 0; i < found.length; i++) {
                 let cap = $(found[i]).find(".caption");
@@ -1092,22 +1534,18 @@ addFindAltButton();
                             $(found[i]).find(".cover > img, .cover > .caption").css("opacity", non_english_fade_opacity);
                         }
 
-                        const foundNativeFlag = /\blang-\w+\b/.test($(found[i]).attr("class") || "");
-                        if (!foundNativeFlag) {
-                            if ($(found[i]).attr("data-tags").includes("12227")) {
-                                $(found[i]).find(".caption").append(`<img class="overlayFlag" src="` + flagEn + `">`);
-                            } else if ($(found[i]).attr("data-tags").includes("6346")) {
-                                $(found[i]).find(".caption").append(`<img class="overlayFlag" src="` + flagJp + `">`);
-                            } else if ($(found[i]).attr("data-tags").includes("29963")) {
-                                $(found[i]).find(".caption").append(`<img class="overlayFlag" src="` + flagCh + `">`);
-                            }
+                        const $foundGallery = $(found[i]);
+                        const langMeta = getGalleryLanguageMeta($foundGallery);
+                        $foundGallery.find(".caption .overlayFlag, .caption .language-flag").remove();
+                        if (langMeta.flagSrc) {
+                            $foundGallery.find(".caption").append(`<img class="overlayFlag" src="` + langMeta.flagSrc + `">`);
                         }
 
-                        if ($(found[i]).attr("data-tags").includes("12227")) {
-                            $(found[i]).find(".cover > img, .cover > .caption").css("opacity", "1");
+                        if (langMeta.isEnglish) {
+                            $foundGallery.find(".cover > img, .cover > .caption").css("opacity", "1");
                         } else {
                             if (!partially_fade_all_non_english) {
-                                $(found[i]).find(".cover > img, .cover > .caption").css("opacity", "1");
+                                $foundGallery.find(".cover > img, .cover > .caption").css("opacity", "1");
                             }
                         }
 
@@ -1150,6 +1588,7 @@ addFindAltButton();
                 place.find(".cover:not(:first)").css("display", "none");
                 place.find(".versionPrevButton, .versionNextButton, .numOfVersions").show(200);
                 place.find(".numOfVersions").text("1/" + numOfValid);
+                place.addClass("nhp-alt-controls-visible");
             }
         }
 
@@ -1966,7 +2405,7 @@ async function addQuickNutButton() {
                 // Fetch titles for each bookmark and update dynamically
                 for (const page of bookmarkedPages) {
                     // Append a loading list item first
-                    const listItem = $(`<li class="bookmark-list-item"><a href="${page}" class="bookmark-link">Loading...</a><button class="delete-button-pages">✖</button></li>`);
+                    const listItem = $(`<li class="bookmark-list-item"><a href="${page}" class="bookmark-link" data-sveltekit-reload="true">Loading...</a><button class="delete-button-pages">✖</button></li>`);
                     bookmarksList.append(listItem);
 
                     // Using async IIFE to handle async operations in the loop
@@ -2021,7 +2460,7 @@ async function addQuickNutButton() {
                             }
 
                             // Update the list item with the fetched title/display text
-                            const updatedListItem = $(`<li class="bookmark-list-item"><a href="${page}" class="bookmark-link">${displayText}</a><button class="delete-button-pages">✖</button></li>`);
+                            const updatedListItem = $(`<li class="bookmark-list-item"><a href="${page}" class="bookmark-link" data-sveltekit-reload="true">${displayText}</a><button class="delete-button-pages">✖</button></li>`);
                             listItem.replaceWith(updatedListItem);
 
                             // Add delete functionality
@@ -2090,13 +2529,13 @@ async function addQuickNutButton() {
                             });
                         } catch (error) {
                             console.error(`Error processing bookmark: ${page}`, error);
-                            listItem.html(`<a href="${page}" class="bookmark-link">Failed to load</a><button class="delete-button-pages">✖</button>`);
+                            listItem.html(`<a href="${page}" class="bookmark-link" data-sveltekit-reload="true">Failed to load</a><button class="delete-button-pages">✖</button>`);
                         }
                     })();
                 }
                 // Modified version with better cover organization
                 for (const manga of bookmarkedMangas) {
-                    const listItem = $(`<li class="bookmark-item"><a href="${manga.url}" class="bookmark-link">Loading...</a><button class="delete-button">✖</button></li>`);
+                    const listItem = $(`<li class="bookmark-item"><a href="${manga.url}" class="bookmark-link" data-sveltekit-reload="true">Loading...</a><button class="delete-button">✖</button></li>`);
                     mangaBookmarksList.append(listItem);
 
                     (async () => {  // Immediately invoked async function
@@ -2125,7 +2564,7 @@ async function addQuickNutButton() {
                         </div>`;
                         }
 
-                        const updatedListItem = $(`<li class="bookmark-item ${mangaBookMarkingType}-mode"><a href="${manga.url}" class="bookmark-link">${content}</a><button class="delete-button">✖</button></li>`);
+                        const updatedListItem = $(`<li class="bookmark-item ${mangaBookMarkingType}-mode"><a href="${manga.url}" class="bookmark-link" data-sveltekit-reload="true">${content}</a><button class="delete-button">✖</button></li>`);
                         listItem.replaceWith(updatedListItem);
 
                         // Add title attribute with tags for hover tooltip if available
@@ -2693,6 +3132,22 @@ async function ensureHeaderNavForCustomRoutes() {
         await applyCustomNavLinks();
         return;
     }
+    // Remove Svelte app container and 404 artifacts on custom pages
+    // (they interfere with layout even when hidden by CSS)
+    document.querySelectorAll('#app, #__app, #__nuxt, .error-container').forEach(el => {
+        // Don't remove if it contains our custom page content
+        if (el.querySelector('.nhp-custom-page-root, #nhp-settings-root')) return;
+        el.remove();
+    });
+
+    // Remove generic 404 headings/messages
+    document.querySelectorAll('h1').forEach(h1 => {
+        const t = h1.textContent.trim();
+        if (t === '404 – Not Found' || t === '404 - Not Found') h1.remove();
+    });
+    document.querySelectorAll('p').forEach(p => {
+        if (p.textContent.includes("Looks like what you're looking for isn't here")) p.remove();
+    });
 
     const navLooksUsable = nav && nav.querySelector('ul.menu.left') && nav.querySelector('ul.menu.right') && nav.querySelector('ul.dropdown-menu');
     if (!navLooksUsable) {
@@ -2711,6 +3166,41 @@ async function ensureHeaderNavForCustomRoutes() {
                     }
                     nav = fetchedNav;
                 }
+
+                // Also inject CSS stylesheets from the homepage so the theme is correct
+                if (!document.getElementById('nhp-injected-site-css')) {
+                    const cssLinks = doc.querySelectorAll('link[rel="stylesheet"]');
+                    const inlineStyles = doc.querySelectorAll('style');
+
+                    cssLinks.forEach(link => {
+                        const href = link.getAttribute('href');
+                        if (!href) return;
+                        // Skip if already present
+                        if (document.querySelector(`link[href="${href}"]`)) return;
+                        const clone = document.createElement('link');
+                        clone.rel = 'stylesheet';
+                        clone.href = href;
+                        clone.dataset.nhpInjectedCss = '1';
+                        document.head.appendChild(clone);
+                    });
+
+                    // Also inject any inline <style> blocks from the homepage (Svelte may use these)
+                    inlineStyles.forEach(styleEl => {
+                        const content = styleEl.textContent;
+                        // Skip empty or very small styles; also skip if it's our own injected style
+                        if (!content || content.length < 50) return;
+                        if (styleEl.id && styleEl.id.startsWith('nhp-')) return;
+                        const clone = document.createElement('style');
+                        clone.dataset.nhpInjectedCss = '1';
+                        clone.textContent = content;
+                        document.head.appendChild(clone);
+                    });
+
+                    // Mark that we've done this so we don't inject twice
+                    const marker = document.createElement('meta');
+                    marker.id = 'nhp-injected-site-css';
+                    document.head.appendChild(marker);
+                }
             }
         } catch (e) {
             console.warn('Header nav fallback fetch failed:', e);
@@ -2719,6 +3209,8 @@ async function ensureHeaderNavForCustomRoutes() {
 
     if (nav) {
         bindFallbackNavInteractions(nav);
+        // Force full page reload for all nav links on custom pages to prevent SvelteKit routing freeze
+        nav.querySelectorAll('a').forEach(a => a.setAttribute('data-sveltekit-reload', 'true'));
     }
 
     await applyCustomNavLinks();
@@ -7464,12 +7956,57 @@ function mangaBookmarking() {
             }
         }
 
-        getBookmarkedMangas().then(bookmarkedMangas => {
+        getBookmarkedMangas().then(async bookmarkedMangas => {
             let bookmarkText = 'Bookmark';
             let bookmarkClass = 'btn-enabled';
-            if (bookmarkedMangas.some(manga => manga.url === currentUrl)) {
+            const existingManga = bookmarkedMangas.find(manga => manga.url === currentUrl);
+
+            if (existingManga) {
                 bookmarkText = 'Bookmarked';
                 bookmarkClass = 'btn-disabled';
+
+                // Auto-repair missing data for previously bookmarked mangas
+                let needsUpdate = false;
+
+                if (!existingManga.title || existingManga.title === 'Unknown title') {
+                    const titleElement = document.querySelector('h1.title') || document.querySelector('h2.title');
+                    if (titleElement) {
+                        const extractedTitle = titleElement.textContent.trim();
+                        if (extractedTitle) {
+                            existingManga.title = extractedTitle;
+                            needsUpdate = true;
+                        }
+                    }
+                }
+
+                if (!existingManga.tags || existingManga.tags.length === 0 || (existingManga.tags.length === 1 && existingManga.tags[0] === '')) {
+                    let tags = [];
+                    const currentMangaIdMatch = currentUrl.match(/\/g\/(\d+)/);
+                    if (currentMangaIdMatch) {
+                        const gid = currentMangaIdMatch[1];
+                        const cachedData = typeof NHP_V2_GALLERY_CACHE !== 'undefined' ? NHP_V2_GALLERY_CACHE.get(gid) : null;
+                        if (cachedData && cachedData.tags) {
+                            tags = cachedData.tags.map(t => (t.name || t.slug || t));
+                        }
+                    }
+
+                    if (tags.length === 0) {
+                        const tagElements = document.querySelectorAll('#tags .tag .name');
+                        if (tagElements.length > 0) {
+                            tags = Array.from(tagElements).map(tag => tag.textContent.trim());
+                        }
+                    }
+
+                    if (tags.length > 0) {
+                        existingManga.tags = tags;
+                        needsUpdate = true;
+                    }
+                }
+
+                if (needsUpdate) {
+                    await GM.setValue('bookmarkedMangas', bookmarkedMangas);
+                    console.log('[NHP] Auto-repaired missing title/tags for bookmarked manga:', currentUrl);
+                }
             }
 
             const MangaBookMarkHtml = `
@@ -8167,49 +8704,507 @@ initMonthFilterReinjector();
 // v2 API gallery cache (in-memory, per-session)
 const NHP_V2_GALLERY_CACHE = new Map();
 
-async function nhpFetchGalleryV2(galleryId) {
-    const id = String(galleryId);
-    if (NHP_V2_GALLERY_CACHE.has(id)) return NHP_V2_GALLERY_CACHE.get(id);
+//----------------------- **Svelte & V2 API Adapter**----------------------------------
+
+let currentPagePath = location.pathname;
+let currentPageSearch = location.search;
+let currentPageUrl = location.href;
+let currentPageSearchParams = new URLSearchParams(currentPageSearch);
+let currentPageSearchQuerry = currentPageSearchParams.get('q') ?? '';
+
+const pageVisitCache = new Map();
+const pageVisitTimeout = 10000;
+const tagCache = new Map();
+
+// ---- Cleanup Task Manager ----
+// Tracks injected elements/listeners so they can be removed on navigation
+const cleanupTasks = [];
+function addCleanupTask(el, func) {
+    cleanupTasks.push({ el, func });
+}
+function cleanup() {
+    for (const { el, func } of cleanupTasks) {
+        if (el && func && document.contains(el)) {
+            try { func(el); } catch (e) { }
+        }
+    }
+    cleanupTasks.length = 0;
+}
+
+// ---- Token-Bucket Rate Limiter for individual API fallback calls ----
+const nhpApiRateLimiter = {
+    tokens: 8,
+    maxTokens: 8,
+    refillIntervalMs: 2000, // 1 token every 2 seconds
+    lastRefillTime: Date.now(),
+
+    refill() {
+        const now = Date.now();
+        const elapsed = now - this.lastRefillTime;
+        const tokensToAdd = Math.floor(elapsed / this.refillIntervalMs);
+        if (tokensToAdd > 0) {
+            this.tokens = Math.min(this.maxTokens, this.tokens + tokensToAdd);
+            this.lastRefillTime = now;
+        }
+    },
+
+    tryAcquire() {
+        this.refill();
+        if (this.tokens > 0) {
+            this.tokens--;
+            return true;
+        }
+        return false;
+    },
+
+    async waitForToken(timeoutMs = 10000) {
+        const start = Date.now();
+        while (!this.tryAcquire()) {
+            if (Date.now() - start > timeoutMs) return false;
+            await new Promise(r => setTimeout(r, 500));
+        }
+        return true;
+    }
+};
+
+function initializeData() {
+    currentPagePath = location.pathname;
+    currentPageSearch = location.search;
+    currentPageUrl = location.href;
+    currentPageSearchParams = new URLSearchParams(currentPageSearch);
+    currentPageSearchQuerry = currentPageSearchParams.get('q') ?? '';
+}
+
+async function fetchApi(url) {
     try {
-        const res = await fetch(`/api/v2/galleries/${id}`, { credentials: 'include' });
-        if (!res.ok) return null;
+        const res = await fetch(url, { signal: AbortSignal.timeout(8000), credentials: 'include' });
+        if (!res.ok) {
+            if (res.status === 429) {
+                console.warn(`[NHP] Rate limited on ${url}`);
+            }
+            return null;
+        }
         const data = await res.json();
+        return data?.result ?? data ?? null;
+    } catch (err) {
+        console.warn(`[NHP] fetchApi error for ${url}:`, err.message);
+        return null;
+    }
+}
 
-        const mediaId = data.media_id;
-        const coverPath = data.cover?.path;
-        const thumbPath = data.thumbnail?.path;
-        const coverUrl = coverPath && mediaId ? `https://t.nhentai.net/galleries/${mediaId}/${coverPath}` : null;
-        const thumbUrl = thumbPath && mediaId ? `https://t.nhentai.net/galleries/${mediaId}/${thumbPath}` : null;
+// Well-known nhentai language tag IDs for resolving language from tag_ids
+const NHP_LANG_TAG_IDS = {
+    12227: 'english',
+    6346: 'japanese',
+    29963: 'chinese'
+};
 
-        let language = null;
-        if (data.tags) {
-            for (const tag of data.tags) {
-                if (tag.type === 'language') {
-                    const name = (tag.name || tag.slug || '').toLowerCase();
-                    if (name === 'english') { language = 'english'; break; }
-                    if (name === 'japanese') { language = 'japanese'; break; }
-                    if (name === 'chinese') { language = 'chinese'; break; }
-                }
+/**
+ * Normalize gallery data from either:
+ * - GalleryListItem (batch endpoints: has tag_ids[], english_title, japanese_title)
+ * - GalleryDetailResponse (detail endpoint: has title{}, tags[])
+ */
+function normalizeGalleryData(data) {
+    if (!data) return null;
+    const mediaId = data.media_id;
+    let coverPath = data.cover?.path;
+    let thumbPath = data.thumbnail?.path;
+
+    // Fix for potential malformed paths in API (prevent galleries/ID/galleries/ID/ duplication)
+    if (coverPath && coverPath.includes('/')) coverPath = coverPath.split('/').pop();
+    if (thumbPath && thumbPath.includes('/')) thumbPath = thumbPath.split('/').pop();
+
+    const coverUrl = coverPath && mediaId ? `https://t.nhentai.net/galleries/${mediaId}/${coverPath}` : null;
+    const thumbUrl = thumbPath && mediaId ? `https://t.nhentai.net/galleries/${mediaId}/${thumbPath}` : null;
+
+    let language = null;
+    let tagIds = null;
+
+    // Method 1: Full tag objects (from detail endpoint)
+    if (data.tags && Array.isArray(data.tags) && data.tags.length > 0 && typeof data.tags[0] === 'object') {
+        for (const tag of data.tags) {
+            if (tag.type === 'language') {
+                const name = (tag.name || tag.slug || '').toLowerCase();
+                if (['english', 'japanese', 'chinese'].includes(name)) { language = name; break; }
+            }
+        }
+    }
+    // Method 2: tag_ids array (from list endpoints)
+    else if (data.tag_ids && Array.isArray(data.tag_ids)) {
+        tagIds = data.tag_ids;
+        for (const tid of data.tag_ids) {
+            if (NHP_LANG_TAG_IDS[tid]) {
+                language = NHP_LANG_TAG_IDS[tid];
+                break;
+            }
+        }
+    }
+
+    // Resolve title from either format
+    let title = null;
+    if (data.title && typeof data.title === 'object') {
+        // Detail endpoint: title is {pretty, english, japanese}
+        title = data.title.pretty || data.title.english || data.title.japanese || null;
+    } else {
+        // List endpoint: separate fields
+        title = data.english_title || data.japanese_title || data.title || null;
+    }
+
+    return {
+        id: data.id,
+        media_id: mediaId,
+        cover_url: coverUrl,
+        thumb_url: thumbUrl,
+        title,
+        num_pages: data.num_pages,
+        language,
+        tag_ids: tagIds,
+        tags: (Array.isArray(data.tags) && data.tags.length > 0 && typeof data.tags[0] === 'object') ? data.tags : []
+    };
+}
+
+function addGalleryApiDataToCache(galleryDataList) {
+    if (galleryDataList && Array.isArray(galleryDataList)) {
+        galleryDataList.forEach((data) => {
+            if (data && data.id) {
+                NHP_V2_GALLERY_CACHE.set(String(data.id), normalizeGalleryData(data));
+            }
+        });
+    } else if (galleryDataList && galleryDataList.id) {
+        NHP_V2_GALLERY_CACHE.set(String(galleryDataList.id), normalizeGalleryData(galleryDataList));
+    }
+}
+
+// ---- Page Type Detection ----
+const isHomePage = () => "/" === currentPagePath;
+const isGalleryPage = () => /^\/g\/\d+?\/?$/.test(currentPagePath);
+const isNamespacePage = () => /^\/(parody|character|tag|artist|group|language|category)\//.test(currentPagePath);
+const isSearchPage = () => /^\/search/.test(currentPagePath);
+const isFavoritesPage = () => /^\/favorites\/?/.test(currentPagePath);
+
+function allGalleriesOnPageExistInCache() {
+    const galleriesOnPage = document.querySelectorAll('.gallery');
+    if (galleriesOnPage.length === 0) return false;
+    for (const div of galleriesOnPage) {
+        const href = div.querySelector('a.cover')?.getAttribute('href');
+        if (href) {
+            const match = href.match(/\/g\/(\d+)\//);
+            if (match && !NHP_V2_GALLERY_CACHE.has(match[1])) return false;
+        }
+    }
+    return true;
+}
+
+async function pullApiInfoForGalleriesOnPage() {
+    if (allGalleriesOnPageExistInCache()) return;
+
+    const pageNumber = currentPageSearchParams.get('page') ?? 1;
+    const sort = currentPageSearchParams.get('sort') ?? 'date';
+
+    if (isHomePage()) {
+        if (pageNumber > 1) {
+            addGalleryApiDataToCache(await fetchApi(`/api/v2/galleries?page=${pageNumber}`));
+        } else {
+            addGalleryApiDataToCache(await fetchApi(`/api/v2/galleries/popular`));
+            addGalleryApiDataToCache(await fetchApi(`/api/v2/galleries?page=1`));
+        }
+    } else if (isGalleryPage()) {
+        const match = currentPagePath.match(/\/g\/(\d+)/);
+        if (match) {
+            // Fetch gallery detail + related in parallel
+            const [detail, related] = await Promise.all([
+                fetchApi(`/api/v2/galleries/${match[1]}`),
+                fetchApi(`/api/v2/galleries/${match[1]}/related`)
+            ]);
+            if (detail) addGalleryApiDataToCache(detail);
+            if (related) addGalleryApiDataToCache(related);
+        }
+    } else if (isNamespacePage()) {
+        const parts = currentPagePath.split('/').filter(Boolean);
+        const tagType = parts[0];
+        const tagName = parts[1];
+        if (!tagCache.has(currentPagePath)) {
+            const tagInfo = await fetchApi(`/api/v2/tags/${tagType}/${tagName}`);
+            if (tagInfo) tagCache.set(currentPagePath, tagInfo);
+        }
+        const tagId = tagCache.get(currentPagePath)?.id;
+        if (tagId) {
+            addGalleryApiDataToCache(await fetchApi(`/api/v2/galleries/tagged?tag_id=${tagId}&sort=${sort}&page=${pageNumber}`));
+        }
+    } else if (isSearchPage()) {
+        addGalleryApiDataToCache(await fetchApi(`/api/v2/search?query=${encodeURIComponent(currentPageSearchQuerry)}&sort=${sort}&page=${pageNumber}`));
+    } else if (isFavoritesPage()) {
+        addGalleryApiDataToCache(await fetchApi(`/api/v2/favorites?page=${pageNumber}`));
+    }
+}
+
+async function makeApiCalls() {
+    const lastVisitTime = pageVisitCache.get(currentPageUrl);
+    if (!lastVisitTime || Date.now() - lastVisitTime > pageVisitTimeout) {
+        pageVisitCache.set(currentPageUrl, Date.now());
+        await pullApiInfoForGalleriesOnPage();
+    }
+}
+
+// ---- Svelte Gallery Node Cleanup ----
+// Strips all NHP-injected state from a gallery element so features can cleanly re-apply
+function stripGalleryInjectedState(gallery) {
+    if (!gallery) return;
+    // Remove custom classes
+    gallery.classList.remove('read-gallery', 'opacity-preview', 'nhp-processed');
+    gallery.removeAttribute('data-detected-language');
+    gallery.removeAttribute('data-nhp-gallery-id');
+    gallery.removeAttribute('data-nhp-page-count');
+
+    // Remove all custom child elements injected by the script
+    const customSelectors = [
+        '.page-number-display',
+        '.star-btn',
+        '.newTabButton',
+        '.mark-as-read-btn',
+        '.mark-as-read-button',
+        '.read-badge',
+        '.gallery-page-count',
+        '.style-class',
+        '.overlayFlag',
+        '.language-flag',
+        '.readTag',
+        '.tag-warning-badge',
+        '.hide-manga-btn',
+        '.findVersionButton',
+        '.numOfVersions',
+        '.versionNextButton',
+        '.versionPrevButton'
+    ];
+
+    customSelectors.forEach(selector => {
+        gallery.querySelectorAll(selector).forEach(el => el.remove());
+    });
+}
+
+// ---- Central Reapply Function ----
+// Re-runs all gallery augmentations idempotently after Svelte navigation or DOM recycling
+let nhpApplyAllDebounceTimer = null;
+let nhpApplyAllRunning = false;
+
+function nhpScheduleApplyAll(delayMs = 150) {
+    if (nhpApplyAllDebounceTimer) clearTimeout(nhpApplyAllDebounceTimer);
+    nhpApplyAllDebounceTimer = setTimeout(() => {
+        if (nhpApplyAllRunning) return;
+        nhpApplyAllRunning = true;
+        nhpApplyAllCore().finally(() => { nhpApplyAllRunning = false; });
+    }, delayMs);
+}
+
+async function nhpApplyAllCore() {
+    try {
+        // 1) Mark-as-Read buttons + status (from MarkAsReadSystem)
+        const marSystem = globalThis.markAsReadSystem;
+        if (marSystem && typeof marSystem.addMarkAsReadButtons === 'function') {
+            marSystem.addMarkAsReadButtons();
+            marSystem.applyReadStatus();
+        }
+
+        // 2) New Tab buttons
+        if (typeof addNewTabButtons === 'function') {
+            addNewTabButtons();
+        }
+
+        // 3) Gallery Systems Manager subsystems
+        const gsm = globalThis.__nhpGallerySystemsManager;
+        if (gsm) {
+            if (gsm.systems?.language) {
+                gsm.systems.language.detectAndMarkLanguages();
+            }
+            if (gsm.systems?.tagWarning) {
+                gsm.systems.tagWarning.processGalleries();
+            }
+            if (gsm.systems?.opacity) {
+                gsm.systems.opacity.applyOpacitySettings();
             }
         }
 
-        const title = data.title?.pretty || data.title?.english || data.title?.japanese || null;
+        // 4) Page number display from cache (no API calls needed)
+        const showPageNumbers = await GM.getValue('showPageNumbersEnabled', true);
+        if (showPageNumbers) {
+            const galleries = document.querySelectorAll('.gallery');
+            galleries.forEach(gallery => {
+                const cover = gallery.querySelector('a.cover');
+                if (!cover) return;
+                const href = cover.getAttribute('href');
+                if (!href) return;
+                const idMatch = href.match(/\/g\/(\d+)/);
+                if (!idMatch) return;
+                const cached = NHP_V2_GALLERY_CACHE.get(idMatch[1]);
+                if (cached && cached.num_pages && !cover.querySelector('.page-number-display')) {
+                    const display = document.createElement('div');
+                    display.className = 'page-number-display';
+                    display.textContent = `${cached.num_pages} pages`;
+                    cover.appendChild(display);
 
-        const result = {
-            id: data.id,
-            media_id: mediaId,
-            cover_url: coverUrl,
-            thumb_url: thumbUrl,
-            title,
-            num_pages: data.num_pages,
-            language,
-            tags: data.tags || []
-        };
+                    // Shift mark-as-read button down when page number is present
+                    const marBtn = gallery.querySelector('.mark-as-read-btn');
+                    if (marBtn) marBtn.style.top = '40px';
+                }
+            });
+        }
+        // 5) Related Manga from Bookmarks
+        if (typeof replaceRelatedWithBookmarks === 'function') {
+            await replaceRelatedWithBookmarks();
+        }
+    } catch (e) {
+        console.warn('[NHP] nhpApplyAllCore error:', e);
+    }
+}
 
-        NHP_V2_GALLERY_CACHE.set(id, result);
+// ---- Svelte Page Initialization ----
+let svelteAdapterInitialized = false;
+async function initializeSveltePage() {
+    cleanup();
+    initializeData();
+
+    // Manage custom page theme fallback CSS dynamically
+    const customRouteRegex = /^\/(settings|read-manga|quick-nut|continue-reading|continue_reading|bookmarks|favorite)\/?/;
+    const isCustomPage = customRouteRegex.test(currentPagePath);
+    const existingTheme = document.getElementById('nhp-custom-page-theme');
+
+    if (isCustomPage && !existingTheme) {
+        // Navigated TO a custom page — inject the fallback theme
+        // (deferred to avoid blocking; the IIFE at script-start handles initial load)
+    } else if (!isCustomPage && existingTheme) {
+        // Navigated AWAY from a custom page — remove fallback to avoid conflicts
+        existingTheme.remove();
+        // Also remove injected site CSS from the homepage fetch
+        document.querySelectorAll('[data-nhp-injected-css]').forEach(el => el.remove());
+        const marker = document.getElementById('nhp-injected-site-css');
+        if (marker) marker.remove();
+    }
+
+    await makeApiCalls();
+    nhpScheduleApplyAll(50);
+}
+
+// ---- Svelte Node Reuse Observer ----
+// Watches for Svelte recycling gallery DOM nodes (href changes on a.cover)
+function setupSvelteNodeReuseObserver() {
+    const galleryObserver = new MutationObserver((mutations) => {
+        let needsReapply = false;
+        for (const mutation of mutations) {
+            if (mutation.type === 'attributes' && mutation.attributeName === 'href') {
+                const target = mutation.target;
+                if (target.tagName === 'A' && target.classList.contains('cover')) {
+                    const gallery = target.closest('.gallery');
+                    if (gallery) {
+                        stripGalleryInjectedState(gallery);
+                        needsReapply = true;
+                    }
+                }
+            }
+        }
+        if (needsReapply) {
+            nhpScheduleApplyAll(100);
+        }
+    });
+
+    // Use a MutationObserver on the body to catch new a.cover elements and attach watchers
+    const coverWatcherObserver = new MutationObserver(() => {
+        document.querySelectorAll('a.cover').forEach(cover => {
+            if (!cover.hasAttribute('data-svelte-watched')) {
+                cover.setAttribute('data-svelte-watched', 'true');
+                galleryObserver.observe(cover, { attributes: true, attributeFilter: ['href'] });
+            }
+        });
+    });
+
+    coverWatcherObserver.observe(document.body, { childList: true, subtree: true });
+
+    // Initial pass for already-existing covers
+    document.querySelectorAll('a.cover').forEach(cover => {
+        if (!cover.hasAttribute('data-svelte-watched')) {
+            cover.setAttribute('data-svelte-watched', 'true');
+            galleryObserver.observe(cover, { attributes: true, attributeFilter: ['href'] });
+        }
+    });
+}
+
+// ---- URL-Change Observer (debounced) ----
+// Single observer that detects Svelte SPA navigation and triggers full re-initialization
+if (!svelteAdapterInitialized) {
+    svelteAdapterInitialized = true;
+    setTimeout(initializeSveltePage, 10);
+    setupSvelteNodeReuseObserver();
+
+    let nhpUrlObserverDebounce = null;
+    let nhpSameUrlThrottleTimer = null;
+    new MutationObserver((mutations) => {
+        if (currentPageUrl !== location.href) {
+            // URL changed — debounce to let Svelte finish rendering
+            if (nhpUrlObserverDebounce) clearTimeout(nhpUrlObserverDebounce);
+            nhpUrlObserverDebounce = setTimeout(() => {
+                initializeSveltePage();
+            }, 200);
+        } else {
+            // Same URL but DOM changed — only reapply if gallery-related mutations detected
+            const isGalleryRelated = mutations.some(m =>
+                Array.from(m.addedNodes).concat(Array.from(m.removedNodes)).some(n =>
+                    n.nodeType === 1 && (
+                        (n.classList && n.classList.contains('gallery')) ||
+                        (n.querySelector && n.querySelector('.gallery, .cover'))
+                    )
+                )
+            );
+            if (isGalleryRelated && !nhpSameUrlThrottleTimer) {
+                nhpSameUrlThrottleTimer = setTimeout(() => {
+                    nhpSameUrlThrottleTimer = null;
+                    nhpScheduleApplyAll(200);
+                }, 500);
+            }
+        }
+    }).observe(document.body, { childList: true, subtree: true });
+
+    // Also listen for popstate (browser back/forward)
+    window.addEventListener('popstate', () => {
+        setTimeout(initializeSveltePage, 100);
+    }, { passive: true });
+}
+
+// ---- Rate-Limited Fallback Fetcher ----
+// Backward-compatible: checks cache first, then rate-limits individual API calls
+async function nhpFetchGalleryV2(galleryId) {
+    const id = String(galleryId);
+    if (NHP_V2_GALLERY_CACHE.has(id)) return NHP_V2_GALLERY_CACHE.get(id);
+
+    // Rate limit individual fetches to avoid 429s
+    if (!nhpApiRateLimiter.tryAcquire()) {
+        console.warn(`[NHP] Rate limiter: skipping fetch for gallery ${id} (no tokens available)`);
+        // Wait for a token with timeout
+        const acquired = await nhpApiRateLimiter.waitForToken(6000);
+        if (!acquired) {
+            console.warn(`[NHP] Rate limiter: timed out waiting for token for gallery ${id}`);
+            return null;
+        }
+    }
+
+    try {
+        const res = await fetch(`/api/v2/galleries/${id}`, {
+            credentials: 'include',
+            signal: AbortSignal.timeout(8000)
+        });
+        if (!res.ok) {
+            if (res.status === 429) {
+                console.warn(`[NHP] 429 rate limited fetching gallery ${id}`);
+                // Drain tokens to back off
+                nhpApiRateLimiter.tokens = 0;
+            }
+            return null;
+        }
+        const data = await res.json();
+        const normalized = data?.result ?? data ?? null;
+        const result = normalizeGalleryData(normalized);
+        if (result) NHP_V2_GALLERY_CACHE.set(id, result);
         return result;
     } catch (e) {
-        console.warn(`nhpFetchGalleryV2 failed for ${id}:`, e);
+        console.warn(`[NHP] nhpFetchGalleryV2 failed for ${id}:`, e.message);
         return null;
     }
 }
@@ -8287,7 +9282,7 @@ async function getMangaCoverImage(mangaId) {
     return details.coverUrl;
 }
 
-window.__nhpV2CoverRecover = async function(img) {
+window.__nhpV2CoverRecover = async function (img) {
     const a = img.closest('a[href*="/g/"]');
     if (!a) return;
     const gid = (a.getAttribute('href') || '').match(/\/g\/(\d+)/)?.[1];
@@ -8312,147 +9307,188 @@ const LANGUAGE_FLAGS = {
 
 // Function to replace the related manga section with bookmarked content
 async function replaceRelatedWithBookmarks() {
-
-    // Check if the feature is enabled
-    const replaceRelatedWithBookmarks = await GM.getValue('replaceRelatedWithBookmarks', true);
-    if (!replaceRelatedWithBookmarks) return;
-
-    // Check if flip button is enabled
-    const enableRelatedFlipButton = await GM.getValue('enableRelatedFlipButton', true);
-
-    // Check if we're on a manga page and if the related container exists
+    // 1. Settings & Context Checks
     const relatedContainer = document.querySelector("#related-container");
     if (!relatedContainer || !window.location.pathname.includes('/g/')) return;
 
     const currentMangaId = window.location.pathname.match(/\/g\/(\d+)/)?.[1];
     if (!currentMangaId) return;
 
-    // Preserve true native related HTML once per gallery (recovery must not snapshot our custom UI)
-    const origCacheKey = `__nhpRelatedOriginalHtml_${currentMangaId}`;
-    let originalContent = globalThis[origCacheKey];
-    if (originalContent == null) {
-        if (relatedContainer.querySelector('[data-nhp-related-bookmarks-root]')) {
-            return;
-        }
-        originalContent = relatedContainer.innerHTML;
-        globalThis[origCacheKey] = originalContent;
-    }
+    // 2. Fetch Settings
+    const [bookmarksEnabled, enableRelatedFlipButton] = await Promise.all([
+        GM.getValue('replaceRelatedWithBookmarks', true),
+        GM.getValue('enableRelatedFlipButton', true)
+    ]);
+    if (!bookmarksEnabled) return;
 
-    // Already replaced for this gallery and UI still present — skip (prevents duplicate flips / glitchy re-runs from hydration recovery)
-    if (relatedContainer.dataset.nhpRelatedBookmarksGalleryId === currentMangaId &&
-        relatedContainer.querySelector('[data-nhp-related-bookmarks-root]')) {
+    // --- Helper: Hide/Show Native Content safely ---
+    const hideNativeContent = () => {
+        Array.from(relatedContainer.children).forEach(child => {
+            if (!child.hasAttribute('data-nhp-bookmarks-ui') && !child.hasAttribute('data-nhp-original-flip-btn')) {
+                child.style.display = 'none';
+                child.setAttribute('data-nhp-native', 'true');
+            }
+        });
+    };
+
+    const showNativeContent = () => {
+        Array.from(relatedContainer.children).forEach(child => {
+            if (child.hasAttribute('data-nhp-native')) {
+                child.style.display = '';
+                child.removeAttribute('data-nhp-native');
+            }
+        });
+        const origBtn = relatedContainer.querySelector('[data-nhp-original-flip-btn]');
+        if (origBtn) origBtn.remove();
+    };
+
+    // --- SPA Navigation Cleanup & Stale Check ---
+    const storedGid = relatedContainer.dataset.nhpRelatedBookmarksGalleryId;
+    if (storedGid && storedGid !== currentMangaId) {
+        console.log(`[NHP] Stale bookmarks UI detected (Manga ${storedGid} on Page ${currentMangaId}). Restoring native DOM...`);
+
+        // Remove our UI
+        const ourUI = relatedContainer.querySelector('[data-nhp-bookmarks-ui]');
+        if (ourUI) ourUI.remove();
+
+        // Restore Svelte's native DOM visibility without breaking hierarchy
+        showNativeContent();
+
+        // Reset state
+        delete relatedContainer.dataset.nhpRelatedBookmarksGalleryId;
+        delete relatedContainer.dataset.nhpRelatedUserFlipped;
+
+        // Wait for Svelte to finish fetching/rendering the NEW native related items
+        setTimeout(replaceRelatedWithBookmarks, 1200);
         return;
     }
 
-    // Skip if a build is already in progress (concurrent document.ready + recovery)
-    const loadingH2 = relatedContainer.querySelector('h2');
-    if (loadingH2 && /Finding Related Manga/i.test(loadingH2.textContent || '')) {
+    // --- Flip-Back Protection ---
+    const isProcessed = storedGid === currentMangaId;
+    const hasUI = !!relatedContainer.querySelector('[data-nhp-bookmarks-ui]');
+    const isFlipped = relatedContainer.dataset.nhpRelatedUserFlipped === 'true';
+
+    if (isProcessed && (hasUI || isFlipped)) return;
+
+    // --- Ensure Native Content is Ready ---
+    const nativeHeader = relatedContainer.querySelector('h2:not([data-nhp-bookmarks-ui] h2)');
+    if (!nativeHeader || !/More Like This/i.test(nativeHeader.textContent)) {
+        // Svelte hasn't populated the "More Like This" section yet
+        setTimeout(replaceRelatedWithBookmarks, 500);
         return;
     }
 
-    // State management for flip functionality (only if flip button is enabled)
-    let isShowingBookmarks = true; // Default to showing bookmarks when enabled
-    let bookmarkedContent = null;
+    // Create our isolated UI container
+    let bookmarksUI = relatedContainer.querySelector('[data-nhp-bookmarks-ui]');
+    if (!bookmarksUI) {
+        bookmarksUI = document.createElement('div');
+        bookmarksUI.setAttribute('data-nhp-bookmarks-ui', 'true');
+        relatedContainer.appendChild(bookmarksUI);
+    }
+
+    // Hide Svelte's nodes safely
+    hideNativeContent();
+    bookmarksUI.style.display = 'block';
+
+    // State management for flip functionality
+    let isShowingBookmarks = true;
 
     // Add a loading indicator
-    relatedContainer.innerHTML = `
-        <h2>Finding Related Manga from Your Bookmarks...</h2>
+    bookmarksUI.innerHTML = `
+        <div data-nhp-related-bookmarks-root="1" style="display:flex; align-items:center; justify-content:center; gap:10px; position:relative;">
+            <h2 style="margin:0; text-align:center; flex:1;">Finding Related Manga from Your Bookmarks...</h2>
+        </div>
         <div class="container" style="text-align: center; padding: 20px;">
             <div class="loading-spinner" style="display: inline-block; width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #555; border-radius: 50%; animation: spin 1s linear infinite;"></div>
         </div>
-        <style>
-            @keyframes spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
-            }
-        </style>
     `;
 
-    // Get the current manga's tags
-    const tagsContainer = document.querySelector("#tags");
-    if (!tagsContainer) return;
+    // Get the current manga's tags (prioritize V2 API cache for SPA accuracy)
+    let currentTags = [];
+    const cachedCurrent = NHP_V2_GALLERY_CACHE.get(currentMangaId);
+    if (cachedCurrent && cachedCurrent.tags && cachedCurrent.tags.length > 0) {
+        currentTags = cachedCurrent.tags.map(t => (t.name || t.slug || t).toLowerCase()).filter(Boolean);
+    }
 
-    // Extract all tags from the current manga
-    const tagElements = tagsContainer.querySelectorAll('.tag');
-    const currentTags = Array.from(tagElements).map(tag => {
-        return tag.querySelector('.name')?.textContent.trim().toLowerCase() || '';
-    }).filter(tag => tag !== '');
+    // Fallback to DOM if cache is missing
+    if (currentTags.length === 0) {
+        const tagsContainer = document.querySelector("#tags");
+        if (tagsContainer) {
+            const tagElements = tagsContainer.querySelectorAll('.tag');
+            currentTags = Array.from(tagElements).map(tag => {
+                return tag.querySelector('.name')?.textContent.trim().toLowerCase() || '';
+            }).filter(tag => tag !== '');
+        }
+    }
 
-    // Learn artist names from the Artists group on the page
+    // Secondary fallback: fetch directly if still empty
+    if (currentTags.length === 0) {
+        const apiData = await nhpFetchGalleryV2(currentMangaId);
+        if (apiData && apiData.tags) {
+            currentTags = apiData.tags.map(t => (t.name || t.slug || t).toLowerCase()).filter(Boolean);
+        }
+    }
+
+    if (currentTags.length === 0) {
+        console.log('[NHP] Could not find tags for similarity search, skipping bookmarks.');
+        bookmarksUI.style.display = 'none';
+        showNativeContent();
+        return;
+    }
+
+    // Learn artist names
     try {
-        const tagGroups = Array.from(tagsContainer.querySelectorAll('.tag-container'));
-        const artistGroup = tagGroups.find(c => {
-            const fn = c.querySelector('.field-name');
-            return fn && /artists/i.test(fn.textContent);
-        });
-        if (artistGroup) {
-            const artistsNow = Array.from(artistGroup.querySelectorAll('a.tag .name')).map(el => el.textContent.trim());
-            if (artistsNow.length) {
-                addKnownArtists(artistsNow);
+        const tagsContainer = document.querySelector("#tags");
+        if (tagsContainer) {
+            const tagGroups = Array.from(tagsContainer.querySelectorAll('.tag-container'));
+            const artistGroup = tagGroups.find(c => {
+                const fn = c.querySelector('.field-name');
+                return fn && /artists/i.test(fn.textContent);
+            });
+            if (artistGroup) {
+                const artistsNow = Array.from(artistGroup.querySelectorAll('a.tag .name')).map(el => el.textContent.trim());
+                if (artistsNow.length) addKnownArtists(artistsNow);
             }
         }
     } catch (_) { }
 
-    console.log('Current manga tags:', currentTags);
     await addKnownMultiwordTags(currentTags);
 
     // Get all bookmarks
     const bookmarks = await getBookmarksFromStorage();
     if (!bookmarks || bookmarks.length === 0) {
-        console.log('No bookmarks found');
-        // Restore original content instead of returning to prevent infinite loading
-        relatedContainer.innerHTML = originalContent;
+        bookmarksUI.style.display = 'none';
+        showNativeContent();
         return;
     }
 
-    console.log(`Found ${bookmarks.length} bookmarks`);
-
-    // Filter out the current manga from bookmarks
     const filteredBookmarks = bookmarks.filter(bookmark => bookmark.id !== currentMangaId);
 
     // Function to score bookmarks based on tag similarity
     async function scoreBookmark(bookmark) {
         try {
-            // Get manga info with tags - only use cached data
             const mangaInfo = await GM.getValue(`manga_${bookmark.id}`, null);
-
-            // Try to get additional tags from the URL-based cache
             const mangaUrl = `https://nhentai.net/g/${bookmark.id}/`;
             const additionalTags = await GM.getValue(`tags_${mangaUrl}`, []);
 
-            // If no cached info or tags from either source, skip this bookmark
             if ((!mangaInfo || !mangaInfo.tags || mangaInfo.tags.length === 0) && additionalTags.length === 0) {
                 return { bookmark, score: 0, tags: [], tagIds: [] };
             }
 
-            // Initialize bookmarkTags array
             let bookmarkTags = [];
-
-            // Add tags from mangaInfo if available
             if (mangaInfo && mangaInfo.tags && mangaInfo.tags.length > 0) {
-                bookmarkTags = mangaInfo.tags.map(tag =>
-                    tag.replace(/\d+K?$/, '').trim().toLowerCase()
-                );
+                bookmarkTags = mangaInfo.tags.map(tag => tag.replace(/\d+K?$/, '').trim().toLowerCase());
             }
 
-            // Add tags from URL-based cache if available
             if (additionalTags.length > 0) {
-                // Clean up additional tags and add them to bookmarkTags
                 const cleanedAdditionalTags = additionalTags.map(tag =>
                     typeof tag === 'string' ? tag.replace(/\d+K?$/, '').trim().toLowerCase() : ''
                 ).filter(tag => tag !== '');
-
-                // Merge tags, avoiding duplicates
                 bookmarkTags = [...new Set([...bookmarkTags, ...cleanedAdditionalTags])];
             }
 
-            // Get tag IDs if available
-            const tagIds = mangaInfo?.tagIds || [];
-
-            // Calculate score based on matching tags
             let score = 0;
             const matchingTags = [];
-
             for (const tag of currentTags) {
                 if (bookmarkTags.includes(tag)) {
                     score++;
@@ -8460,428 +9496,153 @@ async function replaceRelatedWithBookmarks() {
                 }
             }
 
-            // Determine language from tags
             let language = null;
-            if (bookmarkTags.includes('english')) {
-                language = 'english';
-            } else if (bookmarkTags.includes('japanese')) {
-                language = 'japanese';
-            } else if (bookmarkTags.includes('chinese')) {
-                language = 'chinese';
-            }
+            if (bookmarkTags.includes('english')) language = 'english';
+            else if (bookmarkTags.includes('japanese')) language = 'japanese';
+            else if (bookmarkTags.includes('chinese')) language = 'chinese';
 
             return {
-                bookmark,
-                score,
-                tags: bookmarkTags,
-                matchingTags,
-                tagIds,
+                bookmark, score, tags: bookmarkTags, matchingTags,
+                tagIds: mangaInfo?.tagIds || [],
                 title: mangaInfo?.title || `Manga ${bookmark.id}`,
-                thumbnail: mangaInfo?.thumbnail || null,
-                language
+                thumbnail: mangaInfo?.thumbnail || null, language
             };
         } catch (error) {
-            console.error(`Error scoring bookmark ${bookmark.id}:`, error);
             return { bookmark, score: 0, tags: [], tagIds: [] };
         }
     }
 
-    // Process all bookmarks since we're only using cached data
-    console.log(`Processing ${filteredBookmarks.length} bookmarks (using cached data only)`);
-
-    // Score bookmarks in batches to avoid freezing the browser
-    const BATCH_SIZE = 50; // Larger batch size since we're only using cached data
+    const BATCH_SIZE = 50;
     const scoredBookmarks = [];
-
     for (let i = 0; i < filteredBookmarks.length; i += BATCH_SIZE) {
         const batch = filteredBookmarks.slice(i, i + BATCH_SIZE);
-        console.log(`Processing batch ${Math.floor(i / BATCH_SIZE) + 1} of ${Math.ceil(filteredBookmarks.length / BATCH_SIZE)}`);
-
-        const batchPromises = batch.map(scoreBookmark);
-        const batchResults = await Promise.all(batchPromises);
+        const batchResults = await Promise.all(batch.map(scoreBookmark));
         scoredBookmarks.push(...batchResults);
-
-        // Small delay to keep the UI responsive
-        if (i + BATCH_SIZE < filteredBookmarks.length) {
-            await new Promise(resolve => setTimeout(resolve, 10));
-        }
+        if (i + BATCH_SIZE < filteredBookmarks.length) await new Promise(r => setTimeout(r, 10));
     }
 
-    // Sort by score (highest first)
     scoredBookmarks.sort((a, b) => b.score - a.score);
-
-    // Filter out bookmarks with no matching tags
     const bookmarksWithMatches = scoredBookmarks.filter(item => item.score > 0);
 
-    console.log(`Found ${bookmarksWithMatches.length} bookmarks with matching tags`);
-
-    // If no related bookmarks found with matching tags, restore the original content
     if (bookmarksWithMatches.length === 0) {
-        console.log('No related bookmarks found with matching tags');
-        relatedContainer.innerHTML = originalContent;
-        // Update the header text after restoring original content
-        const originalHeader = relatedContainer.querySelector('h2');
-        if (originalHeader) {
-            originalHeader.textContent = 'More Like This (There were no Bookmarks that match this manga)';
-        }
+        bookmarksUI.style.display = 'none';
+        showNativeContent();
+        const h2 = relatedContainer.querySelector('h2:not([data-nhp-bookmarks-ui] h2)');
+        if (h2) h2.textContent = 'More Like This (There were no Bookmarks that match this manga)';
         return;
     }
 
-    // Take top 5 or fewer if less available
     const topBookmarks = bookmarksWithMatches.slice(0, 5);
 
-    console.log('Top related bookmarks:', topBookmarks);
-
-    // Pre-fetch titles and thumbnails for top bookmarks
     await Promise.all(topBookmarks.map(async item => {
-        // Get manga details for title and cover
         const details = await getMangaDetails(item.bookmark.id);
-
-        // Update title if needed
-        if ((!item.title || item.title === `Manga ${item.bookmark.id}`) && details.title) {
-            item.title = details.title;
-        }
-
-        // Update thumbnail if needed
-        if (!item.thumbnail && details.coverUrl) {
-            item.thumbnail = details.coverUrl;
-        }
+        if ((!item.title || item.title === `Manga ${item.bookmark.id}`) && details.title) item.title = details.title;
+        if (!item.thumbnail && details.coverUrl) item.thumbnail = details.coverUrl;
     }));
 
-    // Clear the related container
-    relatedContainer.innerHTML = '';
+    // Build UI
+    bookmarksUI.innerHTML = '';
 
-    // Create a header container for the section with flip button
     const headerContainer = document.createElement('div');
     headerContainer.setAttribute('data-nhp-related-bookmarks-root', '1');
-    headerContainer.style.display = 'flex';
-    headerContainer.style.alignItems = 'center';
-    headerContainer.style.justifyContent = 'center';
-    headerContainer.style.gap = '10px';
-    headerContainer.style.position = 'relative';
+    headerContainer.style.cssText = 'display:flex; align-items:center; justify-content:center; gap:10px; position:relative; margin-bottom: 10px;';
 
     const header = document.createElement('h2');
     header.textContent = 'Related Manga from Your Bookmarks';
-    header.style.margin = '0';
-    header.style.textAlign = 'center';
-    header.style.flex = '1';
+    header.style.cssText = 'margin:0; text-align:center; flex:1;';
     headerContainer.appendChild(header);
 
-    // Only create flip button if the setting is enabled
-    let flipButton = null;
-    if (enableRelatedFlipButton) {
-        // Create flip button
-        flipButton = document.createElement('button');
-        flipButton.setAttribute('data-nhp-related-flip', '1');
-        flipButton.type = 'button';
-        flipButton.textContent = 'Flip';
-        flipButton.style.cssText = `
-            background: #ed2553;
-            color: white;
-            border: none;
-            padding: 5px 10px;
-            border-radius: 3px;
-            cursor: pointer;
-            font-size: 12px;
-            font-weight: bold;
-            position: absolute;
-            right: 0;
-            top: 50%;
-            transform: translateY(-50%);
-        `;
-
-        // Add hover effect
-        flipButton.addEventListener('mouseenter', () => {
-            flipButton.style.background = '#d91e47';
-        });
-        flipButton.addEventListener('mouseleave', () => {
-            flipButton.style.background = '#ed2553';
-        });
-
-        headerContainer.appendChild(flipButton);
-    }
-
-    relatedContainer.appendChild(headerContainer);
-
-    // Create a container for the galleries
-    const galleryContainer = document.createElement('div');
-    galleryContainer.className = 'container';
-    relatedContainer.appendChild(galleryContainer);
-
-    // Store the bookmarked content for later use
-    const storeBookmarkedContent = () => {
-        bookmarkedContent = relatedContainer.innerHTML;
-    };
-
-    // Function to toggle between bookmarked and original content
     const toggleContent = () => {
         if (isShowingBookmarks) {
-            // Switch to original content
-            relatedContainer.innerHTML = originalContent;
+            // Switch to Native
+            bookmarksUI.style.display = 'none';
+            showNativeContent();
             isShowingBookmarks = false;
+            relatedContainer.dataset.nhpRelatedUserFlipped = 'true';
 
-            // Force load thumbnails in original content with comprehensive loading
-            setTimeout(() => {
-                const images = relatedContainer.querySelectorAll('img');
-                images.forEach((img, index) => {
-                    // Store original attributes
-                    const dataSrc = img.dataset.src || img.getAttribute('data-src');
-                    const originalSrc = img.src;
+            // Add flip button to native header if enabled
+            if (enableRelatedFlipButton) {
+                let origFlipBtn = relatedContainer.querySelector('[data-nhp-original-flip-btn]');
+                if (!origFlipBtn) {
+                    const nativeH2 = relatedContainer.querySelector('h2:not([data-nhp-bookmarks-ui] h2)');
+                    if (nativeH2) {
+                        origFlipBtn = document.createElement('button');
+                        origFlipBtn.setAttribute('data-nhp-original-flip-btn', 'true');
+                        origFlipBtn.textContent = 'Flip';
+                        origFlipBtn.style.cssText = 'background:#ed2553; color:white; border:none; padding:5px 10px; border-radius:3px; cursor:pointer; font-size:12px; font-weight:bold; position:absolute; right:0; top:50%; transform:translateY(-50%);';
+                        origFlipBtn.onmouseenter = () => origFlipBtn.style.background = '#d91e47';
+                        origFlipBtn.onmouseleave = () => origFlipBtn.style.background = '#ed2553';
+                        origFlipBtn.onclick = toggleContent;
 
-                    // Function to attempt loading the image
-                    const loadImage = (src) => {
-                        return new Promise((resolve, reject) => {
-                            const testImg = new Image();
-                            testImg.onload = () => {
-                                img.src = src;
-                                img.style.opacity = '1';
-                                resolve(src);
-                            };
-                            testImg.onerror = () => reject(src);
-                            testImg.src = src;
-                        });
-                    };
-
-                    // Try multiple loading strategies
-                    const tryLoadImage = async () => {
-                        const sources = [];
-
-                        // Add data-src if available
-                        if (dataSrc && dataSrc !== originalSrc) {
-                            sources.push(dataSrc);
-                        }
-
-                        // Add original src if available and different
-                        if (originalSrc && !originalSrc.includes('placeholder') && !originalSrc.includes('loading')) {
-                            sources.push(originalSrc);
-                        }
-
-                        // Try each source
-                        for (const src of sources) {
-                            try {
-                                await loadImage(src);
-                                console.log(`Successfully loaded image ${index + 1}:`, src);
-                                return;
-                            } catch (error) {
-                                console.log(`Failed to load image ${index + 1} from:`, src);
-                            }
-                        }
-
-                        // If all sources fail, use v2 API to get correct CDN URL
-                        const galleryLink = img.closest('a');
-                        if (galleryLink && galleryLink.href) {
-                            const mangaId = galleryLink.href.match(/\/g\/(\d+)/)?.[1];
-                            if (mangaId) {
-                                const apiData = await nhpFetchGalleryV2(mangaId);
-                                const reconstructedUrl = apiData?.cover_url || apiData?.thumb_url || `https://t.nhentai.net/galleries/${mangaId}/thumb.jpg`;
-                                try {
-                                    await loadImage(reconstructedUrl);
-                                } catch (error) {
-                                    console.log(`Failed to load image ${index + 1} for gallery ${mangaId}`);
-                                }
-                            }
-                        }
-                    };
-
-                    // Start loading process
-                    tryLoadImage();
-
-                    // Remove lazy loading classes that might prevent loading
-                    img.classList.remove('lazyload', 'lazyloading');
-                    img.classList.add('lazyloaded');
-                });
-
-                // Trigger any lazy loading libraries that might be present
-                if (window.lazyLoadInstance) {
-                    window.lazyLoadInstance.update();
+                        // Ensure parent is relative so absolute positioning works
+                        nativeH2.style.position = 'relative';
+                        // Append as a child of H2 so it floats correctly without breaking Svelte hierarchy
+                        nativeH2.appendChild(origFlipBtn);
+                    }
                 }
-
-                // Trigger intersection observer if present
-                if (window.IntersectionObserver) {
-                    const observer = new IntersectionObserver((entries) => {
-                        entries.forEach(entry => {
-                            if (entry.isIntersecting) {
-                                const img = entry.target;
-                                if (img.dataset.src && !img.src) {
-                                    img.src = img.dataset.src;
-                                }
-                            }
-                        });
-                    });
-
-                    images.forEach(img => observer.observe(img));
-
-                    // Disconnect after a short time
-                    setTimeout(() => observer.disconnect(), 2000);
-                }
-            }, 100);
-
-            // Add a flip button to the original content to switch back (only if flip button is enabled)
-            const originalHeader = relatedContainer.querySelector('h2');
-            if (originalHeader && enableRelatedFlipButton && !originalHeader.closest('[data-nhp-original-header-wrap]')) {
-                // Create container for original header with flip button
-                const originalHeaderContainer = document.createElement('div');
-                originalHeaderContainer.setAttribute('data-nhp-original-header-wrap', '1');
-                originalHeaderContainer.style.display = 'flex';
-                originalHeaderContainer.style.alignItems = 'center';
-                originalHeaderContainer.style.justifyContent = 'center';
-                originalHeaderContainer.style.gap = '10px';
-                originalHeaderContainer.style.position = 'relative';
-
-                // Style the original header
-                originalHeader.style.margin = '0';
-                originalHeader.style.textAlign = 'center';
-                originalHeader.style.flex = '1';
-
-                // Create flip button for original content
-                const originalFlipButton = document.createElement('button');
-                originalFlipButton.setAttribute('data-nhp-related-flip', '1');
-                originalFlipButton.type = 'button';
-                originalFlipButton.textContent = 'Flip';
-                originalFlipButton.style.cssText = `
-                    background: #ed2553;
-                    color: white;
-                    border: none;
-                    padding: 5px 10px;
-                    border-radius: 3px;
-                    cursor: pointer;
-                    font-size: 12px;
-                    font-weight: bold;
-                    position: absolute;
-                    right: 0;
-                    top: 50%;
-                    transform: translateY(-50%);
-                `;
-
-                // Add hover effects
-                originalFlipButton.addEventListener('mouseenter', () => {
-                    originalFlipButton.style.background = '#d91e47';
-                });
-                originalFlipButton.addEventListener('mouseleave', () => {
-                    originalFlipButton.style.background = '#ed2553';
-                });
-
-                // Add click event to flip back
-                originalFlipButton.addEventListener('click', toggleContent);
-
-                // Replace the original header with the container
-                originalHeader.parentNode.insertBefore(originalHeaderContainer, originalHeader);
-                originalHeaderContainer.appendChild(originalHeader);
-                originalHeaderContainer.appendChild(originalFlipButton);
             }
         } else {
-            // Switch back to bookmarked content
-            if (bookmarkedContent) {
-                relatedContainer.innerHTML = bookmarkedContent;
-                // Re-attach event listener to the new flip button (only our Flip, not random buttons)
-                const newFlipButton = relatedContainer.querySelector('[data-nhp-related-flip]');
-                if (newFlipButton) {
-                    newFlipButton.addEventListener('click', toggleContent);
-                    // Re-add hover effects
-                    newFlipButton.addEventListener('mouseenter', () => {
-                        newFlipButton.style.background = '#d91e47';
-                    });
-                    newFlipButton.addEventListener('mouseleave', () => {
-                        newFlipButton.style.background = '#ed2553';
-                    });
-                }
-                isShowingBookmarks = true;
-            }
+            // Switch to Bookmarks
+            hideNativeContent();
+            bookmarksUI.style.display = 'block';
+            isShowingBookmarks = true;
+            relatedContainer.dataset.nhpRelatedUserFlipped = 'false';
         }
     };
 
-    // Add click event to flip button (only if it exists)
-    if (flipButton) {
-        flipButton.addEventListener('click', toggleContent);
+    if (enableRelatedFlipButton) {
+        const flipButton = document.createElement('button');
+        flipButton.textContent = 'Flip';
+        flipButton.style.cssText = 'background:#ed2553; color:white; border:none; padding:5px 10px; border-radius:3px; cursor:pointer; font-size:12px; font-weight:bold; position:absolute; right:0; top:50%; transform:translateY(-50%);';
+        flipButton.onmouseenter = () => flipButton.style.background = '#d91e47';
+        flipButton.onmouseleave = () => flipButton.style.background = '#ed2553';
+        flipButton.onclick = toggleContent;
+        headerContainer.appendChild(flipButton);
     }
+    bookmarksUI.appendChild(headerContainer);
 
-    // Add each bookmark to the container
+    const galleryContainer = document.createElement('div');
+    galleryContainer.className = 'container';
+    bookmarksUI.appendChild(galleryContainer);
+
     for (const item of topBookmarks) {
-        const { bookmark, score, matchingTags, tagIds, title, thumbnail, language } = item;
-        if (score === 0) continue; // Skip bookmarks with no matching tags
+        const { bookmark, matchingTags, tagIds, title, thumbnail, language } = item;
+        let thumbUrl = thumbnail || await getMangaCoverImage(bookmark.id) || 'https://t.nhentai.net/galleries/0/thumb.jpg';
 
-        try {
-            // Create gallery HTML directly using the format from nhentai
-            const tagIdsString = tagIds && tagIds.length > 0 ? tagIds.join(' ') : '';
+        if (thumbUrl) {
+            if (thumbUrl.endsWith('.webp.webp')) thumbUrl = thumbUrl.replace('.webp.webp', '.webp');
+            const doubleMatch = thumbUrl.match(/\/galleries\/(\d+)\/galleries\/\1\//);
+            if (doubleMatch) thumbUrl = thumbUrl.replace(`/galleries/${doubleMatch[1]}/galleries/${doubleMatch[1]}/`, `/galleries/${doubleMatch[1]}/`);
+        }
 
-            // Calculate aspect ratio for padding (default to 141.2% if not available)
-            const aspectRatio = 141.2;
+        const tagIdsString = tagIds?.join(' ') || '';
+        const displayTitle = title || `Manga ${bookmark.id}`;
 
-            // Get thumbnail URL - use the cover image if available
-            let thumbUrl = thumbnail || null;
+        galleryContainer.insertAdjacentHTML('beforeend', `
+            <div class="gallery" data-tags="${tagIdsString}" data-detected-language="${language || ''}">
+                <a href="/g/${bookmark.id}/" class="cover" data-sveltekit-reload="true" style="padding:0 0 141.2% 0">
+                    <img class="lazyload" width="250" height="353" data-src="${thumbUrl}" src="${thumbUrl}" onerror="${NHP_COVER_FALLBACK_ONERROR}">
+                    <noscript><img src="${thumbUrl}" width="250" height="353" onerror="${NHP_COVER_FALLBACK_ONERROR}" /></noscript>
+                    <div class="caption" style="text-align: center;">
+                        ${displayTitle}
+                        ${matchingTags?.length ? `<div class="matching-tags" style="font-size:12px; color:#888; margin-top:5px; text-align:center;">Matching tags: ${matchingTags.join(', ')}</div>` : ''}
+                    </div>
+                </a>
+            </div>
+        `);
 
-            // If no thumbnail, try to get it from manga_info
-            if (!thumbUrl) {
-                const mangaInfo = await GM.getValue(`manga_info_${bookmark.id}`, null);
-                if (mangaInfo && mangaInfo.thumbnail) {
-                    thumbUrl = mangaInfo.thumbnail;
-                }
-            }
-
-            // If still no thumbnail, try to get the cover image
-            if (!thumbUrl) {
-                thumbUrl = await getMangaCoverImage(bookmark.id);
-            }
-
-            // If still no thumbnail, use placeholder
-            if (!thumbUrl) {
-                thumbUrl = 'https://t.nhentai.net/galleries/0/thumb.jpg';
-            }
-
-            // Format the title with manga name if available
-            let displayTitle = title || `Manga ${bookmark.id}`;
-
-            // Create gallery HTML with centered title (no inline language flag)
-            const galleryHTML = `
-                <div class="gallery" data-tags="${tagIdsString}" data-detected-language="${language || ''}">
-                    <a href="/g/${bookmark.id}/" class="cover" style="padding:0 0 ${aspectRatio}% 0">
-                        <img class="lazyload" width="250" height="353" data-src="${thumbUrl}" src="${thumbUrl}">
-                        <noscript><img src="${thumbUrl}" width="250" height="353" /></noscript>
-                        <div class="caption" style="text-align: center;">${displayTitle}</div>
-                    </a>
-                </div>
-            `;
-
-            // Add to container
-            galleryContainer.insertAdjacentHTML('beforeend', galleryHTML);
-
-            // Get the newly added gallery element
-            const lastGallery = galleryContainer.lastElementChild;
-
-            // Add matching tags info if available
-            if (matchingTags && matchingTags.length > 0) {
-                const caption = lastGallery.querySelector('.caption');
-
-                const tagsInfo = document.createElement('div');
-                tagsInfo.className = 'matching-tags';
-                tagsInfo.textContent = `Matching tags: ${matchingTags.join(', ')}`;
-                tagsInfo.style.fontSize = '12px';
-                tagsInfo.style.color = '#888';
-                tagsInfo.style.marginTop = '5px';
-                tagsInfo.style.textAlign = 'center';
-                caption.appendChild(tagsInfo);
-            }
-
-            // Add language flag using the overlay system if language is available
-            if (language && lastGallery) {
-                // Check if we have access to the language flag system
-                if (typeof window.nhentaiPlus !== 'undefined' && window.nhentaiPlus.systems && window.nhentaiPlus.systems.languageDetection) {
-                    window.nhentaiPlus.systems.languageDetection.addLanguageFlag(lastGallery, language);
-                }
-            }
-        } catch (error) {
-            console.error(`Error creating gallery item for bookmark ${bookmark.id}:`, error);
+        if (language && typeof window.nhentaiPlus !== 'undefined') {
+            window.nhentaiPlus.systems?.languageDetection?.addLanguageFlag(galleryContainer.lastElementChild, language);
         }
     }
 
-    // Store the bookmarked content after all galleries are added
-    storeBookmarkedContent();
     relatedContainer.dataset.nhpRelatedBookmarksGalleryId = currentMangaId;
 }
 
 // Call the function when the page is loaded
 $(document).ready(function () {
-    setTimeout(replaceRelatedWithBookmarks, 1000); // Delay to ensure page is fully loaded
+    // Initial execution
+    setTimeout(replaceRelatedWithBookmarks, 1000);
 });
 
 //---------------------------**BookMark-Random-Button**-----------------------------
@@ -9268,66 +10029,66 @@ async function handleMangaPage(isLoggedIn) {
         unlockFavoriteButtonForOffline(button);
 
         button.addEventListener('click', async function (e) {
-        console.log("Favorite button clicked");
-        const activeButton = e.currentTarget;
+            console.log("Favorite button clicked");
+            const activeButton = e.currentTarget;
 
-        if (isLoggedIn) {
-            setTimeout(() => {
-                const currentButton = getFavoriteButton() || activeButton;
-                updateOfflineFavoritesFromButtonState(currentButton);
-            }, 350);
-            return;
-        }
-
-        e.preventDefault();
-        e.stopPropagation();
-
-        // Get the CURRENT list of favorites (not the one from page load)
-        // This ensures we have the most up-to-date list
-        let currentFavorites = await GM.getValue('toFavorite', []);
-        currentFavorites = normalizeGalleryIdList(currentFavorites);
-
-        let currentOfflineFavorites = await GM.getValue('offlineFavorites', []);
-        currentOfflineFavorites = normalizeGalleryIdList(currentOfflineFavorites);
-
-        let currentPendingUnfavorites = await GM.getValue('toUnfavorite', []);
-        currentPendingUnfavorites = normalizeGalleryIdList(currentPendingUnfavorites);
-
-        // Check if this manga is CURRENTLY in favorites
-        const currentlyFavorited = currentFavorites.includes(mangaId) || currentOfflineFavorites.includes(mangaId);
-        console.log("Manga currently in favorites:", currentlyFavorited);
-
-        if (!isLoggedIn) {
-            if (currentlyFavorited) {
-                const wasPendingFavorite = currentFavorites.includes(mangaId);
-                const pendingIndex = currentFavorites.indexOf(mangaId);
-                if (pendingIndex !== -1) currentFavorites.splice(pendingIndex, 1);
-
-                currentOfflineFavorites = currentOfflineFavorites.filter(id => id !== mangaId);
-
-                if (!wasPendingFavorite && !currentPendingUnfavorites.includes(mangaId)) {
-                    currentPendingUnfavorites.push(mangaId);
-                }
-
-                updateButtonToUnfavorited(activeButton);
-                console.log("Removed manga from stored favorites:", mangaId);
-            } else {
-                if (!currentFavorites.includes(mangaId)) currentFavorites.push(mangaId);
-                if (!currentOfflineFavorites.includes(mangaId)) currentOfflineFavorites.push(mangaId);
-
-                currentPendingUnfavorites = currentPendingUnfavorites.filter(id => id !== mangaId);
-
-                updateButtonToFavorited(activeButton);
-                console.log("Added manga to stored favorites:", mangaId);
+            if (isLoggedIn) {
+                setTimeout(() => {
+                    const currentButton = getFavoriteButton() || activeButton;
+                    updateOfflineFavoritesFromButtonState(currentButton);
+                }, 350);
+                return;
             }
 
-            await savePendingQueueWithTimestamps('toFavorite', currentFavorites);
-            await savePendingQueueWithTimestamps('toUnfavorite', currentPendingUnfavorites);
-            await GM.setValue('offlineFavorites', currentOfflineFavorites);
-            console.log("Updated pending favorites:", currentFavorites);
-            console.log("Updated pending unfavorites:", currentPendingUnfavorites);
-            console.log("Updated stored favorites:", currentOfflineFavorites);
-        }
+            e.preventDefault();
+            e.stopPropagation();
+
+            // Get the CURRENT list of favorites (not the one from page load)
+            // This ensures we have the most up-to-date list
+            let currentFavorites = await GM.getValue('toFavorite', []);
+            currentFavorites = normalizeGalleryIdList(currentFavorites);
+
+            let currentOfflineFavorites = await GM.getValue('offlineFavorites', []);
+            currentOfflineFavorites = normalizeGalleryIdList(currentOfflineFavorites);
+
+            let currentPendingUnfavorites = await GM.getValue('toUnfavorite', []);
+            currentPendingUnfavorites = normalizeGalleryIdList(currentPendingUnfavorites);
+
+            // Check if this manga is CURRENTLY in favorites
+            const currentlyFavorited = currentFavorites.includes(mangaId) || currentOfflineFavorites.includes(mangaId);
+            console.log("Manga currently in favorites:", currentlyFavorited);
+
+            if (!isLoggedIn) {
+                if (currentlyFavorited) {
+                    const wasPendingFavorite = currentFavorites.includes(mangaId);
+                    const pendingIndex = currentFavorites.indexOf(mangaId);
+                    if (pendingIndex !== -1) currentFavorites.splice(pendingIndex, 1);
+
+                    currentOfflineFavorites = currentOfflineFavorites.filter(id => id !== mangaId);
+
+                    if (!wasPendingFavorite && !currentPendingUnfavorites.includes(mangaId)) {
+                        currentPendingUnfavorites.push(mangaId);
+                    }
+
+                    updateButtonToUnfavorited(activeButton);
+                    console.log("Removed manga from stored favorites:", mangaId);
+                } else {
+                    if (!currentFavorites.includes(mangaId)) currentFavorites.push(mangaId);
+                    if (!currentOfflineFavorites.includes(mangaId)) currentOfflineFavorites.push(mangaId);
+
+                    currentPendingUnfavorites = currentPendingUnfavorites.filter(id => id !== mangaId);
+
+                    updateButtonToFavorited(activeButton);
+                    console.log("Added manga to stored favorites:", mangaId);
+                }
+
+                await savePendingQueueWithTimestamps('toFavorite', currentFavorites);
+                await savePendingQueueWithTimestamps('toUnfavorite', currentPendingUnfavorites);
+                await GM.setValue('offlineFavorites', currentOfflineFavorites);
+                console.log("Updated pending favorites:", currentFavorites);
+                console.log("Updated pending unfavorites:", currentPendingUnfavorites);
+                console.log("Updated stored favorites:", currentOfflineFavorites);
+            }
         });
     }
 
@@ -9352,7 +10113,7 @@ async function handleMangaPage(isLoggedIn) {
                     const currentMangaId = getMangaIdFromUrl();
                     if (currentMangaId && !isLoggedIn) {
                         const shouldBeFavorited = (Array.isArray(storedFavorites) && storedFavorites.includes(currentMangaId)) ||
-                                                  (Array.isArray(pendingFavorites) && pendingFavorites.includes(currentMangaId));
+                            (Array.isArray(pendingFavorites) && pendingFavorites.includes(currentMangaId));
                         if (shouldBeFavorited && !isButtonFavorited(currentButton)) {
                             updateButtonToFavorited(currentButton);
                         } else if (!shouldBeFavorited && isButtonFavorited(currentButton)) {
@@ -9373,19 +10134,19 @@ async function handleMangaPage(isLoggedIn) {
                 const btn = getFavoriteButton();
                 if (!btn) return;
                 unlockFavoriteButtonForOffline(btn);
-                await bindOfflineFavoriteHandler(btn).catch(() => {});
+                await bindOfflineFavoriteHandler(btn).catch(() => { });
                 try {
                     const storedFavorites = await GM.getValue('offlineFavorites', []);
                     const pendingFavorites = await GM.getValue('toFavorite', []);
                     const currentMangaId = getMangaIdFromUrl();
                     if (currentMangaId && !isLoggedIn) {
                         const shouldBeFavorited = (Array.isArray(storedFavorites) && storedFavorites.includes(currentMangaId)) ||
-                                                  (Array.isArray(pendingFavorites) && pendingFavorites.includes(currentMangaId));
+                            (Array.isArray(pendingFavorites) && pendingFavorites.includes(currentMangaId));
                         if (shouldBeFavorited && !isButtonFavorited(btn)) {
                             updateButtonToFavorited(btn);
                         }
                     }
-                } catch (_) {}
+                } catch (_) { }
             }, delay);
         });
     }
@@ -10156,7 +10917,7 @@ async function createBookmarkLink() {
     // Update title if bookmark found
     if (bookmarkUrl) {
         const $title = $('h1.title');
-        const linkHtml = `<a href="${bookmarkUrl}" class="bookmark-link" style="color: inherit; text-decoration: none;"><u>${$title.html()}</u></a>`;
+        const linkHtml = `<a href="${bookmarkUrl}" class="bookmark-link" data-sveltekit-reload="true" style="color: inherit; text-decoration: none;"><u>${$title.html()}</u></a>`;
         $title.html(linkHtml).css('cursor', 'pointer');
     }
 }
@@ -11308,324 +12069,324 @@ function bindSmartTagSearchForm() {
     nhpSearchForm.dataset.nhpSmartTagBound = '1';
 
     nhpSearchForm.addEventListener('submit', async function (e) {
-    e.preventDefault();
-    const searchInput = this.querySelector('input[name="q"]');
-    let raw = (searchInput.value || '').trim();
+        e.preventDefault();
+        const searchInput = this.querySelector('input[name="q"]');
+        let raw = (searchInput.value || '').trim();
 
-    let smartTagEnabled = await GM.getValue('smartTagEnabled', true);
-    const smartTagBypassOnce = await GM.getValue('smartTagBypassOnce', false);
-    if (smartTagBypassOnce) {
-        await GM.setValue('smartTagBypassOnce', false);
-        smartTagEnabled = false;
-    }
-    const mustAddTagsEnabled = await GM.getValue('mustAddTagsEnabled', false);
-    const mustAddTags = (await GM.getValue('mustAddTags', [])).map(tag => tag.toLowerCase());
-    if (globalThis.taxonomyManager && typeof globalThis.taxonomyManager.ensureLoaded === 'function') {
-        await globalThis.taxonomyManager.ensureLoaded();
-    }
-
-    function isLanguage(str) {
-        const s = str.toLowerCase();
-        return s === 'english' || s === 'japanese' || s === 'chinese';
-    }
-
-    let finalQuery = raw;
-
-    if (smartTagEnabled && raw && !/[":]/.test(raw)) {
-        const wordsAll = raw.trim().split(/\s+/).filter(Boolean);
-        const jpParticles = new Set(["ga", "de", "no", "ni", "wa", "to", "e", "o", "ya", "kara", "made", "shite", "suru"]);
-        const hasParticles = wordsAll.some(w => jpParticles.has(w.toLowerCase()));
-        const likelyTitle = wordsAll.length >= 5 || hasParticles;
-        async function promptForAmbiguity(name, types) {
-            return new Promise(async (resolve) => {
-                const existing = document.getElementById('smarttag-ambiguity-modal');
-                if (existing) existing.remove();
-                const overlay = document.createElement('div');
-                overlay.id = 'smarttag-ambiguity-modal';
-                overlay.style.position = 'fixed';
-                overlay.style.inset = '0';
-                overlay.style.background = 'rgba(0, 0, 0, 0.8)';
-                overlay.style.zIndex = '9999';
-                overlay.style.display = 'flex';
-                overlay.style.alignItems = 'center';
-                overlay.style.justifyContent = 'center';
-
-                const box = document.createElement('div');
-                box.style.background = '#222';
-                box.style.color = '#fff';
-                box.style.border = '1px solid #444';
-                box.style.borderRadius = '6px';
-                box.style.boxShadow = '0 8px 24px rgba(0,0,0,0.45)';
-                box.style.maxWidth = '460px';
-                box.style.width = '92%';
-                box.style.padding = '16px';
-                box.style.fontFamily = 'Segoe UI, system-ui, -apple-system, Roboto, Arial';
-
-                const title = document.createElement('h3');
-                title.textContent = `Choose type for "${name}"`;
-                title.style.margin = '0 0 10px 0';
-                title.style.color = '#fff';
-
-                const desc = document.createElement('p');
-                desc.textContent = 'Multiple taxonomy types match this name. Select preferred type:';
-                desc.style.margin = '0 0 10px 0';
-                desc.style.fontSize = '14px';
-                desc.style.color = '#ccc';
-
-                const select = document.createElement('select');
-                select.style.width = '100%';
-                select.style.margin = '6px 0 10px 0';
-                select.style.padding = '6px 10px';
-                select.style.backgroundColor = '#2b2b2b';
-                select.style.color = '#e6e6e6';
-                select.style.border = '1px solid #3d3d3d';
-                select.style.borderRadius = '4px';
-                const ordered = ['artist', 'group', 'parody', 'character', 'tag'];
-                const present = ordered.filter(t => types.includes(t));
-                present.forEach(t => {
-                    const opt = document.createElement('option');
-                    opt.value = t; opt.textContent = t; select.appendChild(opt);
-                });
-
-                const rememberWrap = document.createElement('label');
-                rememberWrap.style.display = 'flex';
-                rememberWrap.style.alignItems = 'center';
-                rememberWrap.style.gap = '8px';
-                rememberWrap.style.color = '#ddd';
-                const remember = document.createElement('input');
-                remember.type = 'checkbox';
-                const rememberText = document.createElement('span');
-                rememberText.textContent = `Remember this choice for "${name}"`;
-                rememberText.style.fontSize = '13px';
-                rememberWrap.appendChild(remember);
-                rememberWrap.appendChild(rememberText);
-
-                const actions = document.createElement('div');
-                actions.style.display = 'flex';
-                actions.style.gap = '8px';
-                actions.style.marginTop = '12px';
-                actions.style.justifyContent = 'flex-end';
-
-                const ok = document.createElement('button');
-                ok.textContent = 'Apply';
-                ok.className = 'btn-secondary';
-                ok.style.background = '#444';
-                ok.style.border = '1px solid #666';
-                ok.style.color = '#fff';
-                ok.style.padding = '8px 16px';
-                ok.style.borderRadius = '3px';
-                ok.addEventListener('mouseenter', () => { ok.style.background = '#555'; });
-                ok.addEventListener('mouseleave', () => { ok.style.background = '#444'; });
-                const cancel = document.createElement('button');
-                cancel.textContent = 'Skip';
-                cancel.className = 'btn-secondary';
-                cancel.style.background = '#444';
-                cancel.style.border = '1px solid #666';
-                cancel.style.color = '#fff';
-                cancel.style.padding = '8px 16px';
-                cancel.style.borderRadius = '3px';
-                cancel.addEventListener('mouseenter', () => { cancel.style.background = '#555'; });
-                cancel.addEventListener('mouseleave', () => { cancel.style.background = '#444'; });
-
-                ok.addEventListener('click', async () => {
-                    const chosen = select.value || 'tag';
-                    if (remember.checked) {
-                        const ov = await GM.getValue('smartTagOverrides', {});
-                        const norm = String(name).toLowerCase().replace(/-/g, ' ').trim();
-                        ov[norm] = chosen;
-                        await GM.setValue('smartTagOverrides', ov);
-                    }
-                    overlay.remove();
-                    resolve(chosen);
-                });
-                cancel.addEventListener('click', () => { overlay.remove(); resolve(null); });
-                overlay.addEventListener('click', (evt) => { if (evt.target === overlay) { overlay.remove(); resolve(null); } });
-
-                actions.appendChild(cancel);
-                actions.appendChild(ok);
-
-                box.appendChild(title);
-                box.appendChild(desc);
-                box.appendChild(select);
-                box.appendChild(rememberWrap);
-                box.appendChild(actions);
-                overlay.appendChild(box);
-                document.body.appendChild(overlay);
-            });
+        let smartTagEnabled = await GM.getValue('smartTagEnabled', true);
+        const smartTagBypassOnce = await GM.getValue('smartTagBypassOnce', false);
+        if (smartTagBypassOnce) {
+            await GM.setValue('smartTagBypassOnce', false);
+            smartTagEnabled = false;
+        }
+        const mustAddTagsEnabled = await GM.getValue('mustAddTagsEnabled', false);
+        const mustAddTags = (await GM.getValue('mustAddTags', [])).map(tag => tag.toLowerCase());
+        if (globalThis.taxonomyManager && typeof globalThis.taxonomyManager.ensureLoaded === 'function') {
+            await globalThis.taxonomyManager.ensureLoaded();
         }
 
-        async function toAdvancedToken(tokenRaw) {
-            const t = tokenRaw.trim();
-            if (!t) return null;
-            if (isLanguage(t)) return `language:"${t.toLowerCase()}"`;
-            const norm = t.toLowerCase().replace(/-/g, ' ').trim();
-            if (typeof taxonomyManager !== 'undefined') {
-                const overrides = await GM.getValue('smartTagOverrides', {});
-                const ovType = overrides[norm];
-                if (ovType) return `${ovType}:"${t}"`;
-                const types = await taxonomyManager.getTypesForNameAsync(t);
-                if (types.length === 1) return `${types[0]}:"${t}"`;
-                if (types.length > 1) {
-                    const chosen = await promptForAmbiguity(t, types);
-                    if (chosen) return `${chosen}:"${t}"`;
-                }
-            }
-            return null;
+        function isLanguage(str) {
+            const s = str.toLowerCase();
+            return s === 'english' || s === 'japanese' || s === 'chinese';
         }
-        async function tokensFromGroup(groupContent) {
-            // Prefer explicit separators if provided (comma, pipe, semicolon)
-            const separated = groupContent.split(/[|,;]+/).map(s => s.trim()).filter(Boolean);
-            if (separated.length > 1) {
-                const mapped = [];
-                for (const s of separated) {
-                    const adv = await toAdvancedToken(s);
-                    mapped.push(adv || s);
-                }
-                return mapped;
+
+        let finalQuery = raw;
+
+        if (smartTagEnabled && raw && !/[":]/.test(raw)) {
+            const wordsAll = raw.trim().split(/\s+/).filter(Boolean);
+            const jpParticles = new Set(["ga", "de", "no", "ni", "wa", "to", "e", "o", "ya", "kara", "made", "shite", "suru"]);
+            const hasParticles = wordsAll.some(w => jpParticles.has(w.toLowerCase()));
+            const likelyTitle = wordsAll.length >= 5 || hasParticles;
+            async function promptForAmbiguity(name, types) {
+                return new Promise(async (resolve) => {
+                    const existing = document.getElementById('smarttag-ambiguity-modal');
+                    if (existing) existing.remove();
+                    const overlay = document.createElement('div');
+                    overlay.id = 'smarttag-ambiguity-modal';
+                    overlay.style.position = 'fixed';
+                    overlay.style.inset = '0';
+                    overlay.style.background = 'rgba(0, 0, 0, 0.8)';
+                    overlay.style.zIndex = '9999';
+                    overlay.style.display = 'flex';
+                    overlay.style.alignItems = 'center';
+                    overlay.style.justifyContent = 'center';
+
+                    const box = document.createElement('div');
+                    box.style.background = '#222';
+                    box.style.color = '#fff';
+                    box.style.border = '1px solid #444';
+                    box.style.borderRadius = '6px';
+                    box.style.boxShadow = '0 8px 24px rgba(0,0,0,0.45)';
+                    box.style.maxWidth = '460px';
+                    box.style.width = '92%';
+                    box.style.padding = '16px';
+                    box.style.fontFamily = 'Segoe UI, system-ui, -apple-system, Roboto, Arial';
+
+                    const title = document.createElement('h3');
+                    title.textContent = `Choose type for "${name}"`;
+                    title.style.margin = '0 0 10px 0';
+                    title.style.color = '#fff';
+
+                    const desc = document.createElement('p');
+                    desc.textContent = 'Multiple taxonomy types match this name. Select preferred type:';
+                    desc.style.margin = '0 0 10px 0';
+                    desc.style.fontSize = '14px';
+                    desc.style.color = '#ccc';
+
+                    const select = document.createElement('select');
+                    select.style.width = '100%';
+                    select.style.margin = '6px 0 10px 0';
+                    select.style.padding = '6px 10px';
+                    select.style.backgroundColor = '#2b2b2b';
+                    select.style.color = '#e6e6e6';
+                    select.style.border = '1px solid #3d3d3d';
+                    select.style.borderRadius = '4px';
+                    const ordered = ['artist', 'group', 'parody', 'character', 'tag'];
+                    const present = ordered.filter(t => types.includes(t));
+                    present.forEach(t => {
+                        const opt = document.createElement('option');
+                        opt.value = t; opt.textContent = t; select.appendChild(opt);
+                    });
+
+                    const rememberWrap = document.createElement('label');
+                    rememberWrap.style.display = 'flex';
+                    rememberWrap.style.alignItems = 'center';
+                    rememberWrap.style.gap = '8px';
+                    rememberWrap.style.color = '#ddd';
+                    const remember = document.createElement('input');
+                    remember.type = 'checkbox';
+                    const rememberText = document.createElement('span');
+                    rememberText.textContent = `Remember this choice for "${name}"`;
+                    rememberText.style.fontSize = '13px';
+                    rememberWrap.appendChild(remember);
+                    rememberWrap.appendChild(rememberText);
+
+                    const actions = document.createElement('div');
+                    actions.style.display = 'flex';
+                    actions.style.gap = '8px';
+                    actions.style.marginTop = '12px';
+                    actions.style.justifyContent = 'flex-end';
+
+                    const ok = document.createElement('button');
+                    ok.textContent = 'Apply';
+                    ok.className = 'btn-secondary';
+                    ok.style.background = '#444';
+                    ok.style.border = '1px solid #666';
+                    ok.style.color = '#fff';
+                    ok.style.padding = '8px 16px';
+                    ok.style.borderRadius = '3px';
+                    ok.addEventListener('mouseenter', () => { ok.style.background = '#555'; });
+                    ok.addEventListener('mouseleave', () => { ok.style.background = '#444'; });
+                    const cancel = document.createElement('button');
+                    cancel.textContent = 'Skip';
+                    cancel.className = 'btn-secondary';
+                    cancel.style.background = '#444';
+                    cancel.style.border = '1px solid #666';
+                    cancel.style.color = '#fff';
+                    cancel.style.padding = '8px 16px';
+                    cancel.style.borderRadius = '3px';
+                    cancel.addEventListener('mouseenter', () => { cancel.style.background = '#555'; });
+                    cancel.addEventListener('mouseleave', () => { cancel.style.background = '#444'; });
+
+                    ok.addEventListener('click', async () => {
+                        const chosen = select.value || 'tag';
+                        if (remember.checked) {
+                            const ov = await GM.getValue('smartTagOverrides', {});
+                            const norm = String(name).toLowerCase().replace(/-/g, ' ').trim();
+                            ov[norm] = chosen;
+                            await GM.setValue('smartTagOverrides', ov);
+                        }
+                        overlay.remove();
+                        resolve(chosen);
+                    });
+                    cancel.addEventListener('click', () => { overlay.remove(); resolve(null); });
+                    overlay.addEventListener('click', (evt) => { if (evt.target === overlay) { overlay.remove(); resolve(null); } });
+
+                    actions.appendChild(cancel);
+                    actions.appendChild(ok);
+
+                    box.appendChild(title);
+                    box.appendChild(desc);
+                    box.appendChild(select);
+                    box.appendChild(rememberWrap);
+                    box.appendChild(actions);
+                    overlay.appendChild(box);
+                    document.body.appendChild(overlay);
+                });
             }
-            const words = groupContent.trim().split(/\s+/).filter(Boolean);
-            // Heuristic: if words form pairs with repeated anchor (e.g., "mind control mind break")
-            if (words.length >= 4 && words.length % 2 === 0) {
-                const anchor = words[0].toLowerCase();
-                let pairs = true;
-                for (let i = 0; i < words.length; i += 2) {
-                    if (i > 0 && words[i].toLowerCase() !== anchor) { pairs = false; break; }
-                }
-                if (pairs) {
-                    const phrases = [];
-                    for (let i = 0; i < words.length; i += 2) {
-                        phrases.push(`${words[i]} ${words[i + 1]}`);
+
+            async function toAdvancedToken(tokenRaw) {
+                const t = tokenRaw.trim();
+                if (!t) return null;
+                if (isLanguage(t)) return `language:"${t.toLowerCase()}"`;
+                const norm = t.toLowerCase().replace(/-/g, ' ').trim();
+                if (typeof taxonomyManager !== 'undefined') {
+                    const overrides = await GM.getValue('smartTagOverrides', {});
+                    const ovType = overrides[norm];
+                    if (ovType) return `${ovType}:"${t}"`;
+                    const types = await taxonomyManager.getTypesForNameAsync(t);
+                    if (types.length === 1) return `${types[0]}:"${t}"`;
+                    if (types.length > 1) {
+                        const chosen = await promptForAmbiguity(t, types);
+                        if (chosen) return `${chosen}:"${t}"`;
                     }
+                }
+                return null;
+            }
+            async function tokensFromGroup(groupContent) {
+                // Prefer explicit separators if provided (comma, pipe, semicolon)
+                const separated = groupContent.split(/[|,;]+/).map(s => s.trim()).filter(Boolean);
+                if (separated.length > 1) {
                     const mapped = [];
-                    for (const s of phrases) {
+                    for (const s of separated) {
                         const adv = await toAdvancedToken(s);
-                        if (adv) mapped.push(adv);
+                        mapped.push(adv || s);
                     }
                     return mapped;
                 }
-            }
-            // Fallback: treat each word as its own token
-            const mapped = [];
-            for (const wRaw of words) {
-                if (likelyTitle) { mapped.push(wRaw); continue; }
-                const w = wRaw.toLowerCase();
-                let adv;
-                const isArtist = (typeof taxonomyManager !== 'undefined') ? await taxonomyManager.isArtistName(wRaw) : false;
-                if (isArtist) {
-                    adv = `artist:"${wRaw}"`;
-                } else {
-                    adv = await toAdvancedToken(wRaw);
-                }
-                mapped.push(adv || wRaw);
-            }
-            return mapped;
-        }
-        const advTokens = [];
-        let i = 0;
-        while (i < raw.length) {
-            if (raw[i] === '(') {
-                let j = i + 1, depth = 1;
-                while (j < raw.length && depth > 0) {
-                    if (raw[j] === '(') depth++;
-                    else if (raw[j] === ')') depth--;
-                    j++;
-                }
-                const content = raw.slice(i + 1, j - 1);
-                const mapped = await tokensFromGroup(content);
-                advTokens.push(...mapped);
-                i = j;
-            } else {
-                // accumulate plain segment until '(' and apply phrase dictionary
-                let start = i;
-                while (i < raw.length && raw[i] !== '(') i++;
-                const segment = raw.slice(start, i);
-                const words = segment.trim().split(/\s+/).filter(Boolean);
-                // Use GitHub taxonomy exclusively
-                const tm = (typeof taxonomyManager !== 'undefined') ? taxonomyManager : null;
-                let k = 0;
-                while (k < words.length) {
-                    let matched = false;
-                    // prefer longer phrases first
-                    for (let n = Math.min(3, words.length - k); n >= 2; n--) {
-                        const rawPhrase = words.slice(k, k + n).join(' ');
-                        const normPhrase = rawPhrase.toLowerCase().replace(/-/g, ' ').trim();
-                        const isArtistPhrase = tm ? await tm.isArtistName(rawPhrase) : false;
-                        if (isArtistPhrase) {
-                            advTokens.push(`artist:"${rawPhrase}"`);
-                            k += n;
-                            matched = true;
-                            break;
-                        }
-                        const types = tm ? await tm.getTypesForNameAsync(rawPhrase) : [];
-                        if (types && types.length > 0) {
-                            const adv = await toAdvancedToken(rawPhrase);
-                            advTokens.push(adv || rawPhrase);
-                            k += n;
-                            matched = true;
-                            break;
-                        }
+                const words = groupContent.trim().split(/\s+/).filter(Boolean);
+                // Heuristic: if words form pairs with repeated anchor (e.g., "mind control mind break")
+                if (words.length >= 4 && words.length % 2 === 0) {
+                    const anchor = words[0].toLowerCase();
+                    let pairs = true;
+                    for (let i = 0; i < words.length; i += 2) {
+                        if (i > 0 && words[i].toLowerCase() !== anchor) { pairs = false; break; }
                     }
-                    if (!matched) {
-                        const wRaw = words[k];
-                        if (typeof likelyTitle !== 'undefined' && likelyTitle) {
-                            advTokens.push(wRaw);
+                    if (pairs) {
+                        const phrases = [];
+                        for (let i = 0; i < words.length; i += 2) {
+                            phrases.push(`${words[i]} ${words[i + 1]}`);
+                        }
+                        const mapped = [];
+                        for (const s of phrases) {
+                            const adv = await toAdvancedToken(s);
+                            if (adv) mapped.push(adv);
+                        }
+                        return mapped;
+                    }
+                }
+                // Fallback: treat each word as its own token
+                const mapped = [];
+                for (const wRaw of words) {
+                    if (likelyTitle) { mapped.push(wRaw); continue; }
+                    const w = wRaw.toLowerCase();
+                    let adv;
+                    const isArtist = (typeof taxonomyManager !== 'undefined') ? await taxonomyManager.isArtistName(wRaw) : false;
+                    if (isArtist) {
+                        adv = `artist:"${wRaw}"`;
+                    } else {
+                        adv = await toAdvancedToken(wRaw);
+                    }
+                    mapped.push(adv || wRaw);
+                }
+                return mapped;
+            }
+            const advTokens = [];
+            let i = 0;
+            while (i < raw.length) {
+                if (raw[i] === '(') {
+                    let j = i + 1, depth = 1;
+                    while (j < raw.length && depth > 0) {
+                        if (raw[j] === '(') depth++;
+                        else if (raw[j] === ')') depth--;
+                        j++;
+                    }
+                    const content = raw.slice(i + 1, j - 1);
+                    const mapped = await tokensFromGroup(content);
+                    advTokens.push(...mapped);
+                    i = j;
+                } else {
+                    // accumulate plain segment until '(' and apply phrase dictionary
+                    let start = i;
+                    while (i < raw.length && raw[i] !== '(') i++;
+                    const segment = raw.slice(start, i);
+                    const words = segment.trim().split(/\s+/).filter(Boolean);
+                    // Use GitHub taxonomy exclusively
+                    const tm = (typeof taxonomyManager !== 'undefined') ? taxonomyManager : null;
+                    let k = 0;
+                    while (k < words.length) {
+                        let matched = false;
+                        // prefer longer phrases first
+                        for (let n = Math.min(3, words.length - k); n >= 2; n--) {
+                            const rawPhrase = words.slice(k, k + n).join(' ');
+                            const normPhrase = rawPhrase.toLowerCase().replace(/-/g, ' ').trim();
+                            const isArtistPhrase = tm ? await tm.isArtistName(rawPhrase) : false;
+                            if (isArtistPhrase) {
+                                advTokens.push(`artist:"${rawPhrase}"`);
+                                k += n;
+                                matched = true;
+                                break;
+                            }
+                            const types = tm ? await tm.getTypesForNameAsync(rawPhrase) : [];
+                            if (types && types.length > 0) {
+                                const adv = await toAdvancedToken(rawPhrase);
+                                advTokens.push(adv || rawPhrase);
+                                k += n;
+                                matched = true;
+                                break;
+                            }
+                        }
+                        if (!matched) {
+                            const wRaw = words[k];
+                            if (typeof likelyTitle !== 'undefined' && likelyTitle) {
+                                advTokens.push(wRaw);
+                                k++;
+                                continue;
+                            }
+                            const isArtist = tm ? await tm.isArtistName(wRaw) : false;
+                            let adv;
+                            if (isArtist) {
+                                adv = `artist:"${wRaw}"`;
+                            } else {
+                                adv = await toAdvancedToken(wRaw);
+                            }
+                            advTokens.push(adv || wRaw);
                             k++;
-                            continue;
                         }
-                        const isArtist = tm ? await tm.isArtistName(wRaw) : false;
-                        let adv;
-                        if (isArtist) {
-                            adv = `artist:"${wRaw}"`;
-                        } else {
-                            adv = await toAdvancedToken(wRaw);
-                        }
-                        advTokens.push(adv || wRaw);
-                        k++;
                     }
                 }
+                while (i < raw.length && /\s/.test(raw[i])) i++;
             }
-            while (i < raw.length && /\s/.test(raw[i])) i++;
-        }
 
-        // Deduplicate across auto-advanced and must-add
-        const seen = new Set();
-        const normalized = s => s.toLowerCase();
-        const uniqueAdvTokens = [];
-        for (const adv of advTokens) {
-            const key = normalized(adv);
-            if (!seen.has(key)) { seen.add(key); uniqueAdvTokens.push(adv); }
-        }
-
-        if (mustAddTagsEnabled && mustAddTags.length > 0) {
-            for (const t of mustAddTags) {
-                const traw = String(t || '').trim();
-                if (!traw) continue; // skip empty/whitespace-only must-add entries
-                let adv;
-                const m = traw.match(/^([a-z]+):(.*)$/i);
-                if (m) {
-                    const ns = m[1].toLowerCase();
-                    const val = String(m[2] || '').trim().replace(/^\"(.*)\"$/, '$1').trim();
-                    if (!val) continue; // avoid ns:"" tokens
-                    adv = `${ns}:"${val}"`;
-                } else {
-                    adv = isLanguage(traw) ? `language:"${traw}"` : `tag:"${traw}"`;
-                }
+            // Deduplicate across auto-advanced and must-add
+            const seen = new Set();
+            const normalized = s => s.toLowerCase();
+            const uniqueAdvTokens = [];
+            for (const adv of advTokens) {
                 const key = normalized(adv);
                 if (!seen.has(key)) { seen.add(key); uniqueAdvTokens.push(adv); }
             }
+
+            if (mustAddTagsEnabled && mustAddTags.length > 0) {
+                for (const t of mustAddTags) {
+                    const traw = String(t || '').trim();
+                    if (!traw) continue; // skip empty/whitespace-only must-add entries
+                    let adv;
+                    const m = traw.match(/^([a-z]+):(.*)$/i);
+                    if (m) {
+                        const ns = m[1].toLowerCase();
+                        const val = String(m[2] || '').trim().replace(/^\"(.*)\"$/, '$1').trim();
+                        if (!val) continue; // avoid ns:"" tokens
+                        adv = `${ns}:"${val}"`;
+                    } else {
+                        adv = isLanguage(traw) ? `language:"${traw}"` : `tag:"${traw}"`;
+                    }
+                    const key = normalized(adv);
+                    if (!seen.has(key)) { seen.add(key); uniqueAdvTokens.push(adv); }
+                }
+            }
+
+            finalQuery = uniqueAdvTokens.join(' ');
+        } else {
+            // Legacy behavior: merge plain tokens with Must Add Tags
+            let queryArray = raw.split(/\s+/).filter(tag => tag.length > 0).map(tag => tag.toLowerCase());
+            if (mustAddTagsEnabled && mustAddTags.length > 0) {
+                queryArray = [...new Set([...queryArray, ...mustAddTags])];
+            }
+            finalQuery = queryArray.join(' ');
         }
 
-        finalQuery = uniqueAdvTokens.join(' ');
-    } else {
-        // Legacy behavior: merge plain tokens with Must Add Tags
-        let queryArray = raw.split(/\s+/).filter(tag => tag.length > 0).map(tag => tag.toLowerCase());
-        if (mustAddTagsEnabled && mustAddTags.length > 0) {
-            queryArray = [...new Set([...queryArray, ...mustAddTags])];
-        }
-        finalQuery = queryArray.join(' ');
-    }
-
-    window.location.href = `/search/?q=${encodeURIComponent(finalQuery)}`;
+        window.location.href = `/search/?q=${encodeURIComponent(finalQuery)}`;
     });
 }
 
@@ -17011,15 +17772,15 @@ class QuickNutPageSystem {
     async addNavigationLink() {
         const enabled = await GM.getValue('quickNutPageEnabled', true);
         if (!enabled) return;
-                const nav = getPrimaryNav() || document.querySelector('nav');
-                if (!nav) return;
+        const nav = getPrimaryNav() || document.querySelector('nav');
+        if (!nav) return;
 
-                const existingMenuLink = nav.querySelector('ul.menu.left a[href="/quick-nut/"]');
-                if (existingMenuLink) {
-                        const existingItem = existingMenuLink.closest('li');
-                        if (existingItem) existingItem.classList.add('desktop');
-                        return;
-                }
+        const existingMenuLink = nav.querySelector('ul.menu.left a[href="/quick-nut/"]');
+        if (existingMenuLink) {
+            const existingItem = existingMenuLink.closest('li');
+            if (existingItem) existingItem.classList.add('desktop');
+            return;
+        }
 
         const btnHtml = `
                     <li class="desktop">
@@ -17029,10 +17790,10 @@ class QuickNutPageSystem {
           </li>
         `;
         const btn = $(btnHtml);
-                const menu = $(nav).find('ul.menu.left').first();
-                menu.children('li.dropdown').length
-                        ? btn.insertBefore(menu.children('li.dropdown').first())
-                        : menu.append(btn);
+        const menu = $(nav).find('ul.menu.left').first();
+        menu.children('li.dropdown').length
+            ? btn.insertBefore(menu.children('li.dropdown').first())
+            : menu.append(btn);
         btn.find('a').on('click', (e) => {
             e.preventDefault();
             this.navigateToQuickNutPage();
@@ -17937,34 +18698,31 @@ class FeatureIntegrationSystem {
     }
 
     /**
-     * Handle page changes
+     * Handle page changes — coordinates with the Svelte adapter's nhpScheduleApplyAll
+     * for gallery-level augmentations. Only handles features NOT covered by the adapter.
      */
     async handlePageChange() {
         // Small delay to let the page load
         setTimeout(async () => {
-            // Re-initialize systems that need to process new content
-            if (this.systems.language) {
-                this.systems.language.detectAndMarkLanguages();
+            // Gallery-level augmentations (mark-as-read, language, tagWarning, opacity, page numbers)
+            // are handled by nhpScheduleApplyAll via the Svelte adapter.
+            // Trigger it here as well for non-Svelte navigations.
+            if (typeof nhpScheduleApplyAll === 'function') {
+                nhpScheduleApplyAll(100);
             }
 
+            // Features NOT handled by the adapter:
             if (this.systems.tagWarning) {
-                this.systems.tagWarning.processGalleries();
                 this.systems.tagWarning.processGalleryPage();
             }
 
             if (this.systems.markAsRead) {
-                this.systems.markAsRead.addMarkAsReadButtons();
-                this.systems.markAsRead.applyReadStatus();
                 this.systems.markAsRead.setupAutoMark();
             }
 
             if (this.systems.advancedSearch) {
                 this.systems.advancedSearch.addAdvancedSearchButtons();
                 this.systems.advancedSearch.createFavoriteTagSearchButtons();
-            }
-
-            if (this.systems.opacity) {
-                this.systems.opacity.applyOpacitySettings();
             }
         }, 500);
     }
@@ -18003,25 +18761,11 @@ class FeatureIntegrationSystem {
     }
 
     /**
-     * Process newly added galleries
+     * Process newly added galleries — delegates to the Svelte adapter's central reapply
      */
     processNewGalleries() {
-        // Process with all systems
-        if (this.systems.language) {
-            this.systems.language.detectAndMarkLanguages();
-        }
-
-        if (this.systems.tagWarning) {
-            this.systems.tagWarning.processGalleries();
-        }
-
-        if (this.systems.markAsRead) {
-            this.systems.markAsRead.addMarkAsReadButtons();
-            this.systems.markAsRead.applyReadStatus();
-        }
-
-        if (this.systems.opacity) {
-            this.systems.opacity.applyOpacitySettings();
+        if (typeof nhpScheduleApplyAll === 'function') {
+            nhpScheduleApplyAll(100);
         }
     }
 
@@ -18128,6 +18872,7 @@ async function initializeEnhancedFeatures() {
 
     // Initialize the integration system
     featureIntegrationSystem = new FeatureIntegrationSystem();
+    globalThis.__nhpGallerySystemsManager = featureIntegrationSystem;
 }
 
 // Initialize enhanced features

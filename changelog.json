@@ -1,4 +1,15 @@
 {
+  "10.8.0": {
+    "date": "2026-04-21",
+    "changes": [
+      "fix(ui): inject custom fallback dark theme to restore broken navigation styles on non-supported pages (e.g., Settings, Bookmarks)",
+      "fix(ui): extract and inject nhentai's Svelte CSS bundles to ensure buttons, nav, and layouts render correctly on custom routes",
+      "fix(ui): resolve horizontal scrolling issue on mobile by properly constraining nav layout and using border-box sizing",
+      "fix(ui): match nhentai's native mobile nav layout and prevent the logo from shifting off-screen on smaller devices",
+      "fix(v2-compat): explicitly remove empty Svelte #app container and 404 text on custom routes to prevent layout interference",
+      "chore(version): bump userscript version to 10.7.2"
+    ]
+  },
   "10.7.1": {
     "date": "2026-04-21",
     "changes": [
