@@ -1,4 +1,12 @@
 {
+  "10.8.1": {
+    "date": "2026-05-16",
+    "changes": [
+      "fix(bookmarks): capture manga title and tags immediately when bookmarking to prevent 'Unknown Title' issues",
+      "fix(bookmarks): enhance auto-repair logic for missing metadata using Nhentai V2 API and Cache",
+      "fix(search): resolve broken tag search on the bookmarks page by using modern inlined tag data source"
+    ]
+  },
   "10.8.0": {
     "date": "2026-04-21",
     "changes": [

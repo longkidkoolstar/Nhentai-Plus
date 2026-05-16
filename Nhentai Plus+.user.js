@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      10.8.0
+// @version      10.8.1
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -2853,13 +2853,16 @@ async function addQuickNutButton() {
                     const searchQuery = mangaTitleInput.val().toLowerCase();
                     const tagQueries = mangaTagInput.val().toLowerCase().trim().split(/,\s*|\s+/);
 
-                    mangaBookmarksList.children('li').each(async function () {
+                    mangaBookmarksList.children('li').each(function () {
                         const $li = $(this);
                         const mangaUrl = $li.find('.bookmark-link').attr('href');
-                        const tags = await GM.getValue(`tags_${mangaUrl}`, []);
+                        
+                        // Use tags directly from the manga object in bookmarkedMangas
+                        const manga = bookmarkedMangas.find(m => m.url === mangaUrl);
+                        const tags = manga && Array.isArray(manga.tags) ? manga.tags : [];
 
                         const cleanedTags = tags.map(tag =>
-                            tag.replace(/\d+K?$/, '').trim().toLowerCase()
+                            String(tag).replace(/\d+K?$/, '').trim().toLowerCase()
                         );
 
                         const textContent = $li.find('.bookmark-link').text().toLowerCase();
@@ -7968,38 +7971,62 @@ function mangaBookmarking() {
                 // Auto-repair missing data for previously bookmarked mangas
                 let needsUpdate = false;
 
-                if (!existingManga.title || existingManga.title === 'Unknown title') {
-                    const titleElement = document.querySelector('h1.title') || document.querySelector('h2.title');
-                    if (titleElement) {
-                        const extractedTitle = titleElement.textContent.trim();
-                        if (extractedTitle) {
-                            existingManga.title = extractedTitle;
+                const currentMangaIdMatch = currentUrl.match(/\/g\/(\d+)/);
+                if (currentMangaIdMatch) {
+                    const gid = currentMangaIdMatch[1];
+
+                    // If title is missing or "Unknown", try to repair it
+                    if (!existingManga.title || existingManga.title === 'Unknown Title' || existingManga.title === 'Unknown title') {
+                        let title = null;
+
+                        // Try Cache/API
+                        let apiData = typeof NHP_V2_GALLERY_CACHE !== 'undefined' ? NHP_V2_GALLERY_CACHE.get(gid) : null;
+                        if (!apiData && typeof nhpFetchGalleryV2 === 'function') {
+                            apiData = await nhpFetchGalleryV2(gid);
+                        }
+                        if (apiData && apiData.title) {
+                            title = apiData.title;
+                        }
+
+                        // Fallback to DOM
+                        if (!title) {
+                            const titleElement = document.querySelector('h1.title') || document.querySelector('h2.title');
+                            if (titleElement) {
+                                title = titleElement.textContent.trim();
+                            }
+                        }
+
+                        if (title && title !== 'Unknown Title' && title !== 'Unknown title') {
+                            existingManga.title = title;
                             needsUpdate = true;
                         }
                     }
-                }
 
-                if (!existingManga.tags || existingManga.tags.length === 0 || (existingManga.tags.length === 1 && existingManga.tags[0] === '')) {
-                    let tags = [];
-                    const currentMangaIdMatch = currentUrl.match(/\/g\/(\d+)/);
-                    if (currentMangaIdMatch) {
-                        const gid = currentMangaIdMatch[1];
-                        const cachedData = typeof NHP_V2_GALLERY_CACHE !== 'undefined' ? NHP_V2_GALLERY_CACHE.get(gid) : null;
-                        if (cachedData && cachedData.tags) {
-                            tags = cachedData.tags.map(t => (t.name || t.slug || t));
+                    // If tags are missing, try to repair them
+                    if (!existingManga.tags || existingManga.tags.length === 0 || (existingManga.tags.length === 1 && existingManga.tags[0] === '')) {
+                        let tags = [];
+
+                        // Try Cache/API
+                        let apiData = typeof NHP_V2_GALLERY_CACHE !== 'undefined' ? NHP_V2_GALLERY_CACHE.get(gid) : null;
+                        if (!apiData && typeof nhpFetchGalleryV2 === 'function') {
+                            apiData = await nhpFetchGalleryV2(gid);
                         }
-                    }
-
-                    if (tags.length === 0) {
-                        const tagElements = document.querySelectorAll('#tags .tag .name');
-                        if (tagElements.length > 0) {
-                            tags = Array.from(tagElements).map(tag => tag.textContent.trim());
+                        if (apiData && apiData.tags) {
+                            tags = apiData.tags.map(t => (t.name || t.slug || t));
                         }
-                    }
 
-                    if (tags.length > 0) {
-                        existingManga.tags = tags;
-                        needsUpdate = true;
+                        // Fallback to DOM
+                        if (tags.length === 0) {
+                            const tagElements = document.querySelectorAll('#tags .tag .name');
+                            if (tagElements.length > 0) {
+                                tags = Array.from(tagElements).map(tag => tag.textContent.trim());
+                            }
+                        }
+
+                        if (tags.length > 0) {
+                            existingManga.tags = tags;
+                            needsUpdate = true;
+                        }
                     }
                 }
 
@@ -8044,9 +8071,39 @@ function mangaBookmarking() {
                         this.classList.add('btn-enabled');
                     } else {
                         // If not bookmarked, add it
+                        let title = "Unknown Title";
+                        let tags = [];
+
+                        // 1. Try to get title from DOM
+                        const titleElement = document.querySelector('h1.title') || document.querySelector('h2.title');
+                        if (titleElement) {
+                            title = titleElement.textContent.trim();
+                        }
+
+                        // 2. Try to get tags from DOM
+                        const tagElements = document.querySelectorAll('#tags .tag .name');
+                        if (tagElements.length > 0) {
+                            tags = Array.from(tagElements).map(tag => tag.textContent.trim());
+                        }
+
+                        // 3. Try to use API/Cache for more accurate data if possible
+                        const currentMangaIdMatch = currentUrl.match(/\/g\/(\d+)/);
+                        if (currentMangaIdMatch) {
+                            const gid = currentMangaIdMatch[1];
+                            const cachedData = typeof NHP_V2_GALLERY_CACHE !== 'undefined' ? NHP_V2_GALLERY_CACHE.get(gid) : null;
+                            if (cachedData) {
+                                if (cachedData.title) title = cachedData.title;
+                                if (cachedData.tags) {
+                                    tags = cachedData.tags.map(t => (t.name || t.slug || t));
+                                }
+                            }
+                        }
+
                         bookmarkedMangas.push({
                             url: currentUrl,
-                            coverImageUrl: coverImageUrl
+                            title: title,
+                            coverImageUrl: coverImageUrl,
+                            tags: tags
                         });
                         this.querySelector('span').textContent = 'Bookmarked';
                         this.classList.remove('btn-enabled');
