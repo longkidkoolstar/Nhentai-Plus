@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      10.8.2
+// @version      10.8.3
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -23,7 +23,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "10.8.2";
+const CURRENT_VERSION = "10.8.3";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -4044,12 +4044,12 @@ if (window.location.href.includes('/settings')) {
                     <h3>Interface</h3>
                     <div class="setting-row">
                         <div class="setting-info">
-                            <span class="setting-label" style="text-decoration: line-through; opacity: 0.6;">Show Page Numbers</span>
-                            <span class="setting-desc" style="color: #ff4d4d; font-weight: bold;">[DISABLED] This feature is temporarily closed due to rate limiting issues. It will return in a future update.</span>
+                            <span class="setting-label">Show Page Numbers</span>
+                            <span class="setting-desc">Shows page count on gallery thumbnails using the bulk v2 API cache (one request per listing page).</span>
                         </div>
                         <label class="toggle-switch">
-                            <input type="checkbox" id="showPageNumbersEnabled" disabled>
-                            <span class="toggle-slider" style="opacity: 0.5; cursor: not-allowed;"></span>
+                            <input type="checkbox" id="showPageNumbersEnabled">
+                            <span class="toggle-slider"></span>
                         </label>
                     </div>
                     <div class="setting-row">
@@ -4321,6 +4321,7 @@ if (window.location.href.includes('/settings')) {
                                 <textarea id="favoriteTags" rows="3" readonly></textarea>
                                 <button type="button" id="clearFavoriteTags" class="btn-secondary" style="margin-top:5px">Clear Favorites</button>
                             </div>
+                            <p id="tagResolveStatus" style="font-size:12px; margin-top:8px; color:var(--nh-text-muted, #aaa);"></p>
                             <div class="tag-list-section">
                                 <h4>Smart Tag Overrides</h4>
                                 <div id="smart-tag-overrides">
@@ -6106,6 +6107,11 @@ if (window.location.href.includes('/settings')) {
 
         await GM.setValue('showNonEnglish', showNonEnglish);
         await GM.setValue('showPageNumbersEnabled', showPageNumbersEnabled);
+        if (!showPageNumbersEnabled) {
+            document.querySelectorAll('.page-number-display').forEach(el => el.remove());
+        } else if (typeof nhpScheduleApplyAll === 'function') {
+            nhpScheduleApplyAll(50);
+        }
         await GM.setValue('useClassicLayout', useClassicLayout);
         await GM.setValue('findSimilarEnabled', findSimilarEnabled);
         await GM.setValue('englishFilterEnabled', englishFilterEnabled);
@@ -6176,6 +6182,14 @@ if (window.location.href.includes('/settings')) {
         await GM.setValue('blacklistTagsList', blacklistTagsList);
         await GM.setValue('warningTagsList', warningTagsList);
         await GM.setValue('favoriteTagsList', favoriteTagsList);
+        if (tagWarningEnabled) {
+            await resolveAllTagLists();
+            if (typeof tagWarningSystem !== 'undefined' && tagWarningSystem) {
+                tagWarningSystem.processGalleries();
+            }
+        } else {
+            rebuildNhpTagIdSets([], [], []);
+        }
 
         // Save sync settings
         await GM.setValue('publicSyncEnabled', publicSyncEnabledForm);
@@ -9104,6 +9118,387 @@ async function fetchApi(url) {
     }
 }
 
+// ---- Tag list name → ID resolver (for bulk tag_ids matching) ----
+const NHP_TAG_NAMESPACES = new Set(['tag', 'artist', 'group', 'parody', 'character', 'language', 'category']);
+const NHP_TAG_RESOLVE_FALLBACK_TYPES = ['tag', 'artist', 'group', 'character', 'parody', 'language', 'category'];
+const NHP_TAG_RESOLVE_FALLBACK_TYPE_DELAY_MS = 200;
+
+const NHP_TAG_ID_SETS = {
+    blacklist: new Set(),
+    warning: new Set(),
+    favorite: new Set(),
+};
+
+const NHP_TAG_ID_TO_NAME = new Map();
+const NHP_TAG_RESOLVE_DELAY_MS = 350;
+const NHP_TAG_RESOLVE_MAX_RETRIES = 4;
+let nhpUnresolvedTags = [];
+let nhpTagListsResolvePromise = null;
+let nhpTagEntryIdCache = {};
+
+function parseTagListEntry(value) {
+    const normalized = String(value || '').trim().toLowerCase();
+    if (!normalized) return null;
+
+    const namespaceMatch = normalized.match(/^([a-z_]+):(.+)$/i);
+    if (namespaceMatch) {
+        const type = namespaceMatch[1].toLowerCase();
+        const name = namespaceMatch[2].trim().toLowerCase();
+        if (NHP_TAG_NAMESPACES.has(type) && name) {
+            return { type, name, raw: normalized, slug: name.replace(/\s+/g, '-'), explicitNamespace: true };
+        }
+    }
+
+    const name = normalized;
+    return { type: 'tag', name, raw: normalized, slug: name.replace(/\s+/g, '-'), explicitNamespace: false };
+}
+
+function nhpEntryHasExplicitNamespace(raw) {
+    const normalized = String(raw || '').trim().toLowerCase();
+    const namespaceMatch = normalized.match(/^([a-z_]+):(.+)$/i);
+    return !!(namespaceMatch && NHP_TAG_NAMESPACES.has(namespaceMatch[1].toLowerCase()));
+}
+
+function normalizeNhpTagCacheEntry(value) {
+    if (value == null) return null;
+    if (typeof value === 'number' && !Number.isNaN(value)) {
+        return { id: value, type: null };
+    }
+    if (typeof value === 'object' && value.id != null) {
+        const id = Number(value.id);
+        if (Number.isNaN(id)) return null;
+        const type = value.type && NHP_TAG_NAMESPACES.has(String(value.type)) ? String(value.type) : null;
+        return { id, type };
+    }
+    const n = Number(value);
+    return Number.isNaN(n) ? null : { id: n, type: null };
+}
+
+function getNhpTagCacheEntry(cache, raw) {
+    return normalizeNhpTagCacheEntry(cache[raw]);
+}
+
+function setNhpTagCacheEntry(cache, raw, id, type) {
+    if (type) {
+        cache[raw] = { id: Number(id), type };
+    } else {
+        cache[raw] = Number(id);
+    }
+}
+
+function getNhpResolveTypesForEntry(parsed, knownType) {
+    if (parsed.explicitNamespace) {
+        return [parsed.type];
+    }
+    if (knownType && NHP_TAG_NAMESPACES.has(knownType)) {
+        return [knownType, ...NHP_TAG_RESOLVE_FALLBACK_TYPES.filter(t => t !== knownType)];
+    }
+    return NHP_TAG_RESOLVE_FALLBACK_TYPES;
+}
+
+async function persistNhpTagEntryIdCache() {
+    await GM.setValue('tagEntryIdCache', nhpTagEntryIdCache);
+}
+
+function rebuildNhpTagIdSets(blacklistIds, warningIds, favoriteIds) {
+    NHP_TAG_ID_SETS.blacklist = new Set((blacklistIds || []).map(id => Number(id)).filter(id => !Number.isNaN(id)));
+    NHP_TAG_ID_SETS.warning = new Set((warningIds || []).map(id => Number(id)).filter(id => !Number.isNaN(id)));
+    NHP_TAG_ID_SETS.favorite = new Set((favoriteIds || []).map(id => Number(id)).filter(id => !Number.isNaN(id)));
+}
+
+function hashTagListsEntries(blacklistTagsList, warningTagsList, favoriteTagsList) {
+    const all = new Set();
+    for (const list of [blacklistTagsList, warningTagsList, favoriteTagsList]) {
+        for (const entry of list || []) {
+            const raw = String(entry || '').trim().toLowerCase();
+            if (raw) all.add(raw);
+        }
+    }
+    return [...all].sort().join('\n');
+}
+
+function collectUniqueTagListEntries(blacklistTagsList, warningTagsList, favoriteTagsList) {
+    const all = new Set();
+    for (const list of [blacklistTagsList, warningTagsList, favoriteTagsList]) {
+        for (const entry of list || []) {
+            const raw = String(entry || '').trim().toLowerCase();
+            if (raw) all.add(raw);
+        }
+    }
+    return [...all];
+}
+
+function applyNhpTagEntryIdCacheToNameMap(cache) {
+    for (const [raw, value] of Object.entries(cache || {})) {
+        const entry = normalizeNhpTagCacheEntry(value);
+        if (entry) {
+            registerNhpTagIdName(entry.id, raw);
+        }
+    }
+}
+
+function pruneNhpTagEntryIdCache(cache, activeEntries) {
+    const active = new Set(activeEntries);
+    const pruned = {};
+    for (const [key, id] of Object.entries(cache || {})) {
+        if (active.has(key)) pruned[key] = id;
+    }
+    return pruned;
+}
+
+function listEntriesToIds(entries, cache, unresolvedOut) {
+    const ids = [];
+    const seen = new Set();
+    for (const entry of entries || []) {
+        const raw = String(entry || '').trim().toLowerCase();
+        if (!raw || seen.has(raw)) continue;
+        seen.add(raw);
+        const cached = getNhpTagCacheEntry(cache, raw);
+        if (cached) {
+            ids.push(cached.id);
+        } else {
+            unresolvedOut.push(raw);
+        }
+    }
+    return ids;
+}
+
+function entriesMissingFromCache(entries, cache) {
+    const missing = [];
+    const seen = new Set();
+    for (const raw of entries) {
+        if (!raw || seen.has(raw)) continue;
+        seen.add(raw);
+        if (!getNhpTagCacheEntry(cache, raw)) {
+            missing.push(raw);
+        }
+    }
+    return missing;
+}
+
+async function loadNhpTagIdSetsFromStorage() {
+    const blacklistIds = await GM.getValue('blacklistTagIdsList', []);
+    const warningIds = await GM.getValue('warningTagIdsList', []);
+    const favoriteIds = await GM.getValue('favoriteTagIdsList', []);
+    nhpTagEntryIdCache = (await GM.getValue('tagEntryIdCache', {})) || {};
+    if (typeof nhpTagEntryIdCache !== 'object' || Array.isArray(nhpTagEntryIdCache)) {
+        nhpTagEntryIdCache = {};
+    }
+    applyNhpTagEntryIdCacheToNameMap(nhpTagEntryIdCache);
+    rebuildNhpTagIdSets(blacklistIds, warningIds, favoriteIds);
+}
+
+function registerNhpTagIdName(id, name) {
+    if (id == null || !name) return;
+    NHP_TAG_ID_TO_NAME.set(Number(id), String(name).toLowerCase().trim());
+}
+
+async function fetchTagEntryFromApiSingle(type, slug) {
+    const url = `https://nhentai.net/api/v2/tags/${encodeURIComponent(type)}/${encodeURIComponent(slug)}`;
+    for (let attempt = 0; attempt <= NHP_TAG_RESOLVE_MAX_RETRIES; attempt++) {
+        try {
+            const res = await fetch(url, { signal: AbortSignal.timeout(8000), credentials: 'include' });
+            if (res.status === 429) {
+                const delay = Math.min(30000, 1000 * Math.pow(2, attempt));
+                console.warn(`[NHP] Tag resolve 429 for ${type}/${slug}, retry in ${delay}ms`);
+                await new Promise(r => setTimeout(r, delay));
+                continue;
+            }
+            if (res.status === 404) {
+                return { status: 404 };
+            }
+            if (!res.ok) {
+                return { status: res.status };
+            }
+            const json = await res.json();
+            const data = json?.result ?? json ?? null;
+            if (!data || data.id == null) {
+                return { status: 404 };
+            }
+            const name = (data.name || data.slug || slug || '').toLowerCase().trim();
+            registerNhpTagIdName(data.id, name);
+            return { status: 200, id: Number(data.id), name, type };
+        } catch (err) {
+            if (attempt >= NHP_TAG_RESOLVE_MAX_RETRIES) {
+                console.warn(`[NHP] Tag resolve failed for ${type}/${slug}:`, err.message);
+                return { status: 'error' };
+            }
+            await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt)));
+        }
+    }
+    return { status: 'error' };
+}
+
+async function fetchTagEntryFromApi(parsed, cache) {
+    const cached = getNhpTagCacheEntry(cache, parsed.raw);
+    if (cached) {
+        registerNhpTagIdName(cached.id, parsed.name || parsed.raw);
+        return { id: cached.id, name: parsed.name, type: cached.type || parsed.type, raw: parsed.raw };
+    }
+
+    const types = getNhpResolveTypesForEntry(parsed, null);
+
+    for (let typeIndex = 0; typeIndex < types.length; typeIndex++) {
+        const type = types[typeIndex];
+        const result = await fetchTagEntryFromApiSingle(type, parsed.slug);
+
+        if (result.status === 200) {
+            return { id: result.id, name: result.name, type: result.type || type, raw: parsed.raw };
+        }
+        if (result.status === 404) {
+            if (typeIndex < types.length - 1) {
+                await new Promise(r => setTimeout(r, NHP_TAG_RESOLVE_FALLBACK_TYPE_DELAY_MS));
+            }
+            continue;
+        }
+        return null;
+    }
+
+    return null;
+}
+
+async function resolveTagEntryToId(entry, cache) {
+    const parsed = parseTagListEntry(entry);
+    if (!parsed) return null;
+
+    const cached = getNhpTagCacheEntry(cache, parsed.raw);
+    if (cached) {
+        registerNhpTagIdName(cached.id, parsed.name || parsed.raw);
+        return { id: cached.id, name: parsed.name, type: cached.type || parsed.type, raw: parsed.raw };
+    }
+
+    const resolved = await fetchTagEntryFromApi(parsed, cache);
+    if (resolved) {
+        setNhpTagCacheEntry(cache, parsed.raw, resolved.id, resolved.type);
+        await persistNhpTagEntryIdCache();
+    }
+    return resolved;
+}
+
+function nhpTagListsNeedNetworkResolve(blacklistTagsList, warningTagsList, favoriteTagsList, cache) {
+    const unique = collectUniqueTagListEntries(blacklistTagsList, warningTagsList, favoriteTagsList);
+    if (!unique.length) return false;
+    return entriesMissingFromCache(unique, cache).length > 0;
+}
+
+async function rebuildTagIdsFromCacheOnly(blacklistTagsList, warningTagsList, favoriteTagsList, cache) {
+    const unresolved = [];
+    const blacklistIds = listEntriesToIds(blacklistTagsList, cache, unresolved);
+    const warningIds = listEntriesToIds(warningTagsList, cache, unresolved);
+    const favoriteIds = listEntriesToIds(favoriteTagsList, cache, unresolved);
+    await GM.setValue('blacklistTagIdsList', blacklistIds);
+    await GM.setValue('warningTagIdsList', warningIds);
+    await GM.setValue('favoriteTagIdsList', favoriteIds);
+    rebuildNhpTagIdSets(blacklistIds, warningIds, favoriteIds);
+    nhpUnresolvedTags = [...new Set(unresolved)];
+    return { blacklistIds, warningIds, favoriteIds, unresolved: nhpUnresolvedTags };
+}
+
+async function resolveAllTagLists(options = {}) {
+    if (nhpTagListsResolvePromise) return nhpTagListsResolvePromise;
+
+    const force = options.force === true;
+
+    nhpTagListsResolvePromise = (async () => {
+        const enabled = await GM.getValue('tagWarningEnabled', true);
+        if (!enabled) {
+            rebuildNhpTagIdSets([], [], []);
+            nhpUnresolvedTags = [];
+            return { unresolved: [] };
+        }
+
+        const blacklistTagsList = await GM.getValue('blacklistTagsList', ['scat', 'guro', 'vore', 'ryona', 'snuff']);
+        const warningTagsList = await GM.getValue('warningTagsList', ['ntr', 'netorare', 'cheating', 'ugly bastard', 'mind break']);
+        const favoriteTagsList = await GM.getValue('favoriteTagsList', []);
+
+        let storedCache = (await GM.getValue('tagEntryIdCache', {})) || {};
+        if (typeof storedCache !== 'object' || Array.isArray(storedCache)) {
+            storedCache = {};
+        }
+        const uniqueEntries = collectUniqueTagListEntries(blacklistTagsList, warningTagsList, favoriteTagsList);
+        nhpTagEntryIdCache = pruneNhpTagEntryIdCache({ ...storedCache }, uniqueEntries);
+
+        const missing = entriesMissingFromCache(uniqueEntries, nhpTagEntryIdCache);
+        const listsHash = hashTagListsEntries(blacklistTagsList, warningTagsList, favoriteTagsList);
+
+        if (!force && missing.length === 0) {
+            const result = await rebuildTagIdsFromCacheOnly(blacklistTagsList, warningTagsList, favoriteTagsList, nhpTagEntryIdCache);
+            await GM.setValue('tagEntryIdCache', nhpTagEntryIdCache);
+            await GM.setValue('tagListsResolveHash', listsHash);
+            return result;
+        }
+
+        const unresolved = [];
+        for (const raw of missing) {
+            const resolved = await resolveTagEntryToId(raw, nhpTagEntryIdCache);
+            if (!resolved) {
+                unresolved.push(raw);
+            }
+            await new Promise(r => setTimeout(r, NHP_TAG_RESOLVE_DELAY_MS));
+        }
+
+        await GM.setValue('tagEntryIdCache', nhpTagEntryIdCache);
+        await GM.setValue('tagListsResolveHash', listsHash);
+
+        const result = await rebuildTagIdsFromCacheOnly(blacklistTagsList, warningTagsList, favoriteTagsList, nhpTagEntryIdCache);
+        nhpUnresolvedTags = [...new Set([...result.unresolved, ...unresolved])];
+
+        const statusEl = document.getElementById('tagResolveStatus');
+        if (statusEl) {
+            if (nhpUnresolvedTags.length) {
+                statusEl.textContent = `Could not resolve: ${nhpUnresolvedTags.join(', ')}`;
+                statusEl.style.color = '#ff9800';
+            } else if (missing.length) {
+                statusEl.textContent = `Resolved ${missing.length} new tag(s); rest loaded from cache.`;
+                statusEl.style.color = '#8bc34a';
+            } else {
+                statusEl.textContent = 'All tags loaded from saved IDs (no API calls).';
+                statusEl.style.color = '#8bc34a';
+            }
+        }
+
+        return { unresolved: nhpUnresolvedTags };
+    })().finally(() => {
+        nhpTagListsResolvePromise = null;
+    });
+
+    return nhpTagListsResolvePromise;
+}
+
+function galleryHasBlacklistedTagIds(tagIds) {
+    if (!tagIds?.length || !NHP_TAG_ID_SETS.blacklist.size) return false;
+    return tagIds.some(id => NHP_TAG_ID_SETS.blacklist.has(Number(id)));
+}
+
+function analyzeTagsByIds(tagIds) {
+    const warnings = { blacklist: [], warning: [], favorite: [] };
+    if (!tagIds?.length) return warnings;
+
+    for (const id of tagIds) {
+        const numId = Number(id);
+        if (Number.isNaN(numId)) continue;
+        const label = NHP_TAG_ID_TO_NAME.get(numId) || String(numId);
+
+        if (NHP_TAG_ID_SETS.blacklist.has(numId)) {
+            warnings.blacklist.push(label);
+        } else if (NHP_TAG_ID_SETS.warning.has(numId)) {
+            warnings.warning.push(label);
+        }
+        if (NHP_TAG_ID_SETS.favorite.has(numId)) {
+            warnings.favorite.push(label);
+        }
+    }
+    return warnings;
+}
+
+function getGalleryIdFromElement(gallery) {
+    const link = gallery?.querySelector?.('a.cover') || gallery?.querySelector?.('a');
+    const href = link?.getAttribute?.('href');
+    if (!href) return null;
+    const match = href.match(/\/g\/(\d+)/);
+    return match ? match[1] : null;
+}
+
 // Well-known nhentai language tag IDs for resolving language from tag_ids
 const NHP_LANG_TAG_IDS = {
     12227: 'english',
@@ -9135,6 +9530,9 @@ function normalizeGalleryData(data) {
     // Method 1: Full tag objects (from detail endpoint)
     if (data.tags && Array.isArray(data.tags) && data.tags.length > 0 && typeof data.tags[0] === 'object') {
         for (const tag of data.tags) {
+            if (tag.id != null && tag.name) {
+                registerNhpTagIdName(tag.id, tag.name);
+            }
             if (tag.type === 'language') {
                 const name = (tag.name || tag.slug || '').toLowerCase();
                 if (['english', 'japanese', 'chinese'].includes(name)) { language = name; break; }
@@ -9324,16 +9722,19 @@ async function nhpApplyAllCore() {
 
         // 3) Gallery Systems Manager subsystems
         const gsm = globalThis.__nhpGallerySystemsManager;
+        const tagWarningSys = gsm?.systems?.tagWarning ||
+            (typeof tagWarningSystem !== 'undefined' && tagWarningSystem ? tagWarningSystem : null);
         if (gsm) {
             if (gsm.systems?.language) {
                 gsm.systems.language.detectAndMarkLanguages();
             }
-            if (gsm.systems?.tagWarning) {
-                gsm.systems.tagWarning.processGalleries();
-            }
             if (gsm.systems?.opacity) {
                 gsm.systems.opacity.applyOpacitySettings();
             }
+        }
+        if (tagWarningSys) {
+            tagWarningSys.processGalleries();
+            tagWarningSys.processGalleryPage();
         }
 
         // 4) Page number display from cache (no API calls needed)
@@ -9349,9 +9750,11 @@ async function nhpApplyAllCore() {
                 if (!idMatch) return;
                 const cached = NHP_V2_GALLERY_CACHE.get(idMatch[1]);
                 if (cached && cached.num_pages && !cover.querySelector('.page-number-display')) {
+                    if (!cover.style.position) cover.style.position = 'relative';
                     const display = document.createElement('div');
                     display.className = 'page-number-display';
-                    display.textContent = `${cached.num_pages} pages`;
+                    const n = cached.num_pages;
+                    display.textContent = `${n} ${n === 1 ? 'page' : 'pages'}`;
                     cover.appendChild(display);
 
                     // Shift mark-as-read button down when page number is present
@@ -9393,6 +9796,9 @@ async function initializeSveltePage() {
     }
 
     await makeApiCalls();
+    if (await GM.getValue('tagWarningEnabled', true)) {
+        await loadNhpTagIdSetsFromStorage();
+    }
     nhpScheduleApplyAll(50);
 }
 
@@ -9460,8 +9866,14 @@ if (!svelteAdapterInitialized) {
             const isGalleryRelated = mutations.some(m =>
                 Array.from(m.addedNodes).concat(Array.from(m.removedNodes)).some(n =>
                     n.nodeType === 1 && (
-                        (n.classList && n.classList.contains('gallery')) ||
-                        (n.querySelector && n.querySelector('.gallery, .cover'))
+                        (n.classList && (
+                            n.classList.contains('gallery') ||
+                            n.classList.contains('tag-container') ||
+                            n.classList.contains('tag') ||
+                            n.classList.contains('tagchip') ||
+                            n.id === 'tags'
+                        )) ||
+                        (n.querySelector && n.querySelector('.gallery, .cover, #tags, .tag-container, .tagchip, .tag'))
                     )
                 )
             );
@@ -11719,198 +12131,7 @@ applyNonEnglishStyles(); // Apply styles on initial load
 
 //-------------------------------------------------**Non-English-Manga**--------------------------------------------------------
 
-// -----------------------------------------------**Thumbnail-Page-Numbers**--------------------------------------------------------
-
-/** Session cache: full gallery URL -> page count (avoids re-fetch when v2 removes the badge) */
-const NHP_THUMB_PAGE_COUNT_CACHE = new Map();
-
-// Function to add page numbers to manga thumbnails
-async function addPageNumbersToThumbnails() {
-    // Check if the feature is enabled
-    const showPageNumbersEnabled = await GM.getValue('showPageNumbersEnabled', true);
-    // FORCE DISABLED due to rate limiting issues
-    return;
-    if (!showPageNumbersEnabled) return;
-
-    // Add CSS for page number display
-    const pageNumberCSS = `
-        .page-number-display {
-            position: absolute;
-            top: 5px;
-            right: 5px;
-            background-color: rgba(0, 0, 0, 0.7);
-            color: white;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-size: 12px;
-            font-weight: bold;
-            z-index: 10;
-            background-color: rgba(0,0,0,.4);
-            opacity: 1;
-        }
-    `;
-    GM.addStyle(pageNumberCSS);
-
-    async function getPageCount(url) {
-        if (NHP_THUMB_PAGE_COUNT_CACHE.has(url)) {
-            return NHP_THUMB_PAGE_COUNT_CACHE.get(url);
-        }
-        try {
-            const idMatch = url.match(/\/g\/(\d+)/);
-            if (idMatch) {
-                const apiData = await nhpFetchGalleryV2(idMatch[1]);
-                if (apiData && apiData.num_pages) {
-                    NHP_THUMB_PAGE_COUNT_CACHE.set(url, apiData.num_pages);
-                    return apiData.num_pages;
-                }
-            }
-
-            const response = await fetch(url);
-            const html = await response.text();
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(html, 'text/html');
-
-            const pageElement = doc.querySelector('#tags .tag-container:nth-last-child(2) .name');
-            if (pageElement) {
-                const pageCount = parseInt(pageElement.textContent.trim(), 10);
-                if (!isNaN(pageCount)) {
-                    NHP_THUMB_PAGE_COUNT_CACHE.set(url, pageCount);
-                    return pageCount;
-                }
-            }
-            return null;
-        } catch (error) {
-            console.error('Error fetching page count:', error);
-            return null;
-        }
-    }
-
-    function appendPageNumberDisplay(coverLink, pageCount) {
-        if (!coverLink || coverLink.querySelector('.page-number-display')) return;
-        const pageNumberDisplay = document.createElement('div');
-        pageNumberDisplay.className = 'page-number-display';
-        pageNumberDisplay.textContent = `${pageCount} ${pageCount === 1 ? 'page' : 'pages'}`;
-        coverLink.style.position = 'relative';
-        coverLink.appendChild(pageNumberDisplay);
-    }
-
-    // Function to add page number display to a gallery item
-    async function addPageNumberToGallery(galleryItem) {
-        // Get the manga URL first
-        const coverLink = galleryItem.querySelector('.cover');
-        if (!coverLink) return;
-
-        // Check if this specific cover link already has a page number display
-        if (coverLink.querySelector('.page-number-display')) {
-            return;
-        }
-
-        // Mark this cover as being processed to prevent race conditions
-        if (coverLink.dataset.pageNumberProcessing === 'true') {
-            return;
-        }
-        coverLink.dataset.pageNumberProcessing = 'true';
-
-        const mangaUrl = coverLink.getAttribute('href');
-        if (!mangaUrl) {
-            coverLink.dataset.pageNumberProcessing = 'false';
-            return;
-        }
-
-        const fullUrl = `https://nhentai.net${mangaUrl}`;
-
-        try {
-            const cached = NHP_THUMB_PAGE_COUNT_CACHE.get(fullUrl);
-            if (cached != null) {
-                if (!coverLink.querySelector('.page-number-display')) {
-                    appendPageNumberDisplay(coverLink, cached);
-                }
-                return;
-            }
-
-            const pageCount = await getPageCount(fullUrl);
-            if (pageCount && !coverLink.querySelector('.page-number-display')) {
-                appendPageNumberDisplay(coverLink, pageCount);
-            }
-        } finally {
-            coverLink.dataset.pageNumberProcessing = 'false';
-        }
-    }
-
-    // Process all gallery items on the page
-    function processGalleryItems() {
-        const galleryItems = document.querySelectorAll('.gallery');
-        galleryItems.forEach(galleryItem => {
-            addPageNumberToGallery(galleryItem);
-        });
-    }
-
-    // Initial processing
-    processGalleryItems();
-
-    // Re-process galleries that lost their page numbers (e.g. after v2 hydration)
-    function reprocessGalleriesMissingPageNumbers() {
-        const galleryItems = document.querySelectorAll('.gallery');
-        galleryItems.forEach(galleryItem => {
-            const coverLink = galleryItem.querySelector('.cover');
-            if (coverLink && !coverLink.querySelector('.page-number-display') &&
-                coverLink.dataset.pageNumberProcessing !== 'true') {
-                coverLink.dataset.pageNumberProcessing = 'false';
-                addPageNumberToGallery(galleryItem);
-            }
-        });
-    }
-
-    // Set up a MutationObserver to handle dynamically added/re-rendered content
-    let pageNumberObserverDebounce = null;
-    const observer = new MutationObserver(mutations => {
-        let needsReprocess = false;
-        mutations.forEach(mutation => {
-            if (mutation.addedNodes && mutation.addedNodes.length > 0) {
-                mutation.addedNodes.forEach(node => {
-                    if (node.classList && node.classList.contains('gallery')) {
-                        addPageNumberToGallery(node);
-                    } else if (node.querySelectorAll) {
-                        const galleries = node.querySelectorAll('.gallery');
-                        galleries.forEach(gallery => {
-                            addPageNumberToGallery(gallery);
-                        });
-                    }
-                });
-            }
-            if (mutation.removedNodes && mutation.removedNodes.length > 0) {
-                mutation.removedNodes.forEach(node => {
-                    if (node.nodeType === 1 && node.classList && node.classList.contains('page-number-display')) {
-                        needsReprocess = true;
-                    }
-                });
-            }
-        });
-        if (needsReprocess) {
-            if (pageNumberObserverDebounce) clearTimeout(pageNumberObserverDebounce);
-            pageNumberObserverDebounce = setTimeout(reprocessGalleriesMissingPageNumbers, 300);
-        }
-    });
-
-    observer.observe(document.body, { childList: true, subtree: true });
-
-    // Burst schedule to recover page numbers after v2 hydration
-    [2000, 5000, 8000, 12000].forEach(delay => {
-        setTimeout(reprocessGalleriesMissingPageNumbers, delay);
-    });
-}
-
-// Call the function to add page numbers to thumbnails
-addPageNumbersToThumbnails();
-
-// Shift mark-as-read buttons down when page number displays are present (runs unconditionally)
-setInterval(function () {
-    if ($('.page-number-display').length > 0) {
-        $('.mark-as-read-btn').css('top', '40px');
-    }
-}, 1000);
-
-// -----------------------------------------------**Thumbnail-Page-Numbers**--------------------------------------------------------
+// Page numbers on thumbnails: handled by nhpApplyAllCore() via NHP_V2_GALLERY_CACHE (bulk v2 API).
 
 // -----------------------------------------------**Background Max Manga Sync**--------------------------------------------------------
 // Wait for the HTML document to be fully loaded
@@ -14952,6 +15173,14 @@ class HideBlacklistSystem {
     }
 
     galleryHasBlacklistedTags(gallery) {
+        const galleryId = getGalleryIdFromElement(gallery);
+        if (galleryId && typeof NHP_V2_GALLERY_CACHE !== 'undefined') {
+            const cached = NHP_V2_GALLERY_CACHE.get(String(galleryId));
+            if (cached?.tag_ids?.length && galleryHasBlacklistedTagIds(cached.tag_ids)) {
+                return true;
+            }
+        }
+
         const tags = this.extractGalleryTags(gallery);
         if (!tags || !tags.length) return false;
         const set = new Set((this.settings.blacklistTags || []).map(t => String(t).toLowerCase().trim()));
@@ -15914,20 +16143,20 @@ class TagWarningSystem {
                 bottom: 45px;
             }
 
-            /* Gallery page tag highlighting */
-            .tag-container .tag.blacklist-tag {
+            /* Gallery page tag highlighting (legacy .tag + Svelte .tagchip) */
+            #tags .tag-container :is(a.tagchip, a.tag).blacklist-tag {
                 background-color: rgba(244, 67, 54, 0.2) !important;
                 border: 1px solid #f44336 !important;
                 color: #f44336 !important;
             }
 
-            .tag-container .tag.warning-tag {
+            #tags .tag-container :is(a.tagchip, a.tag).warning-tag {
                 background-color: rgba(255, 152, 0, 0.2) !important;
                 border: 1px solid #ff9800 !important;
                 color: #ff9800 !important;
             }
 
-            .tag-container .tag.favorite-tag {
+            #tags .tag-container :is(a.tagchip, a.tag).favorite-tag {
                 background-color: rgba(33, 150, 243, 0.2) !important;
                 border: 1px solid #2196f3 !important;
                 color: #2196f3 !important;
@@ -15973,6 +16202,18 @@ class TagWarningSystem {
      * Process a single gallery for tag warnings
      */
     processGallery(gallery) {
+        const galleryId = getGalleryIdFromElement(gallery);
+        if (galleryId && typeof NHP_V2_GALLERY_CACHE !== 'undefined') {
+            const cached = NHP_V2_GALLERY_CACHE.get(String(galleryId));
+            if (cached?.tag_ids?.length) {
+                const warnings = analyzeTagsByIds(cached.tag_ids);
+                if (warnings.blacklist.length || warnings.warning.length || warnings.favorite.length) {
+                    this.addWarningBadges(gallery, warnings);
+                }
+                return;
+            }
+        }
+
         const tags = this.extractGalleryTags(gallery);
         if (!tags.length) return;
 
@@ -16103,34 +16344,72 @@ class TagWarningSystem {
     }
 
     /**
+     * Collect tag elements on gallery detail pages (Svelte tagchip + legacy .tag).
+     */
+    getGalleryPageTagElements() {
+        const tagsSection = document.querySelector('#tags');
+        if (!tagsSection) return [];
+
+        const elements = [];
+        tagsSection.querySelectorAll('a.tagchip[href]').forEach(el => elements.push(el));
+
+        // Legacy rows; skip page-count links (e.g. /search/?q=pages%3A39)
+        tagsSection.querySelectorAll('a.tag[href]').forEach(el => {
+            if (el.classList.contains('tagchip')) return;
+            const href = el.getAttribute('href') || '';
+            if (/pages%3A|q=pages/i.test(href)) return;
+            elements.push(el);
+        });
+
+        return elements;
+    }
+
+    normalizeGalleryTagName(rawName) {
+        return String(rawName || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    }
+
+    tagMatchesList(tagName, list) {
+        const normalized = this.normalizeGalleryTagName(tagName);
+        const hyphenated = normalized.replace(/ /g, '-');
+        return list.some(entry => {
+            const e = String(entry || '').trim().toLowerCase();
+            return e === normalized || e === hyphenated || e.replace(/-/g, ' ') === normalized;
+        });
+    }
+
+    /**
      * Process individual gallery page for tag highlighting
      */
     processGalleryPage() {
-        // Check if we're on a gallery page
-        if (!window.location.pathname.match(/\/g\/\d+\//)) return;
+        if (!window.location.pathname.includes('/g/')) return;
 
-        const tagContainers = document.querySelectorAll('.tag-container');
-
-        tagContainers.forEach(container => {
-            const tags = container.querySelectorAll('.tag');
-
-            tags.forEach(tagElement => {
-                const tagName = tagElement.querySelector('.name');
-                if (!tagName) return;
-
-                const tag = tagName.textContent.trim().toLowerCase();
-
-                if (this.settings.blacklistTags.includes(tag)) {
-                    tagElement.classList.add('blacklist-tag');
-                } else if (this.settings.warningTags.includes(tag)) {
-                    tagElement.classList.add('warning-tag');
-                } else if (this.settings.favoriteTags.includes(tag)) {
-                    tagElement.classList.add('favorite-tag');
-                }
-
-                // Add star button for favoriting
-                this.addStarButton(tagElement, tag);
+        const tagElements = this.getGalleryPageTagElements();
+        const tagsSection = document.querySelector('#tags');
+        if (tagsSection) {
+            const validHosts = new Set(tagElements);
+            tagsSection.querySelectorAll('.tag-star-btn').forEach(btn => {
+                const host = btn.closest('a.tagchip, a.tag');
+                if (!host || !validHosts.has(host)) btn.remove();
             });
+        }
+
+        tagElements.forEach(tagElement => {
+            const tagName = tagElement.querySelector('.name');
+            if (!tagName) return;
+
+            const tag = this.normalizeGalleryTagName(tagName.textContent);
+
+            tagElement.classList.remove('blacklist-tag', 'warning-tag', 'favorite-tag');
+
+            if (this.tagMatchesList(tag, this.settings.blacklistTags)) {
+                tagElement.classList.add('blacklist-tag');
+            } else if (this.tagMatchesList(tag, this.settings.warningTags)) {
+                tagElement.classList.add('warning-tag');
+            } else if (this.tagMatchesList(tag, this.settings.favoriteTags)) {
+                tagElement.classList.add('favorite-tag');
+            }
+
+            this.addStarButton(tagElement, tag);
         });
     }
 
@@ -16143,10 +16422,11 @@ class TagWarningSystem {
 
         const starBtn = document.createElement('span');
         starBtn.className = 'tag-star-btn';
-        starBtn.innerHTML = this.settings.favoriteTags.includes(tag) ? '★' : '☆';
+        const isFavorited = this.tagMatchesList(tag, this.settings.favoriteTags);
+        starBtn.innerHTML = isFavorited ? '★' : '☆';
         starBtn.title = 'Add to favorites';
 
-        if (this.settings.favoriteTags.includes(tag)) {
+        if (isFavorited) {
             starBtn.classList.add('favorited');
         }
 
@@ -16156,8 +16436,7 @@ class TagWarningSystem {
 
             await this.toggleFavoriteTag(tag);
 
-            // Update star appearance
-            if (this.settings.favoriteTags.includes(tag)) {
+            if (this.tagMatchesList(tag, this.settings.favoriteTags)) {
                 starBtn.innerHTML = '★';
                 starBtn.classList.add('favorited');
                 tagElement.classList.add('favorite-tag');
@@ -16178,8 +16457,10 @@ class TagWarningSystem {
      * Toggle favorite status of a tag
      */
     async toggleFavoriteTag(tag) {
-        const normalizedTag = tag.toLowerCase().trim();
-        const index = this.settings.favoriteTags.indexOf(normalizedTag);
+        const normalizedTag = this.normalizeGalleryTagName(tag);
+        const index = this.settings.favoriteTags.findIndex(entry =>
+            this.tagMatchesList(normalizedTag, [entry])
+        );
 
         if (index > -1) {
             this.settings.favoriteTags.splice(index, 1);
@@ -16205,24 +16486,41 @@ class TagWarningSystem {
      */
     setupObserver() {
         const observer = new MutationObserver((mutations) => {
+            let needsGalleryReapply = false;
+            let needsTagPageReapply = false;
+
             mutations.forEach((mutation) => {
                 mutation.addedNodes.forEach((node) => {
-                    if (node.nodeType === Node.ELEMENT_NODE) {
-                        // Check if the added node is a gallery
-                        if (node.classList && node.classList.contains('gallery')) {
-                            this.processGallery(node);
-                        }
+                    if (node.nodeType !== Node.ELEMENT_NODE) return;
 
-                        // Check for galleries within the added node
-                        const galleries = node.querySelectorAll && node.querySelectorAll('.gallery');
-                        if (galleries) {
-                            galleries.forEach(gallery => {
-                                this.processGallery(gallery);
-                            });
+                    if (node.classList?.contains('gallery')) {
+                        this.processGallery(node);
+                        needsGalleryReapply = true;
+                    }
+
+                    const galleries = node.querySelectorAll?.('.gallery');
+                    if (galleries?.length) {
+                        galleries.forEach(gallery => this.processGallery(gallery));
+                        needsGalleryReapply = true;
+                    }
+
+                    if (window.location.pathname.includes('/g/')) {
+                        if (node.classList?.contains('tag-container') ||
+                            node.classList?.contains('tag') ||
+                            node.classList?.contains('tagchip') ||
+                            node.id === 'tags') {
+                            needsTagPageReapply = true;
+                        }
+                        if (node.querySelector?.('#tags, .tag-container, .tagchip, .tag')) {
+                            needsTagPageReapply = true;
                         }
                     }
                 });
             });
+
+            if ((needsTagPageReapply || needsGalleryReapply) && typeof nhpScheduleApplyAll === 'function') {
+                nhpScheduleApplyAll(100);
+            }
         });
 
         observer.observe(document.body, {
@@ -16238,6 +16536,16 @@ let tagWarningSystem;
 async function initTagWarningSystem() {
     const enabled = await GM.getValue('tagWarningEnabled', true);
     if (enabled) {
+        await loadNhpTagIdSetsFromStorage();
+        const blacklistTagsList = await GM.getValue('blacklistTagsList', ['scat', 'guro', 'vore', 'ryona', 'snuff']);
+        const warningTagsList = await GM.getValue('warningTagsList', ['ntr', 'netorare', 'cheating', 'ugly bastard', 'mind break']);
+        const favoriteTagsList = await GM.getValue('favoriteTagsList', []);
+        const needsNetwork = nhpTagListsNeedNetworkResolve(blacklistTagsList, warningTagsList, favoriteTagsList, nhpTagEntryIdCache);
+        if (needsNetwork) {
+            resolveAllTagLists().catch(e => console.warn('[NHP] Tag list resolve failed:', e));
+        } else if (collectUniqueTagListEntries(blacklistTagsList, warningTagsList, favoriteTagsList).length > 0) {
+            await rebuildTagIdsFromCacheOnly(blacklistTagsList, warningTagsList, favoriteTagsList, nhpTagEntryIdCache);
+        }
         tagWarningSystem = new TagWarningSystem();
     }
 }
@@ -18476,27 +18784,27 @@ function addEnhancedCSS() {
             border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
-        /* Gallery Page Tag Enhancements */
-        .tag-container .tag {
+        /* Gallery Page Tag Enhancements (legacy .tag + Svelte .tagchip) */
+        #tags .tag-container :is(a.tagchip, a.tag) {
             transition: all 0.3s ease;
             position: relative;
         }
 
-        .tag-container .tag.blacklist-tag {
+        #tags .tag-container :is(a.tagchip, a.tag).blacklist-tag {
             background: linear-gradient(135deg, rgba(244, 67, 54, 0.2) 0%, rgba(244, 67, 54, 0.3) 100%) !important;
             border: 1px solid #f44336 !important;
             color: #f44336 !important;
             box-shadow: 0 2px 4px rgba(244, 67, 54, 0.2);
         }
 
-        .tag-container .tag.warning-tag {
+        #tags .tag-container :is(a.tagchip, a.tag).warning-tag {
             background: linear-gradient(135deg, rgba(255, 152, 0, 0.2) 0%, rgba(255, 152, 0, 0.3) 100%) !important;
             border: 1px solid #ff9800 !important;
             color: #ff9800 !important;
             box-shadow: 0 2px 4px rgba(255, 152, 0, 0.2);
         }
 
-        .tag-container .tag.favorite-tag {
+        #tags .tag-container :is(a.tagchip, a.tag).favorite-tag {
             background: linear-gradient(135deg, rgba(33, 150, 243, 0.2) 0%, rgba(33, 150, 243, 0.3) 100%) !important;
             border: 1px solid #2196f3 !important;
             color: #2196f3 !important;

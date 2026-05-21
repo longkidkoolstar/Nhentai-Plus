@@ -1,4 +1,18 @@
 {
+  "10.8.3": {
+    "date": "2026-05-21",
+    "changes": [
+      "feat(ui): re-enable Show Page Numbers on gallery thumbnails using bulk v2 API cache (no per-gallery requests)",
+      "refactor(ui): remove legacy per-thumbnail page count fetcher; nhpApplyAllCore applies badges after listing API cache fills",
+      "feat(tags): resolve blacklist/warning/favorite tag names to nhentai IDs once, then match listing tag_ids from bulk v2 API cache",
+      "fix(tags): tag warning badges work on Svelte listing pages without per-gallery requests",
+      "fix(tags): auto-hide blacklist uses tag_ids from gallery cache when available",
+      "fix(tags): persist tagEntryIdCache in GM storage; resolve each tag name to ID only once (skip API on reload when cache is complete)",
+      "fix(tags): incremental resolve for new/changed list entries only; 350ms delay and exponential backoff on 429",
+      "fix(tags): on 404 as tag type, try artist/group/character/parody/language/category; namespaced entries (e.g. artist:name) only try that type",
+      "fix(tags): persist tagEntryIdCache immediately after each resolve; store resolved type (artist/group/…) so refresh skips API when ID is cached"
+    ]
+  },
   "10.8.2": {
     "date": "2026-05-21",
     "changes": [
