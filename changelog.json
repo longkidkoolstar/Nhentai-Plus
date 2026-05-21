@@ -1,4 +1,12 @@
 {
+  "10.8.2": {
+    "date": "2026-05-21",
+    "changes": [
+      "feat(ui): add universal nhpKeepRemoved engine for persistent DOM removal when the site re-injects elements",
+      "fix(ui): Remove Buttons (Twitter, Info, Profile, Logout) now stay removed after nav reorder and Svelte hydration",
+      "refactor(ui): migrate built-in 404 error page and custom-page error image/container removal to nhpKeepRemoved"
+    ]
+  },
   "10.8.1": {
     "date": "2026-05-16",
     "changes": [

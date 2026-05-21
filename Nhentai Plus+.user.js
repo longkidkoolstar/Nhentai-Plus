@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      10.8.1
+// @version      10.8.2
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -23,7 +23,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "10.8.1";
+const CURRENT_VERSION = "10.8.2";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -3035,6 +3035,253 @@ var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites
 })();
 //------------------------  **Nhentai Auto Login**  --------------------------
 
+//------------------------  **Persistent DOM Removal (nhpKeepRemoved)**  --------------------------
+/*
+ * Universal engine for keeping DOM nodes removed when the site re-injects them.
+ *
+ * Usage:
+ *   nhpKeepRemoved({ id, selectors, remove, settingKey?, when?, match?, tabOrderId?, observe? });
+ *
+ * remove: 'closest-li' | 'element' | 'parent'
+ * settingKey: omit for always-on script removals
+ * observe: 'document' (default) | 'nav'
+ *
+ * Manual re-apply: applyAllPersistentRemovals()
+ *
+ * Migration backlog (grep MutationObserver + .remove):
+ *   Gallery button reinjection (~8490, ~9211), offline favorite observer (~10221),
+ *   page observers (~11722, ~15119, ~15665, ~16124, ~16477, ~18799, ~18849, ~19352)
+ */
+
+const nhpPersistentRemovalRegistry = new Map();
+let nhpPersistentRemovalTimer = null;
+let nhpPersistentRemovalInitialized = false;
+const nhpSettingCache = new Map();
+
+function nhpIsCustomFeaturePage() {
+    const path = String(window.location.pathname || '');
+    const hash = String(window.location.hash || '');
+    return path.includes('/continue_reading/') ||
+        path.includes('/settings/') ||
+        path.includes('/quick-nut/') ||
+        path.includes('/read-manga/') ||
+        path.includes('/bookmarks') ||
+        path.includes('/favorite') ||
+        hash === '#quick-nut' ||
+        hash === '#read-manga';
+}
+
+function nhpKeepRemoved(config) {
+    if (!config || !config.id || !config.selectors?.length) return;
+    nhpPersistentRemovalRegistry.set(config.id, {
+        id: config.id,
+        selectors: config.selectors,
+        remove: config.remove || 'element',
+        settingKey: config.settingKey || null,
+        settingDefault: config.settingDefault !== undefined ? config.settingDefault : true,
+        when: config.when || (() => true),
+        match: config.match || (() => true),
+        tabOrderId: config.tabOrderId || null,
+        observe: config.observe === 'nav' ? 'nav' : 'document',
+    });
+    if (config.settingKey) {
+        nhpSettingCache.delete(config.settingKey);
+    }
+}
+
+function nhpRemovePersistentNode(el, removeMode) {
+    if (!el || !el.isConnected) return;
+    if (removeMode === 'closest-li') {
+        const item = el.closest('li');
+        if (item) item.remove();
+        else el.remove();
+        return;
+    }
+    if (removeMode === 'parent') {
+        if (el.parentElement) el.parentElement.remove();
+        else el.remove();
+        return;
+    }
+    el.remove();
+}
+
+async function nhpIsPersistentRuleActive(rule) {
+    if (!rule.when()) return false;
+    if (!rule.settingKey) return true;
+    if (!nhpSettingCache.has(rule.settingKey)) {
+        nhpSettingCache.set(rule.settingKey, await GM.getValue(rule.settingKey, rule.settingDefault));
+    }
+    return nhpSettingCache.get(rule.settingKey);
+}
+
+function nhpApplyPersistentRule(rule) {
+    for (const selector of rule.selectors) {
+        document.querySelectorAll(selector).forEach(el => {
+            if (!rule.match(el)) return;
+            nhpRemovePersistentNode(el, rule.remove);
+        });
+    }
+}
+
+async function applyAllPersistentRemovals() {
+    for (const rule of nhpPersistentRemovalRegistry.values()) {
+        if (await nhpIsPersistentRuleActive(rule)) {
+            nhpApplyPersistentRule(rule);
+        }
+    }
+}
+
+function schedulePersistentRemovals() {
+    if (nhpPersistentRemovalTimer) clearTimeout(nhpPersistentRemovalTimer);
+    nhpPersistentRemovalTimer = setTimeout(() => {
+        nhpPersistentRemovalTimer = null;
+        applyAllPersistentRemovals();
+    }, 50);
+}
+
+async function getExcludedTabOrderIds() {
+    const excluded = [];
+    for (const rule of nhpPersistentRemovalRegistry.values()) {
+        if (!rule.tabOrderId) continue;
+        if (await nhpIsPersistentRuleActive(rule)) {
+            excluded.push(rule.tabOrderId);
+        }
+    }
+    return excluded;
+}
+
+function nhpNodeMatchesAnyActiveSelector(node, rules) {
+    if (node.nodeType !== 1) return false;
+    for (const rule of rules) {
+        for (const selector of rule.selectors) {
+            if (node.matches?.(selector) || node.querySelector?.(selector)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+function nhpAttachPersistentRemovalObservers() {
+    if (window.__nhpPersistentRemovalObserversAttached) return;
+    window.__nhpPersistentRemovalObserversAttached = true;
+
+    const documentRules = () => Array.from(nhpPersistentRemovalRegistry.values()).filter(r => r.observe === 'document');
+    const navRules = () => Array.from(nhpPersistentRemovalRegistry.values()).filter(r => r.observe === 'nav');
+
+    new MutationObserver((mutations) => {
+        const rules = documentRules();
+        if (!rules.length) return;
+        const added = mutations.some(m =>
+            Array.from(m.addedNodes).some(node => nhpNodeMatchesAnyActiveSelector(node, rules))
+        );
+        if (added) schedulePersistentRemovals();
+    }).observe(document.documentElement, { childList: true, subtree: true });
+
+    const observeNav = (nav) => {
+        if (!nav || nav.__nhpPersistentNavObserver) return;
+        new MutationObserver((mutations) => {
+            const rules = navRules();
+            if (!rules.length) return;
+            const added = mutations.some(m =>
+                Array.from(m.addedNodes).some(node => nhpNodeMatchesAnyActiveSelector(node, rules))
+            );
+            if (added) schedulePersistentRemovals();
+        }).observe(nav, { childList: true, subtree: true });
+        nav.__nhpPersistentNavObserver = true;
+    };
+
+    const attachNavObserver = () => {
+        const nav = typeof getPrimaryNav === 'function' ? getPrimaryNav() : document.querySelector('nav');
+        if (nav) observeNav(nav);
+    };
+
+    attachNavObserver();
+    new MutationObserver(attachNavObserver).observe(document.body, { childList: true, subtree: false });
+
+    const onRouteChange = () => schedulePersistentRemovals();
+    window.addEventListener('popstate', onRouteChange, { passive: true });
+    if (!window.__nhpPersistentPushStateHooked) {
+        window.__nhpPersistentPushStateHooked = true;
+        const originalPushState = history.pushState;
+        history.pushState = function () {
+            const ret = originalPushState.apply(this, arguments);
+            schedulePersistentRemovals();
+            return ret;
+        };
+    }
+}
+
+function nhpRegisterPersistentRemovalRules() {
+    // --- Settings: Remove Buttons ---
+    nhpKeepRemoved({
+        id: 'twitter',
+        settingKey: 'twitterButtonEnabled',
+        selectors: ['a[href*="twitter.com/nhentaiOfficial"]'],
+        remove: 'closest-li',
+        tabOrderId: 'twitter',
+        observe: 'nav',
+    });
+    nhpKeepRemoved({
+        id: 'info',
+        settingKey: 'infoButtonEnabled',
+        selectors: ['a[href="/info/"]'],
+        remove: 'closest-li',
+        tabOrderId: 'info',
+        observe: 'nav',
+    });
+    nhpKeepRemoved({
+        id: 'profile',
+        settingKey: 'profileButtonEnabled',
+        selectors: ['a[href^="/users/"]'],
+        remove: 'closest-li',
+        observe: 'nav',
+    });
+    nhpKeepRemoved({
+        id: 'logout',
+        settingKey: 'logoutButtonEnabled',
+        selectors: ['a[href*="/logout/"]'],
+        remove: 'closest-li',
+        observe: 'nav',
+    });
+
+    // --- Always-on script removals ---
+    nhpKeepRemoved({
+        id: 'builtin-404-error-page',
+        selectors: ['.error-page'],
+        remove: 'element',
+        match: (el) => {
+            const msg = el.querySelector('.error-message');
+            return msg && /page not found/i.test(msg.textContent || '');
+        },
+    });
+    nhpKeepRemoved({
+        id: 'custom-page-error-image',
+        selectors: ['#content > div > img.error-image.error-image-light'],
+        remove: 'element',
+        when: nhpIsCustomFeaturePage,
+    });
+    nhpKeepRemoved({
+        id: 'custom-page-error-container',
+        selectors: ['.error-container'],
+        remove: 'element',
+        when: nhpIsCustomFeaturePage,
+        match: (el) => !el.querySelector('.nhp-custom-page-root, #nhp-settings-root'),
+    });
+}
+
+function nhpInitPersistentRemoval() {
+    if (nhpPersistentRemovalInitialized) return;
+    nhpPersistentRemovalInitialized = true;
+    nhpRegisterPersistentRemovalRules();
+    nhpAttachPersistentRemovalObservers();
+    applyAllPersistentRemovals();
+}
+
+function nhpInvalidatePersistentSettingCache() {
+    nhpSettingCache.clear();
+}
+
 //------------------------  **Header Nav Fallback**  --------------------------
 
 function getPrimaryNav() {
@@ -3048,6 +3295,8 @@ function getPrimaryNav() {
 
     return preferredNative || usableNavs[0] || navs[0];
 }
+
+nhpInitPersistentRemoval();
 
 function reconcileDuplicateNavs() {
     const navs = Array.from(document.querySelectorAll('nav')).filter(nav =>
@@ -3089,6 +3338,7 @@ async function applyCustomNavLinks() {
     if (changed && typeof updateMenuOrder === 'function') {
         try { await updateMenuOrder(); } catch (e) { console.warn('updateMenuOrder retry failed:', e); }
     }
+    await applyAllPersistentRemovals();
 
     return changed;
 }
@@ -5908,6 +6158,8 @@ if (window.location.href.includes('/settings')) {
         await GM.setValue('profileButtonEnabled', profileButtonEnabled);
         await GM.setValue('infoButtonEnabled', infoButtonEnabled);
         await GM.setValue('logoutButtonEnabled', logoutButtonEnabled);
+        nhpInvalidatePersistentSettingCache();
+        await applyAllPersistentRemovals();
         await GM.setValue('bookmarkLinkEnabled', bookmarkLinkEnabled);
         await GM.setValue('findSimilarType', findSimilarType);
 
@@ -6643,7 +6895,9 @@ async function initializeTabOrder() {
 
 // Function to update the menu based on tab order
 async function updateMenuOrder() {
-    const tabOrder = await initializeTabOrder();
+    const excludedTabIds = await getExcludedTabOrderIds();
+    let tabOrder = await initializeTabOrder();
+    tabOrder = tabOrder.filter(tabId => !excludedTabIds.includes(tabId));
     const menu = document.querySelector('ul.menu.left');
     const dropdown = document.querySelector('ul.dropdown-menu');
 
@@ -6732,6 +6986,8 @@ async function updateMenuOrder() {
             }
         }
     }
+
+    await applyAllPersistentRemovals();
 }
 
 // Helper function to find the reference item for insertion
@@ -7149,10 +7405,9 @@ async function isMenuInOrder() {
     }
 
     // Check if there are other important tabs missing
+    const excludedTabIds = await getExcludedTabOrderIds();
     const importantMissingTabs = missingTabs.filter(tabId =>
-        tabId !== 'offline_favorites' &&
-        tabId !== 'twitter' &&
-        tabId !== 'info'
+        tabId !== 'offline_favorites' && !excludedTabIds.includes(tabId)
     );
 
     if (importantMissingTabs.length > 0) {
@@ -10893,59 +11148,6 @@ createSettingsMenu();
 
 //-----------------------------------------------------NFM-Debugging------------------------------------------------------------------
 
-//-------------------------------------------------**Delete-Twitter-Button**-----------------------------------------------
-async function deleteTwitterButton() {
-    const twitterButtonEnabled = await GM.getValue('twitterButtonEnabled', true);
-    if (!twitterButtonEnabled) return;
-
-    $('a[href="https://twitter.com/nhentaiOfficial"]').remove();
-}
-
-deleteTwitterButton();
-
-//-------------------------------------------------**Delete-Twitter-Button**-----------------------------------------------
-
-//-------------------------------------------------**Delete-Info-Button**-----------------------------------------------
-async function deleteInfoButton() {
-    const infoButtonEnabled = await GM.getValue('infoButtonEnabled', true);
-    if (!infoButtonEnabled) return;
-
-    $("a[href='/info/']").remove();
-}
-
-//Call the function to execute
-deleteInfoButton();
-//-------------------------------------------------**Delete-Info-Button**-----------------------------------------------
-
-//-------------------------------------------------**Delete-Profile-Button**-----------------------------------------------
-
-
-async function deleteProfileButton() {
-    const profileButtonEnabled = await GM.getValue('profileButtonEnabled', true);
-    if (!profileButtonEnabled) return;
-
-    $("li a[href^='/users/']").remove();
-}
-
-//Call the function to execute.
-deleteProfileButton();
-
-//-------------------------------------------------**Delete-Profile-Button**-----------------------------------------------
-
-//-------------------------------------------------**Delete-Logout-Button**-----------------------------------------------
-
-async function deleteLogoutButton() {
-    const logoutButtonEnabled = await GM.getValue('logoutButtonEnabled', true);
-    if (!logoutButtonEnabled) return;
-
-    $("li a[href='/logout/?next=/settings/']").parent().remove();
-}
-
-deleteLogoutButton();
-
-//-------------------------------------------------**Delete-Logout-Button**-----------------------------------------------
-
-
 //-------------------------------------------------**BookMark-Link**---------------------------------------------------------
 async function createBookmarkLink() {
     const bookmarkLinkEnabled = await GM.getValue('bookmarkLinkEnabled', true);
@@ -12460,23 +12662,6 @@ new MutationObserver(() => {
     }, 250);
 }).observe(document.documentElement, { childList: true, subtree: true });
 
-function removeBuiltInErrorPage() {
-    const errorPage = document.querySelector('.error-page');
-    if (!errorPage) return;
-
-    const errorMessage = errorPage.querySelector('.error-message');
-    if (!errorMessage || !/page not found/i.test(errorMessage.textContent || '')) return;
-
-    errorPage.remove();
-}
-
-removeBuiltInErrorPage();
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', removeBuiltInErrorPage, { once: true });
-}
-const nhpErrorPageObserver = new MutationObserver(() => removeBuiltInErrorPage());
-nhpErrorPageObserver.observe(document.documentElement, { childList: true, subtree: true });
-
 function deSmartTagQuery(q) {
     const text = String(q || '').trim();
     if (!text) return '';
@@ -12598,50 +12783,6 @@ function deSmartTagQuery(q) {
     overlay.appendChild(box);
     document.body.appendChild(overlay);
 })();
-
-(function removeErrorImageOnCustomPagesInit() {
-    if (window.__nhPlusErrorImageRemovalInit) return;
-    window.__nhPlusErrorImageRemovalInit = true;
-
-    const selector = '#content > div > img.error-image.error-image-light';
-    const errorContainerSelector = '.error-container';
-
-    function isTargetPage() {
-        const path = String(window.location.pathname || '');
-        const hash = String(window.location.hash || '');
-        return path.includes('/continue_reading/') ||
-            path.includes('/settings/') ||
-            path.includes('/quick-nut/') ||
-            path.includes('/read-manga/') ||
-            path.includes('/bookmarks') ||
-            path.includes('/favorite') ||
-            hash === '#quick-nut' ||
-            hash === '#read-manga';
-    }
-
-    function removeOnce() {
-        if (!isTargetPage()) return;
-        const img = document.querySelector(selector);
-        if (img) img.remove();
-        const errContainer = document.querySelector(errorContainerSelector);
-        if (errContainer) errContainer.remove();
-    }
-
-    removeOnce();
-
-    const observer = new MutationObserver(() => removeOnce());
-    observer.observe(document.documentElement, { childList: true, subtree: true });
-
-    const originalPushState = history.pushState;
-    history.pushState = function () {
-        const ret = originalPushState.apply(this, arguments);
-        setTimeout(removeOnce, 0);
-        return ret;
-    };
-
-    window.addEventListener('popstate', () => setTimeout(removeOnce, 0));
-})();
-
 
 // Modify XHR requests
 XMLHttpRequest.prototype.open = function (method, url) {
