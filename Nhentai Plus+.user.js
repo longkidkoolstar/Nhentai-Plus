@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      10.8.3
+// @version      10.8.4
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -23,7 +23,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "10.8.3";
+const CURRENT_VERSION = "10.8.4";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -6183,6 +6183,9 @@ if (window.location.href.includes('/settings')) {
         await GM.setValue('warningTagsList', warningTagsList);
         await GM.setValue('favoriteTagsList', favoriteTagsList);
         if (tagWarningEnabled) {
+            if (globalThis.tagCatalogManager) {
+                await globalThis.tagCatalogManager.ensureLoaded().catch(e => console.warn('[NHP] Tag catalog load failed:', e));
+            }
             await resolveAllTagLists();
             if (typeof tagWarningSystem !== 'undefined' && tagWarningSystem) {
                 tagWarningSystem.processGalleries();
@@ -9357,6 +9360,12 @@ async function fetchTagEntryFromApi(parsed, cache) {
     return null;
 }
 
+function resolveTagEntryFromCatalog(parsed) {
+    const catalog = globalThis.tagCatalogManager;
+    if (!catalog || !catalog.isLoaded()) return null;
+    return catalog.resolveEntry(parsed);
+}
+
 async function resolveTagEntryToId(entry, cache) {
     const parsed = parseTagListEntry(entry);
     if (!parsed) return null;
@@ -9365,6 +9374,12 @@ async function resolveTagEntryToId(entry, cache) {
     if (cached) {
         registerNhpTagIdName(cached.id, parsed.name || parsed.raw);
         return { id: cached.id, name: parsed.name, type: cached.type || parsed.type, raw: parsed.raw };
+    }
+
+    const fromCatalog = resolveTagEntryFromCatalog(parsed);
+    if (fromCatalog) {
+        registerNhpTagIdName(fromCatalog.id, parsed.name || parsed.raw);
+        return { id: fromCatalog.id, name: parsed.name, type: fromCatalog.type, raw: parsed.raw, fromCatalog: true };
     }
 
     const resolved = await fetchTagEntryFromApi(parsed, cache);
@@ -9429,10 +9444,17 @@ async function resolveAllTagLists(options = {}) {
         }
 
         const unresolved = [];
+        let fromCatalogCount = 0;
+        let fromApiCount = 0;
         for (const raw of missing) {
             const resolved = await resolveTagEntryToId(raw, nhpTagEntryIdCache);
             if (!resolved) {
                 unresolved.push(raw);
+            } else if (resolved.fromCatalog) {
+                setNhpTagCacheEntry(nhpTagEntryIdCache, raw, resolved.id, resolved.type);
+                fromCatalogCount++;
+            } else {
+                fromApiCount++;
             }
             await new Promise(r => setTimeout(r, NHP_TAG_RESOLVE_DELAY_MS));
         }
@@ -9449,7 +9471,12 @@ async function resolveAllTagLists(options = {}) {
                 statusEl.textContent = `Could not resolve: ${nhpUnresolvedTags.join(', ')}`;
                 statusEl.style.color = '#ff9800';
             } else if (missing.length) {
-                statusEl.textContent = `Resolved ${missing.length} new tag(s); rest loaded from cache.`;
+                const parts = [];
+                if (fromCatalogCount) parts.push(`${fromCatalogCount} from catalog`);
+                if (fromApiCount) parts.push(`${fromApiCount} via API`);
+                statusEl.textContent = parts.length
+                    ? `Resolved ${missing.length} tag(s): ${parts.join(', ')}.`
+                    : `Resolved ${missing.length} new tag(s); rest loaded from cache.`;
                 statusEl.style.color = '#8bc34a';
             } else {
                 statusEl.textContent = 'All tags loaded from saved IDs (no API calls).';
@@ -13088,6 +13115,10 @@ class OnlineDataSync {
             url: 'https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/nhentai_taxonomy.json',
             apiKey: ''
         };
+        this.tagCatalogConfig = {
+            baseUrl: 'https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/tag_catalog',
+            apiKey: ''
+        };
     }
 
     async getPublicUsersSnapshot() {
@@ -13416,6 +13447,113 @@ class OnlineDataSync {
         }
 
         return [];
+    }
+}
+
+// Tag ID catalog (GitHub-hosted slug/name -> numeric id)
+class TagCatalogManager {
+    constructor(syncSystem) {
+        this.syncSystem = syncSystem;
+        this.bySlug = {};
+        this.byName = {};
+        this.loadedAt = null;
+        this.manifest = null;
+        this.loadPromise = null;
+        for (const t of NHP_TAG_RESOLVE_FALLBACK_TYPES) {
+            this.bySlug[t] = new Map();
+            this.byName[t] = new Map();
+        }
+    }
+
+    isLoaded() {
+        return !!this.loadedAt;
+    }
+
+    normalizeName(name) {
+        return String(name || '').toLowerCase().replace(/\s+/g, ' ').trim();
+    }
+
+    applyTypePayload(tagType, payload) {
+        const slugMap = this.bySlug[tagType] || new Map();
+        const nameMap = this.byName[tagType] || new Map();
+        const bySlug = payload?.bySlug || {};
+        const byName = payload?.byName || {};
+        for (const [slug, id] of Object.entries(bySlug)) {
+            const numId = Number(id);
+            if (!Number.isNaN(numId)) slugMap.set(String(slug).toLowerCase(), numId);
+        }
+        for (const [name, id] of Object.entries(byName)) {
+            const numId = Number(id);
+            if (!Number.isNaN(numId)) nameMap.set(this.normalizeName(name), numId);
+        }
+        this.bySlug[tagType] = slugMap;
+        this.byName[tagType] = nameMap;
+    }
+
+    async fetchJson(url) {
+        const res = await fetch(url, { signal: AbortSignal.timeout(30000) });
+        if (!res.ok) throw new Error(`HTTP ${res.status} for ${url}`);
+        return res.json();
+    }
+
+    async ensureLoaded() {
+        if (this.loadedAt) return true;
+        if (this.loadPromise) {
+            await this.loadPromise;
+            return this.isLoaded();
+        }
+        this.loadPromise = this._loadAll();
+        try {
+            await this.loadPromise;
+        } finally {
+            this.loadPromise = null;
+        }
+        return this.isLoaded();
+    }
+
+    async _loadAll() {
+        try {
+            const base = this.syncSystem.tagCatalogConfig?.baseUrl
+                || 'https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/tag_catalog';
+            const manifest = await this.fetchJson(`${base}/manifest.json`);
+            this.manifest = manifest;
+            const types = Array.isArray(manifest.types) ? manifest.types : NHP_TAG_RESOLVE_FALLBACK_TYPES;
+            await Promise.all(types.map(async (tagType) => {
+                const file = manifest.files?.[tagType] || `${tagType}.json`;
+                const payload = await this.fetchJson(`${base}/${file}`);
+                this.applyTypePayload(tagType, payload);
+            }));
+            this.loadedAt = Date.now();
+            console.log('[NHP] Tag catalog loaded:', types.map(t => `${t}(${this.bySlug[t]?.size || 0})`).join(', '));
+        } catch (e) {
+            console.warn('[NHP] Tag catalog load failed:', e);
+        }
+    }
+
+    lookupInType(tagType, slug, name) {
+        const slugKey = String(slug || '').toLowerCase();
+        const nameKey = this.normalizeName(name);
+        const slugMap = this.bySlug[tagType];
+        if (slugMap?.has(slugKey)) {
+            return { id: slugMap.get(slugKey), type: tagType };
+        }
+        const nameMap = this.byName[tagType];
+        if (nameKey && nameMap?.has(nameKey)) {
+            return { id: nameMap.get(nameKey), type: tagType };
+        }
+        return null;
+    }
+
+    resolveEntry(parsed) {
+        if (!parsed) return null;
+        if (parsed.explicitNamespace) {
+            return this.lookupInType(parsed.type, parsed.slug, parsed.name);
+        }
+        for (const tagType of getNhpResolveTypesForEntry(parsed, null)) {
+            const hit = this.lookupInType(tagType, parsed.slug, parsed.name);
+            if (hit) return hit;
+        }
+        return null;
     }
 }
 
@@ -14059,8 +14197,10 @@ const syncSystem = new OnlineDataSync();
 globalThis.syncSystem = syncSystem;
 const autoSyncManager = new AutoSyncManager(syncSystem);
 const taxonomyManager = new TaxonomyManager(syncSystem);
+const tagCatalogManager = new TagCatalogManager(syncSystem);
 globalThis.autoSyncManager = autoSyncManager;
 globalThis.taxonomyManager = taxonomyManager;
+globalThis.tagCatalogManager = tagCatalogManager;
 
 // Helper function to save data and trigger autosync
 async function setValueWithAutoSync(key, value) {
@@ -16537,6 +16677,9 @@ async function initTagWarningSystem() {
     const enabled = await GM.getValue('tagWarningEnabled', true);
     if (enabled) {
         await loadNhpTagIdSetsFromStorage();
+        if (globalThis.tagCatalogManager) {
+            await globalThis.tagCatalogManager.ensureLoaded().catch(e => console.warn('[NHP] Tag catalog preload failed:', e));
+        }
         const blacklistTagsList = await GM.getValue('blacklistTagsList', ['scat', 'guro', 'vore', 'ryona', 'snuff']);
         const warningTagsList = await GM.getValue('warningTagsList', ['ntr', 'netorare', 'cheating', 'ugly bastard', 'mind break']);
         const favoriteTagsList = await GM.getValue('favoriteTagsList', []);

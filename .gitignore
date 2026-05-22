@@ -1,2 +1,3 @@
 .wrangler/
 node_modules/
+tag_catalog/.scrape_state.json

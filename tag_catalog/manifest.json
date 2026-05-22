@@ -1,0 +1,23 @@
+{
+  "version": "catalog_v1",
+  "updated_at": "2026-05-21T23:51:37.584251+00:00",
+  "baseUrl": "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/tag_catalog",
+  "types": [
+    "tag",
+    "artist",
+    "group",
+    "character",
+    "parody",
+    "language",
+    "category"
+  ],
+  "files": {
+    "tag": "tag.json",
+    "artist": "artist.json",
+    "group": "group.json",
+    "character": "character.json",
+    "parody": "parody.json",
+    "language": "language.json",
+    "category": "category.json"
+  }
+}

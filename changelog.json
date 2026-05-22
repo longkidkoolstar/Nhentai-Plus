@@ -1,4 +1,12 @@
 {
+  "10.8.4": {
+    "date": "2026-05-21",
+    "changes": [
+      "feat(tags): offline tag ID catalog on GitHub (tag_catalog/*.json); TagCatalogManager resolves blacklist/warning/favorite from repo before any API calls",
+      "fix(tags): large tag lists no longer trigger hundreds of per-tag API lookups on first load (reduces 429 rate limits)",
+      "feat(tags): API fallback only for tags missing from the catalog; GM tagEntryIdCache still stores per-user hits"
+    ]
+  },
   "10.8.3": {
     "date": "2026-05-21",
     "changes": [

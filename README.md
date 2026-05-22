@@ -214,3 +214,35 @@
   - **Multi-Device Usage**: Use the same UUID across devices to access the same data everywhere.
   - **Data Recovery**: If you accidentally regenerate your UUID, use "Browse Users" to find and switch back to your original data.
   - **Backup Strategy**: Consider using both public and private sync for redundancy, or export your data regularly.
+
+## Maintainer: Tag ID catalog
+
+Blacklist/warning/favorite tag resolution uses a **GitHub-hosted catalog** (`tag_catalog/`) so users do not hit the API once per list entry.
+
+### Build or refresh the catalog
+
+```bash
+pip install cloudscraper beautifulsoup4 requests
+
+# Full scrape (API pagination, ~280 requests total with delays)
+python nhentai_tag_catalog_scraper.py --delay 4.0 --per-page 100
+
+# Resume after 429 interrupt
+python nhentai_tag_catalog_scraper.py --resume --delay 4.0 --per-page 100
+
+# Test one type
+python nhentai_tag_catalog_scraper.py --types tag --max-pages 3
+```
+
+Outputs:
+
+- `tag_catalog/manifest.json` — version, `baseUrl`, type list
+- `tag_catalog/{type}.json` — `bySlug` and `byName` maps (numeric id per entry)
+
+Commit updated JSON to `main`; the userscript and N-H app fetch from:
+
+`https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/tag_catalog/`
+
+### Name-only taxonomy (Smart Tags)
+
+[`nhentai_catalog_scraper.py`](nhentai_catalog_scraper.py) → [`nhentai_taxonomy.json`](nhentai_taxonomy.json) remains **names only** for Smart Tags. The tag ID catalog is separate.
