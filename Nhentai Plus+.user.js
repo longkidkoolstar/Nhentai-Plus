@@ -3691,6 +3691,110 @@ if (window.location.href.includes('/settings')) {
         gap: 10px;
     }
 
+    .settings-search-bar {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        background: var(--nh-bg);
+        padding-bottom: 16px;
+        margin: -10px 0 20px 0;
+        border-bottom: 1px solid var(--nh-border);
+    }
+
+    .settings-search {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        max-width: 520px;
+    }
+
+    .settings-search i.fa-search {
+        flex-shrink: 0;
+        color: var(--nh-text-muted);
+        font-size: 14px;
+        width: 16px;
+        text-align: center;
+    }
+
+    .settings-search-field {
+        position: relative;
+        flex: 1;
+        min-width: 0;
+    }
+
+    .settings-search-field .settings-search-input {
+        width: 100%;
+        padding: 8px 36px 8px 12px;
+        background: var(--nh-bg-dark);
+        border: 1px solid var(--nh-border);
+        border-radius: 4px;
+        color: var(--nh-text);
+        font-size: 13px;
+        box-sizing: border-box;
+    }
+
+    .settings-search-field .settings-search-input:focus {
+        border-color: var(--nh-accent);
+        outline: none;
+    }
+
+    .settings-search-clear {
+        position: absolute;
+        right: 8px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: var(--nh-text-muted);
+        cursor: pointer;
+        font-size: 18px;
+        line-height: 1;
+        padding: 0 4px;
+    }
+
+    .settings-search-clear:hover { color: var(--nh-text); }
+
+    .settings-search-no-results {
+        display: none;
+        padding: 40px 20px;
+        text-align: center;
+        color: var(--nh-text-muted);
+        font-size: 15px;
+    }
+
+    .settings-wrapper.settings-search-active .tab-content {
+        display: block !important;
+    }
+
+    .settings-wrapper.settings-search-active .tab-content.settings-search-tab-hidden {
+        display: none !important;
+    }
+
+    .settings-wrapper.settings-search-active .setting-card.settings-search-hidden,
+    .settings-wrapper.settings-search-active .setting-row.settings-search-hidden {
+        display: none !important;
+    }
+
+    .settings-wrapper.settings-search-active .section-title.settings-search-hidden {
+        display: none !important;
+    }
+
+    .setting-row.settings-search-match {
+        background: rgba(237, 37, 83, 0.08);
+        border-radius: 4px;
+        margin: 0 -8px;
+        padding-left: 8px;
+        padding-right: 8px;
+    }
+
+    .nav-item.settings-search-no-match {
+        opacity: 0.35;
+    }
+
+    .nav-item.settings-search-match {
+        color: var(--nh-accent);
+    }
+
     .settings-nav {
         list-style: none;
         padding: 0;
@@ -3956,7 +4060,17 @@ if (window.location.href.includes('/settings')) {
 
         <!-- Main Content -->
         <form id="settingsForm" class="settings-main">
-            
+            <div class="settings-search-bar">
+                <div class="settings-search">
+                    <i class="fa fa-search" aria-hidden="true"></i>
+                    <div class="settings-search-field">
+                        <input type="text" id="settingsSearchInput" class="settings-search-input" placeholder="Search settings..." autocomplete="off" spellcheck="false">
+                        <button type="button" id="settingsSearchClear" class="settings-search-clear" aria-label="Clear search" style="display:none">&times;</button>
+                    </div>
+                </div>
+            </div>
+            <div id="settings-search-no-results" class="settings-search-no-results">No settings match your search.</div>
+
             <!-- Tab: General -->
             <div id="tab-general" class="tab-content active">
                 <h2 class="section-title">General Settings</h2>
@@ -4799,8 +4913,140 @@ if (window.location.href.includes('/settings')) {
         return resolvedTab;
     }
 
+    function elementSearchText(el) {
+        return (el && el.textContent ? el.textContent : '').replace(/\s+/g, ' ').trim().toLowerCase();
+    }
+
+    function clearSettingsSearchState() {
+        const $wrapper = $('.settings-wrapper');
+        $wrapper.removeClass('settings-search-active');
+        $('#settings-search-no-results').hide();
+        $('.setting-row, .setting-card, .tab-content, .section-title, .nav-item').removeClass(
+            'settings-search-hidden settings-search-match settings-search-tab-hidden settings-search-no-match'
+        );
+    }
+
+    function filterSettingsSearch(query) {
+        const q = String(query || '').trim().toLowerCase();
+        const $wrapper = $('.settings-wrapper');
+        const $noResults = $('#settings-search-no-results');
+
+        if (!q) {
+            clearSettingsSearchState();
+            if (!$wrapper.hasClass('classic-mode')) {
+                GM.getValue(settingsLastTabKey, 'general').then((savedTab) => {
+                    setActiveSettingsTab(savedTab);
+                });
+            }
+            return;
+        }
+
+        $wrapper.addClass('settings-search-active');
+        let visibleTabCount = 0;
+
+        $('#settingsForm > .tab-content').each(function () {
+            const $tab = $(this);
+            const tabId = ($tab.attr('id') || '').replace('tab-', '');
+            let tabHasMatch = false;
+
+            const $sectionTitle = $tab.children('.section-title').first();
+            const sectionMatches = $sectionTitle.length && elementSearchText($sectionTitle[0]).includes(q);
+            if (sectionMatches) {
+                tabHasMatch = true;
+                $sectionTitle.removeClass('settings-search-hidden');
+            } else if ($sectionTitle.length) {
+                $sectionTitle.addClass('settings-search-hidden');
+            }
+
+            $tab.find('.setting-card').each(function () {
+                const $card = $(this);
+                if ($card.closest('.nhp-modal, #edit-value-modal').length) return;
+
+                const cardTitleText = elementSearchText($card.children('h3').first()[0] || '');
+                const cardMatches = cardTitleText.includes(q);
+                let cardHasMatch = cardMatches;
+                let visibleRowCount = 0;
+
+                $card.children('.setting-row').each(function () {
+                    const $row = $(this);
+                    const rowMatches = elementSearchText($row[0]).includes(q);
+                    if (rowMatches) {
+                        cardHasMatch = true;
+                        visibleRowCount++;
+                        $row.removeClass('settings-search-hidden').addClass('settings-search-match');
+                    } else {
+                        $row.addClass('settings-search-hidden').removeClass('settings-search-match');
+                    }
+                });
+
+                if (!cardHasMatch) {
+                    $card.children().not('h3').each(function () {
+                        const $block = $(this);
+                        if ($block.is('.setting-row') || $block.find('.setting-row').length) return;
+                        if (elementSearchText($block[0]).includes(q)) {
+                            cardHasMatch = true;
+                        }
+                    });
+                }
+
+                if (cardHasMatch) {
+                    tabHasMatch = true;
+                    $card.removeClass('settings-search-hidden');
+                    if (visibleRowCount === 0) {
+                        $card.children('.setting-row').removeClass('settings-search-hidden settings-search-match');
+                    }
+                } else {
+                    $card.addClass('settings-search-hidden');
+                }
+            });
+
+            if (tabHasMatch) {
+                $sectionTitle.removeClass('settings-search-hidden');
+            }
+
+            const $navItem = $(`.settings-nav .nav-item[data-tab="${tabId}"]`);
+            if (tabHasMatch) {
+                visibleTabCount++;
+                $tab.removeClass('settings-search-tab-hidden active');
+                $navItem.removeClass('settings-search-no-match').addClass('settings-search-match');
+            } else {
+                $tab.addClass('settings-search-tab-hidden').removeClass('active');
+                $navItem.addClass('settings-search-no-match').removeClass('settings-search-match active');
+            }
+        });
+
+        $noResults.toggle(visibleTabCount === 0);
+    }
+
+    function setupSettingsSearch() {
+        const $searchInput = $('#settingsSearchInput');
+        const $clearBtn = $('#settingsSearchClear');
+        if (!$searchInput.length) return;
+
+        const applySearch = () => {
+            const value = $searchInput.val();
+            $clearBtn.toggle(!!value);
+            filterSettingsSearch(value);
+        };
+
+        $searchInput.on('input', applySearch);
+        $clearBtn.on('click', () => {
+            $searchInput.val('').trigger('focus');
+            applySearch();
+        });
+        $searchInput.on('keydown', (e) => {
+            if (e.key === 'Escape') {
+                $searchInput.val('');
+                applySearch();
+            }
+        });
+    }
+
     $(document).ready(function () {
+        setupSettingsSearch();
+
         $('.settings-nav .nav-item').on('click', async function () {
+            if ($('.settings-wrapper').hasClass('settings-search-active')) return;
             const target = $(this).data('tab');
             const resolvedTab = setActiveSettingsTab(target);
             if (!$('.settings-wrapper').hasClass('classic-mode')) {

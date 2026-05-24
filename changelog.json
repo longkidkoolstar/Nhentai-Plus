@@ -5,7 +5,8 @@
       "fix(find-alt): restore Find Alt Manga (thumbnail) buttons after Svelte DOM recycle via nhpApplyAllCore",
       "fix(find-alt): broaden listing-page detection so search/tag grids get Find Alt Versions controls on v2",
       "fix(ui): stack tag warning badges (blacklist, NTR/warning, favorite) vertically above the Find Alt thumbnail button",
-      "fix(ui): remove broken setInterval that forced all badges to the same bottom position"
+      "fix(ui): remove broken setInterval that forced all badges to the same bottom position",
+      "new(ui): add settings search bar to settings page"
     ]
   },
   "10.8.4": {
