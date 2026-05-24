@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      10.8.4
+// @version      10.8.5
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -23,7 +23,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "10.8.4";
+const CURRENT_VERSION = "10.8.5";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -1217,6 +1217,11 @@ addFindAltButton();
             .newTabButton:hover {
                 background-color: rgba(0,0,0,.7);
             }
+
+            /* Stack tag-warning badges above the Find Alt Versions button */
+            .gallery:has(.findVersionButton) .tag-warning-badge.blacklist { bottom: 40px; left: 5px; }
+            .gallery:has(.findVersionButton) .tag-warning-badge.warning { bottom: 63px; left: 5px; }
+            .gallery:has(.findVersionButton) .tag-warning-badge.favorite { bottom: 86px; left: 5px; }
         `);
 
         function IncludesAll(string, search) {
@@ -1592,11 +1597,73 @@ addFindAltButton();
             }
         }
 
-        if ($(".container.index-container, #favcontainer.container, #recent-favorites-container, #related-container").length !== 0) {
-            $(".cover").parent().append("<div class='findVersionButton'>Find Alt Versions</div>");
-            $(".cover").parent().append("<div class='numOfVersions'>1/1</div>");
-            $(".cover").parent().append("<div class='versionNextButton'>►</div>");
-            $(".cover").parent().append("<div class='versionPrevButton'>◄</div>");
+        function nhpIsFindAltThumbnailListingPage() {
+            const path = location.pathname || '';
+            if (/^\/(settings|read-manga|quick-nut|continue-reading|continue_reading|bookmarks|favorite)\/?/.test(path)) return false;
+            return $('.gallery a.cover, a.cover').length > 0;
+        }
+
+        async function updateMarkAsReadButtonPosition(galleryContext) {
+            const markAsReadButton = galleryContext.find('.mark-as-read-btn');
+            const showPageNumbersEnabled = await GM.getValue('showPageNumbersEnabled', true);
+            if (showPageNumbersEnabled || $('.findVersionButton').length > 0) {
+                markAsReadButton.css('top', '40px');
+            } else {
+                markAsReadButton.css('top', '5px');
+            }
+        }
+
+        // Re-inject Find Alt Version buttons after v2 hydration / stripGalleryInjectedState removes them
+        function reInjectFindAltButtons() {
+            if (!nhpIsFindAltThumbnailListingPage()) return;
+            $(".cover").each(function () {
+                const $parent = $(this).parent();
+                if ($parent.find('.findVersionButton').length === 0) {
+                    $parent.append("<div class='findVersionButton'>Find Alt Versions</div>");
+                    $parent.append("<div class='numOfVersions'>1/1</div>");
+                    $parent.append("<div class='versionNextButton'>►</div>");
+                    $parent.append("<div class='versionPrevButton'>◄</div>");
+
+                    $parent.find(".findVersionButton").last().click(function (e) {
+                        e.preventDefault();
+                        AddAltVersionsToThis($(this));
+                        updateMarkAsReadButtonPosition($(this).closest('.gallery'));
+                    });
+                    $parent.find(".versionPrevButton").last().click(function (e) {
+                        e.preventDefault();
+                        let toHide = $(this).parent().find(".cover").filter(":visible");
+                        let toShow = toHide.prev();
+                        if (!toShow || toShow.length <= 0) return;
+                        if (!toShow.is(".cover")) toShow = toHide.prevUntil(".cover", ":last").prev();
+                        if (!toShow || toShow.length <= 0) return;
+                        toHide.hide(100);
+                        toShow.show(100);
+                        let n = $(this).parent().find(".numOfVersions");
+                        n.text((Number(n.text().split("/")[0]) - 1) + "/" + n.text().split("/")[1]);
+                    });
+                    $parent.find(".versionNextButton").last().click(function (e) {
+                        e.preventDefault();
+                        let toHide = $(this).parent().find(".cover").filter(":visible");
+                        let toShow = toHide.next();
+                        if (!toShow || toShow.length <= 0) return;
+                        if (!toShow.is(".cover")) toShow = toHide.nextUntil(".cover", ":last").next();
+                        if (!toShow || toShow.length <= 0) return;
+                        toHide.hide(100);
+                        toShow.show(100);
+                        let n = $(this).parent().find(".numOfVersions");
+                        n.text((Number(n.text().split("/")[0]) + 1) + "/" + n.text().split("/")[1]);
+                    });
+                }
+            });
+            if (typeof nhpPositionTagWarningBadges === 'function') {
+                nhpPositionTagWarningBadges();
+            }
+        }
+
+        globalThis.reInjectFindAltThumbnailButtons = reInjectFindAltButtons;
+
+        if (nhpIsFindAltThumbnailListingPage()) {
+            reInjectFindAltButtons();
 
             $(".findVersionButton").click(function (e) {
                 e.preventDefault();
@@ -1605,17 +1672,6 @@ addFindAltButton();
             });
 
             //------------- UPD CSS BASED ON SETTINGS RQ -----------------------------
-            // Function to update the position of the mark-as-read button
-            async function updateMarkAsReadButtonPosition(galleryContext) {
-                const markAsReadButton = galleryContext.find('.mark-as-read-btn');
-                const showPageNumbersEnabled = await GM.getValue('showPageNumbersEnabled', true);
-                console.log(showPageNumbersEnabled);
-                if (showPageNumbersEnabled || $('.findVersionButton').length > 0) { // Check if find alt version button exists
-                    markAsReadButton.css('top', '40px');
-                } else {
-                    markAsReadButton.css('top', '5px');
-                }
-            }
 
             // Function to adjust the position of a specific element
             setInterval(function () {
@@ -1624,16 +1680,6 @@ addFindAltButton();
                     $('.mark-as-read-btn').css('top', '40px');
                 }
             }, 1000);
-
-            // Function to adjust the position of tag warning badges
-            setInterval(function () {
-                if ($('.findVersionButton').length > 0) {
-                    $('.tag-warning-badge').css({
-                        'bottom': '40px',
-                        'left': '10px'
-                    });
-                }
-            }, 100);
 
             //------------- UPD CSS BASED ON SETTINGS RQ -----------------------------
 
@@ -1664,55 +1710,13 @@ addFindAltButton();
                 n.text((Number(n.text().split("/")[0]) + 1) + "/" + n.text().split("/")[1]);
             });
 
-            // Re-inject Find Alt Version buttons after v2 hydration removes them
-            function reInjectFindAltButtons() {
-                $(".cover").each(function () {
-                    const $parent = $(this).parent();
-                    if ($parent.find('.findVersionButton').length === 0) {
-                        $parent.append("<div class='findVersionButton'>Find Alt Versions</div>");
-                        $parent.append("<div class='numOfVersions'>1/1</div>");
-                        $parent.append("<div class='versionNextButton'>►</div>");
-                        $parent.append("<div class='versionPrevButton'>◄</div>");
-
-                        $parent.find(".findVersionButton").last().click(function (e) {
-                            e.preventDefault();
-                            AddAltVersionsToThis($(this));
-                        });
-                        $parent.find(".versionPrevButton").last().click(function (e) {
-                            e.preventDefault();
-                            let toHide = $(this).parent().find(".cover").filter(":visible");
-                            let toShow = toHide.prev();
-                            if (!toShow || toShow.length <= 0) return;
-                            if (!toShow.is(".cover")) toShow = toHide.prevUntil(".cover", ":last").prev();
-                            if (!toShow || toShow.length <= 0) return;
-                            toHide.hide(100);
-                            toShow.show(100);
-                            let n = $(this).parent().find(".numOfVersions");
-                            n.text((Number(n.text().split("/")[0]) - 1) + "/" + n.text().split("/")[1]);
-                        });
-                        $parent.find(".versionNextButton").last().click(function (e) {
-                            e.preventDefault();
-                            let toHide = $(this).parent().find(".cover").filter(":visible");
-                            let toShow = toHide.next();
-                            if (!toShow || toShow.length <= 0) return;
-                            if (!toShow.is(".cover")) toShow = toHide.nextUntil(".cover", ":last").next();
-                            if (!toShow || toShow.length <= 0) return;
-                            toHide.hide(100);
-                            toShow.show(100);
-                            let n = $(this).parent().find(".numOfVersions");
-                            n.text((Number(n.text().split("/")[0]) + 1) + "/" + n.text().split("/")[1]);
-                        });
-                    }
-                });
-            }
-
             // Burst schedule to catch v2 delayed hydration removing these buttons
             [2000, 4000, 6000, 10000].forEach(delay => {
                 setTimeout(reInjectFindAltButtons, delay);
             });
 
             const findAltObserver = new MutationObserver(() => {
-                if ($(".container.index-container, #favcontainer.container, #recent-favorites-container, #related-container").length === 0) return;
+                if (!nhpIsFindAltThumbnailListingPage()) return;
                 if ($(".findVersionButton").length === 0 && $(".cover").length > 0) {
                     reInjectFindAltButtons();
                 }
@@ -9719,6 +9723,32 @@ function stripGalleryInjectedState(gallery) {
     });
 }
 
+// ---- Tag warning badge layout (stacks above Find Alt thumbnail button when present) ----
+const NHP_TAG_BADGE_BASE_BOTTOM = 5;
+const NHP_TAG_BADGE_STEP = 23;
+const NHP_TAG_BADGE_FIND_ALT_OFFSET = 35;
+
+function nhpPositionTagWarningBadges(root) {
+    const galleries = root
+        ? (root.classList && root.classList.contains('gallery')
+            ? [root]
+            : (root.querySelectorAll ? root.querySelectorAll('.gallery') : []))
+        : document.querySelectorAll('.gallery');
+
+    galleries.forEach((gallery) => {
+        const badges = gallery.querySelectorAll('.tag-warning-badge');
+        if (!badges.length) return;
+
+        const findAltOffset = gallery.querySelector('.findVersionButton') ? NHP_TAG_BADGE_FIND_ALT_OFFSET : 0;
+        badges.forEach((badge, index) => {
+            badge.style.bottom = `${NHP_TAG_BADGE_BASE_BOTTOM + findAltOffset + index * NHP_TAG_BADGE_STEP}px`;
+            badge.style.left = '5px';
+        });
+    });
+}
+
+globalThis.nhpPositionTagWarningBadges = nhpPositionTagWarningBadges;
+
 // ---- Central Reapply Function ----
 // Re-runs all gallery augmentations idempotently after Svelte navigation or DOM recycling
 let nhpApplyAllDebounceTimer = null;
@@ -9794,6 +9824,15 @@ async function nhpApplyAllCore() {
         if (typeof replaceRelatedWithBookmarks === 'function') {
             await replaceRelatedWithBookmarks();
         }
+
+        // 6) Find Alt Manga (thumbnail) buttons — stripped by stripGalleryInjectedState on Svelte recycle
+        const findAltMangaThumbnailEnabled = await GM.getValue('findAltMangaThumbnailEnabled', true);
+        if (findAltMangaThumbnailEnabled && typeof globalThis.reInjectFindAltThumbnailButtons === 'function') {
+            globalThis.reInjectFindAltThumbnailButtons();
+        }
+
+        // 7) Re-stack tag warning badges above Find Alt button (must run after step 6)
+        nhpPositionTagWarningBadges();
     } catch (e) {
         console.warn('[NHP] nhpApplyAllCore error:', e);
     }
@@ -16274,14 +16313,14 @@ class TagWarningSystem {
                 background: rgba(33, 150, 243, 0.9);
             }
 
-            /* Multiple badges stacking */
-            .tag-warning-badge:nth-child(2) {
-                bottom: 25px;
-            }
+            /* Badge stacking by type (order: blacklist, warning, favorite) */
+            .gallery .tag-warning-badge.blacklist { bottom: 5px; left: 5px; }
+            .gallery .tag-warning-badge.warning { bottom: 28px; left: 5px; }
+            .gallery .tag-warning-badge.favorite { bottom: 51px; left: 5px; }
 
-            .tag-warning-badge:nth-child(3) {
-                bottom: 45px;
-            }
+            .gallery:has(.findVersionButton) .tag-warning-badge.blacklist { bottom: 40px; }
+            .gallery:has(.findVersionButton) .tag-warning-badge.warning { bottom: 63px; }
+            .gallery:has(.findVersionButton) .tag-warning-badge.favorite { bottom: 86px; }
 
             /* Gallery page tag highlighting (legacy .tag + Svelte .tagchip) */
             #tags .tag-container :is(a.tagchip, a.tag).blacklist-tag {
@@ -16449,6 +16488,10 @@ class TagWarningSystem {
         if (warnings.favorite.length > 0) {
             const badge = this.createWarningBadge('favorite', '★');
             gallery.appendChild(badge);
+        }
+
+        if (typeof nhpPositionTagWarningBadges === 'function') {
+            nhpPositionTagWarningBadges(gallery);
         }
     }
 
@@ -18853,18 +18896,14 @@ function addEnhancedCSS() {
             border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
-        /* Badge stacking with improved spacing */
-        .gallery .tag-warning-badge:nth-of-type(1) {
-            bottom: 5px;
-        }
+        /* Badge stacking by type (order: blacklist, warning, favorite) */
+        .gallery .tag-warning-badge.blacklist { bottom: 5px; left: 5px; }
+        .gallery .tag-warning-badge.warning { bottom: 28px; left: 5px; }
+        .gallery .tag-warning-badge.favorite { bottom: 51px; left: 5px; }
 
-        .gallery .tag-warning-badge:nth-of-type(2) {
-            bottom: 28px;
-        }
-
-        .gallery .tag-warning-badge:nth-of-type(3) {
-            bottom: 51px;
-        }
+        .gallery:has(.findVersionButton) .tag-warning-badge.blacklist { bottom: 40px; }
+        .gallery:has(.findVersionButton) .tag-warning-badge.warning { bottom: 63px; }
+        .gallery:has(.findVersionButton) .tag-warning-badge.favorite { bottom: 86px; }
 
         /* Enhanced Mark as Read Button */
         .mark-as-read-btn {
