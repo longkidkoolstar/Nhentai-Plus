@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      10.8.5
+// @version      10.8.6
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -23,7 +23,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "10.8.5";
+const CURRENT_VERSION = "10.8.6";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -1766,6 +1766,10 @@ async function createBookmarkButton() {
         return;
     }
 
+    const h1Element = document.querySelector("#content > h1");
+    if (!h1Element) return;
+    if (h1Element.querySelector('.bookmark-btn')) return;
+
     // Check if the page is already bookmarked
     const bookmarkedPages = await GM.getValue('bookmarkedPages', []);
     const currentPage = window.location.href;
@@ -1780,10 +1784,7 @@ async function createBookmarkButton() {
     const bookmarkButton = $(bookmarkButtonHtml);
 
     // Append the bookmark button as a child of the h1 element if it exists
-    const h1Element = document.querySelector("#content > h1");
-    if (h1Element) {
-        h1Element.append(bookmarkButton[0]);
-    }
+    h1Element.append(bookmarkButton[0]);
 
     // Handle click event for the bookmark button
     bookmarkButton.click(async function () {
@@ -2971,45 +2972,67 @@ async function addQuickNutButton() {
 
 
 //------------------------  **Nhentai English Filter**  ----------------------
-var pathname = window.location.pathname;
-var searchQuery = window.location.search.split('=')[1] || '';
-var namespaceType = pathname.split('/')[1];
-var namespaceQuery = pathname.split('/')[2];
-var namespaceSearchLink = '<div class="sort-type"><a href="https://nhentai.net/search/?q=' + namespaceType + '%3A%22' + namespaceQuery + '%22+language%3A%22english%22">English Only</a></div>';
-var siteSearchLink = '<div class="sort-type"><a href="https://nhentai.net/search/?q=' + searchQuery + '+language%3A%22english%22">English Only</a></div>';
-var favSearchBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites/?q=language%3A%22english%22+' + searchQuery + '"><i class="fa fa-flag"></i> ENG</a>';
-var favPageBtn = '<a class="btn btn-primary" href="https://nhentai.net/favorites/?q=language%3A%22english%22+"><i class="fa fa-flag"></i> ENG</a>';
-
-(async function () {
+async function ensureEnglishFilterLink() {
     const englishFilterEnabled = await GM.getValue('englishFilterEnabled', true);
+    if (!englishFilterEnabled) return;
 
-    if (englishFilterEnabled) {
-        // Check if the search query contains 'English' or 'english'
-        if (!/(English|language%3A%22english%22)/i.test(searchQuery)) {
-            if (pathname.startsWith('/parody/')) { // parody pages
-                document.getElementsByClassName('sort')[0].innerHTML += namespaceSearchLink;
-            } else if (pathname.startsWith('/favorites/')) { // favorites pages
-                if (window.location.search.length) {
-                    document.getElementById('favorites-random-button').insertAdjacentHTML('afterend', favSearchBtn);
-                } else {
-                    document.getElementById('favorites-random-button').insertAdjacentHTML('afterend', favPageBtn);
-                }
-            } else if (pathname.startsWith('/artist/')) { // artist pages
-                document.getElementsByClassName('sort')[0].innerHTML += namespaceSearchLink;
-            } else if (pathname.startsWith('/tag/')) { // tag pages
-                document.getElementsByClassName('sort')[0].innerHTML += namespaceSearchLink;
-            } else if (pathname.startsWith('/group/')) { // group pages
-                document.getElementsByClassName('sort')[0].innerHTML += namespaceSearchLink;
-            } else if (pathname.startsWith('/category/')) { // category pages
-                document.getElementsByClassName('sort')[0].innerHTML += namespaceSearchLink;
-            } else if (pathname.startsWith('/character/')) { // character pages
-                document.getElementsByClassName('sort')[0].innerHTML += namespaceSearchLink;
-            } else if (pathname.startsWith('/search/')) { // search pages
-                document.getElementsByClassName('sort')[0].innerHTML += siteSearchLink;
-            }
-        }
+    const pathname = window.location.pathname;
+    const searchQuery = window.location.search.split('=')[1] || '';
+    const namespaceType = pathname.split('/')[1];
+    const namespaceQuery = pathname.split('/')[2];
+
+    if (/(English|language%3A%22english%22)/i.test(searchQuery)) return;
+
+    const namespaceHref = `https://nhentai.net/search/?q=${namespaceType}%3A%22${namespaceQuery}%22+language%3A%22english%22`;
+    const siteHref = `https://nhentai.net/search/?q=${searchQuery}+language%3A%22english%22`;
+
+    const appendSortEnglishLink = (href) => {
+        const sort = document.querySelector('.sort');
+        if (!sort) return false;
+        if (sort.querySelector('[data-nhp-english-only]')) return true;
+        const wrap = document.createElement('div');
+        wrap.className = 'sort-type';
+        wrap.setAttribute('data-nhp-english-only', '1');
+        const link = document.createElement('a');
+        link.href = href;
+        link.textContent = 'English Only';
+        wrap.appendChild(link);
+        sort.appendChild(wrap);
+        return true;
+    };
+
+    const appendFavoritesEnglishBtn = (withQuery) => {
+        const anchor = document.getElementById('favorites-random-button');
+        if (!anchor) return false;
+        if (document.querySelector('[data-nhp-english-only]')) return true;
+        const btn = document.createElement('a');
+        btn.className = 'btn btn-primary';
+        btn.setAttribute('data-nhp-english-only', '1');
+        btn.href = withQuery
+            ? `https://nhentai.net/favorites/?q=language%3A%22english%22+${searchQuery}`
+            : 'https://nhentai.net/favorites/?q=language%3A%22english%22+';
+        btn.innerHTML = '<i class="fa fa-flag"></i> ENG';
+        anchor.insertAdjacentElement('afterend', btn);
+        return true;
+    };
+
+    if (pathname.startsWith('/favorites/')) {
+        appendFavoritesEnglishBtn(window.location.search.length > 0);
+        return;
     }
-})();
+
+    const namespacePages = ['/parody/', '/artist/', '/tag/', '/group/', '/category/', '/character/'];
+    if (namespacePages.some(prefix => pathname.startsWith(prefix))) {
+        appendSortEnglishLink(namespaceHref);
+        return;
+    }
+
+    if (pathname.startsWith('/search/')) {
+        appendSortEnglishLink(siteHref);
+    }
+}
+
+ensureEnglishFilterLink();
 //------------------------  **Nhentai English Filter**  ----------------------
 
 
@@ -8826,6 +8849,115 @@ async function addShareButton() {
 addShareButton();
 //----------------------------**Share Gallery Button**---------------------------------
 
+//----------------------------**Page UI Recovery (bookmarks, English filter, nav)**---------------------------------
+function nhpShouldSkipPageUiRecovery() {
+    return window.location.href.indexOf('nhentai.net/settings') !== -1;
+}
+
+async function ensureNhpPageUi() {
+    if (nhpShouldSkipPageUiRecovery()) return;
+
+    try {
+        if (typeof ensureEnglishFilterLink === 'function') {
+            await ensureEnglishFilterLink();
+        }
+    } catch (e) {
+        console.warn('English filter restore failed:', e);
+    }
+
+    try {
+        const href = window.location.href;
+        if (href.indexOf('nhentai.net/favorites') === -1 &&
+            typeof createBookmarkButton === 'function') {
+            await createBookmarkButton();
+        }
+    } catch (e) {
+        console.warn('Bookmark page button restore failed:', e);
+    }
+
+    try {
+        if (typeof advancedSearchSystem !== 'undefined' &&
+            advancedSearchSystem &&
+            typeof advancedSearchSystem.replaceEnglishOnlyButtons === 'function') {
+            advancedSearchSystem.replaceEnglishOnlyButtons();
+        }
+        if (advancedSearchSystem && typeof advancedSearchSystem.addAdvancedSearchButtons === 'function') {
+            advancedSearchSystem.addAdvancedSearchButtons();
+        }
+    } catch (e) {
+        console.warn('English-only / advanced search restore failed:', e);
+    }
+
+    try {
+        if (typeof applyCustomNavLinks === 'function') {
+            await applyCustomNavLinks();
+        } else if (typeof addBookmarkButton === 'function') {
+            const changed = await addBookmarkButton();
+            if (changed && typeof updateMenuOrder === 'function') {
+                await updateMenuOrder();
+            }
+        }
+    } catch (e) {
+        console.warn('Bookmark links restore failed:', e);
+    }
+
+    try {
+        if (typeof createBookmarkLink === 'function') {
+            await createBookmarkLink();
+        }
+    } catch (e) {
+        console.warn('Bookmark title link restore failed:', e);
+    }
+}
+
+if (!window.__nhpPageUiRecoveryAttached) {
+    window.__nhpPageUiRecoveryAttached = true;
+
+    let pageUiTimer = null;
+    let pageUiRunning = false;
+    let pageUiLastRunAt = 0;
+
+    const schedulePageUiRecovery = (force = false) => {
+        if (pageUiRunning) return;
+        const now = Date.now();
+        if (!force && (now - pageUiLastRunAt) < 2000) return;
+
+        if (pageUiTimer) clearTimeout(pageUiTimer);
+        pageUiTimer = setTimeout(async () => {
+            pageUiRunning = true;
+            pageUiLastRunAt = Date.now();
+            try {
+                await ensureNhpPageUi();
+            } finally {
+                pageUiRunning = false;
+            }
+        }, force ? 100 : 300);
+    };
+
+    schedulePageUiRecovery(true);
+    [300, 800, 1500, 2500, 4000, 6000, 8000, 12000].forEach(delay => {
+        setTimeout(() => schedulePageUiRecovery(true), delay);
+    });
+
+    const pageUiObserver = new MutationObserver((mutations) => {
+        const relevantChange = mutations.some(m =>
+            Array.from(m.addedNodes).concat(Array.from(m.removedNodes)).some(n => {
+                if (!n || n.nodeType !== 1) return false;
+                const el = n;
+                if (el.matches && el.matches('.sort, .sort-type, #content > h1, #content > h1 .bookmark-btn, [data-nhp-english-only], nav, nav ul.menu.left, nav ul.dropdown-menu')) return true;
+                if (el.closest && el.closest('.sort, #content > h1, nav')) return true;
+                if (el.querySelector && el.querySelector('.sort, #content > h1 .bookmark-btn, [data-nhp-english-only], nav ul.menu.left a[href="/bookmarks/"]')) return true;
+                return false;
+            })
+        );
+        if (relevantChange) schedulePageUiRecovery(false);
+    });
+    pageUiObserver.observe(document.body, { childList: true, subtree: true });
+
+    window.addEventListener('popstate', () => schedulePageUiRecovery(true), { passive: true });
+}
+//----------------------------**Page UI Recovery (bookmarks, English filter, nav)**---------------------------------
+
 //----------------------------**Gallery Action Buttons Recovery**---------------------------------
 function isGalleryPagePath() {
     return /\/g\/\d+\/?$/.test(String(window.location.pathname || ''));
@@ -8837,33 +8969,41 @@ function hasGalleryButtonHost() {
 
 async function ensureGalleryActionButtons() {
     if (!isGalleryPagePath()) return;
-    if (!hasGalleryButtonHost()) return;
-    if (!document.getElementById('download')) return;
+    const hasButtonsHost = hasGalleryButtonHost();
+    const hasDownloadButton = !!document.getElementById('download');
 
     const currentGalleryId = getMangaIdFromUrl();
 
-    try {
-        await addFindAltButton();
-    } catch (e) {
-        console.warn('Find Alt button restore failed:', e);
+    if (hasButtonsHost || hasDownloadButton) {
+        try {
+            await addFindAltButton();
+        } catch (e) {
+            console.warn('Find Alt button restore failed:', e);
+        }
+
+        try {
+            await createFindSimilarButton();
+        } catch (e) {
+            console.warn('Find Similar button restore failed:', e);
+        }
+
+        try {
+            await addShareButton();
+        } catch (e) {
+            console.warn('Share button restore failed:', e);
+        }
+
+        try {
+            mangaBookmarking();
+        } catch (e) {
+            console.warn('Bookmark button restore failed:', e);
+        }
     }
 
     try {
-        await createFindSimilarButton();
+        await ensureNhpPageUi();
     } catch (e) {
-        console.warn('Find Similar button restore failed:', e);
-    }
-
-    try {
-        await addShareButton();
-    } catch (e) {
-        console.warn('Share button restore failed:', e);
-    }
-
-    try {
-        mangaBookmarking();
-    } catch (e) {
-        console.warn('Bookmark button restore failed:', e);
+        console.warn('Page UI restore failed:', e);
     }
 
     try {
@@ -8875,21 +9015,23 @@ async function ensureGalleryActionButtons() {
         console.warn('Mark-as-read button restore failed:', e);
     }
 
-    try {
-        const hbSystem = globalThis.hideBlacklistSystem;
-        if (hbSystem && typeof hbSystem.addGalleryPageHideButton === 'function') {
-            hbSystem.addGalleryPageHideButton();
+    if (hasButtonsHost || hasDownloadButton) {
+        try {
+            const hbSystem = globalThis.hideBlacklistSystem;
+            if (hbSystem && typeof hbSystem.addGalleryPageHideButton === 'function') {
+                hbSystem.addGalleryPageHideButton();
+            }
+        } catch (e) {
+            console.warn('Hide/Blacklist button restore failed:', e);
         }
-    } catch (e) {
-        console.warn('Hide/Blacklist button restore failed:', e);
-    }
 
-    try {
-        if (typeof replaceRelatedWithBookmarks === 'function') {
-            await replaceRelatedWithBookmarks();
+        try {
+            if (typeof replaceRelatedWithBookmarks === 'function') {
+                await replaceRelatedWithBookmarks();
+            }
+        } catch (e) {
+            console.warn('Related bookmarks/flip button restore failed:', e);
         }
-    } catch (e) {
-        console.warn('Related bookmarks/flip button restore failed:', e);
     }
 }
 
@@ -8965,9 +9107,10 @@ if (!window.__nhpGalleryButtonsRecoveryAttached) {
                 const el = n;
 
                 if (watchIds.has(el.id)) return true;
-                if (el.matches && el.matches('#info, #info .buttons, #info .buttons.btn-group, #info .buttons .btn')) return true;
+                if (el.matches && el.matches('#info, #info .buttons, #info .buttons.btn-group, #info .buttons .btn, #content > h1, #content > h1 .bookmark-btn, #content > h1 .advanced-search-btn, nav ul.menu.left a[href="/bookmarks/"], nav ul.dropdown-menu a[href="/bookmarks/"]')) return true;
                 if (el.closest && el.closest('#info .buttons, #info .buttons.btn-group')) return true;
-                if (el.querySelector && el.querySelector('#info, #download, #bookmark-button, #share-gallery-button, #find-alt-button, #find-similar-button, #nhi-mar-button, #nhi-hide-button')) return true;
+                if (el.closest && el.closest('#content > h1, nav ul.menu.left, nav ul.dropdown-menu')) return true;
+                if (el.querySelector && el.querySelector('#info, #download, #bookmark-button, #share-gallery-button, #find-alt-button, #find-similar-button, #nhi-mar-button, #nhi-hide-button, #content > h1 .bookmark-btn, #content > h1 .advanced-search-btn, nav ul.menu.left a[href="/bookmarks/"], nav ul.dropdown-menu a[href="/bookmarks/"]')) return true;
 
                 return false;
             })
@@ -11876,7 +12019,7 @@ createSettingsMenu();
 async function createBookmarkLink() {
     const bookmarkLinkEnabled = await GM.getValue('bookmarkLinkEnabled', true);
     if (!bookmarkLinkEnabled) return;
-
+    if (document.querySelector('h1.title .bookmark-link')) return;
 
     // Extract current manga ID from URL
     const currentMangaId = window.location.pathname.split('/')[2];
@@ -17187,6 +17330,7 @@ class AdvancedSearchSystem {
         // Find a suitable container for the button
         const container = this.findButtonContainer();
         if (!container) return;
+        if (container.querySelector(`.advanced-search-btn[href="${CSS.escape(url)}"]`)) return;
 
         const button = document.createElement('a');
         button.className = 'btn btn-primary advanced-search-btn';

@@ -1,4 +1,11 @@
 {
+  "10.8.6": {
+    "date": "2026-05-27",
+    "changes": [
+      "fix(ui): recover English-only filter + bookmark page buttons after nhentai v2/Svelte DOM recycle",
+      "fix(ui): re-apply bookmark nav links and title bookmark-link after re-render"
+    ]
+  },
   "10.8.5": {
     "date": "2026-05-24",
     "changes": [
