@@ -1,4 +1,10 @@
 {
+  "10.8.8": {
+    "date": "2026-06-03",
+    "changes": [
+      "fix(bookmarks): restore coverImageUrl in auto-repair logic for bookmarked mangas on gallery details page load"
+    ]
+  },
   "10.8.7": {
     "date": "2026-06-02",
     "changes": [

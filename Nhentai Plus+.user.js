@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      10.8.7
+// @version      10.8.8
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -8599,11 +8599,41 @@ function mangaBookmarking() {
                             needsUpdate = true;
                         }
                     }
+
+                    // If coverImageUrl is missing, try to repair it
+                    if (!existingManga.coverImageUrl) {
+                        let coverImageUrl = null;
+
+                        // Try Cache/API
+                        let apiData = typeof NHP_V2_GALLERY_CACHE !== 'undefined' ? NHP_V2_GALLERY_CACHE.get(gid) : null;
+                        if (!apiData && typeof nhpFetchGalleryV2 === 'function') {
+                            apiData = await nhpFetchGalleryV2(gid);
+                        }
+                        if (apiData && apiData.cover_url) {
+                            coverImageUrl = apiData.cover_url;
+                        }
+
+                        // Fallback to DOM
+                        if (!coverImageUrl) {
+                            const coverImageContainer = document.getElementById('cover');
+                            if (coverImageContainer) {
+                                const coverImage = coverImageContainer.querySelector('img');
+                                if (coverImage) {
+                                    coverImageUrl = coverImage.dataset.src || coverImage.src;
+                                }
+                            }
+                        }
+
+                        if (coverImageUrl) {
+                            existingManga.coverImageUrl = coverImageUrl;
+                            needsUpdate = true;
+                        }
+                    }
                 }
 
                 if (needsUpdate) {
                     await GM.setValue('bookmarkedMangas', bookmarkedMangas);
-                    console.log('[NHP] Auto-repaired missing title/tags for bookmarked manga:', currentUrl);
+                    console.log('[NHP] Auto-repaired missing title/tags/cover for bookmarked manga:', currentUrl);
                 }
             }
 
