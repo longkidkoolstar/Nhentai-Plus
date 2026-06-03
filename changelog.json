@@ -1,4 +1,13 @@
 {
+  "10.8.7": {
+    "date": "2026-06-02",
+    "changes": [
+      "feat(sync): optional Merge on sync setting — combine local and cloud data on upload/download instead of overwriting",
+      "feat(sync): union-merge bookmarks, favorites, read/hidden galleries, tag lists, inbox, and pending favorite queues when merge is enabled",
+      "feat(sync): upload merges with existing cloud snapshot per user UUID; download merges using blob timestamps for settings conflicts",
+      "feat(sync): warn when merged upload payload is near the jsonstorage size limit"
+    ]
+  },
   "10.8.6": {
     "date": "2026-05-27",
     "changes": [

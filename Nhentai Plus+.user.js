@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      10.8.6
+// @version      10.8.7
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -23,7 +23,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "10.8.6";
+const CURRENT_VERSION = "10.8.7";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -4629,6 +4629,20 @@ if (window.location.href.includes('/settings')) {
                         </div>
                         
                         <div class="setting-card">
+                            <h3>Sync Options</h3>
+                            <div class="setting-row">
+                                <span class="setting-label">Merge on sync (keep data from all devices)</span>
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="syncMergeMode">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <p style="font-size:12px; color:#aaa; margin-top:8px;">
+                                When enabled, upload and download combine bookmarks, favorites, and settings instead of replacing them. When disabled, cloud data overwrites local on download (except favorite queues).
+                            </p>
+                        </div>
+
+                        <div class="setting-card">
                             <h3>Auto Sync</h3>
                             <div class="setting-row">
                                 <span class="setting-label">Enable Auto Sync</span>
@@ -5141,6 +5155,7 @@ if (window.location.href.includes('/settings')) {
         const privateApiKey = await GM.getValue('privateApiKey', '');
         const autoSyncEnabled = await GM.getValue('autoSyncEnabled', false);
         const syncInterval = await GM.getValue('syncInterval', 30);
+        const syncMergeMode = await GM.getValue('syncMergeMode', false);
         let userUUID = await GM.getValue('userUUID', '');
         if (!userUUID && globalThis.syncSystem && typeof globalThis.syncSystem.getUserUUID === 'function') {
             try {
@@ -5444,6 +5459,7 @@ if (window.location.href.includes('/settings')) {
         $('#privateApiKey').val(privateApiKey);
         $('#autoSyncEnabled').prop('checked', autoSyncEnabled);
         $('#syncInterval').val(syncInterval);
+        $('#syncMergeMode').prop('checked', syncMergeMode);
         $('#userUUID').val(userUUID);
 
         // Update sync status displays
@@ -5718,16 +5734,24 @@ if (window.location.href.includes('/settings')) {
                 }
 
                 if (operation === 'upload') {
-                    await syncSystem.uploadData('jsonstorage', config);
+                    const uploadResult = await syncSystem.uploadData('jsonstorage', config);
                     statusElement.removeClass('loading error').addClass('success').text('Upload successful!');
                     lastSyncElement.text(new Date().toLocaleString());
-                    showPopup('Data uploaded successfully! Your data has been saved to the cloud.');
+                    let uploadMessage = uploadResult.mergeMode
+                        ? 'Data merged and uploaded successfully! Local and cloud data were combined.'
+                        : 'Data uploaded successfully! Your data has been saved to the cloud.';
+                    if (uploadResult.overSizeLimit) {
+                        const kb = Math.round(uploadResult.estimatedBytes / 1024);
+                        uploadMessage += ` Warning: payload is ~${kb} KB (near the 100 KB limit). Consider pruning bookmarks or inbox messages.`;
+                    }
+                    showPopup(uploadMessage);
                 } else {
                     const result = await syncSystem.downloadData('jsonstorage', config);
                     statusElement.removeClass('loading error').addClass('success').text('Download successful!');
                     lastSyncElement.text(new Date().toLocaleString());
 
-                    let message = `Data downloaded successfully! Applied ${result.appliedCount} settings.`;
+                    const verb = result.mergeMode ? 'Merged' : 'Applied';
+                    let message = `Data downloaded successfully! ${verb} ${result.appliedCount} settings.`;
                     // if (result.allUsers && result.allUsers.length > 1) {
                     //     message += `\n\nAvailable user UUIDs in cloud storage: ${result.allUsers.join(', ')}`;
                     // }
@@ -6370,6 +6394,7 @@ if (window.location.href.includes('/settings')) {
         const privateApiKeyForm = $('#privateApiKey').val();
         const autoSyncEnabledForm = $('#autoSyncEnabled').prop('checked');
         const syncIntervalForm = parseInt($('#syncInterval').val());
+        const syncMergeModeForm = $('#syncMergeMode').prop('checked');
 
 
 
@@ -6474,6 +6499,7 @@ if (window.location.href.includes('/settings')) {
         await GM.setValue('privateApiKey', privateApiKeyForm);
         await GM.setValue('autoSyncEnabled', autoSyncEnabledForm);
         await GM.setValue('syncInterval', syncIntervalForm);
+        await GM.setValue('syncMergeMode', syncMergeModeForm);
 
         // Update AutoSync Manager with new settings
         if (globalThis.autoSyncManager && typeof globalThis.autoSyncManager.updateSettings === 'function') {
@@ -13639,7 +13665,7 @@ class OnlineDataSync {
                 // Strip bulky cached fields that can be lazily re-fetched after download.
                 // This dramatically reduces payload size without losing essential data.
                 if (key === 'bookmarkedMangas' && Array.isArray(value)) {
-                    value = value.map(({ tags: _tags, coverImageUrl: _cov, ...rest }) => rest);
+                    value = value.map(stripBookmarkedMangaForSync);
                 }
 
                 if (key === 'offlineFavorites' || key === 'readGalleries' || key === 'toFavorite' || key === 'toUnfavorite') {
@@ -13661,6 +13687,30 @@ class OnlineDataSync {
         return syncData;
     }
 
+    async applySyncValue(key, value) {
+        if (key === 'offlineFavorites' || key === 'readGalleries' || key === 'hiddenGalleries') {
+            await GM.setValue(key, normalizeGalleryIdList(value));
+            return;
+        }
+        if (key === 'toFavorite' || key === 'toUnfavorite') {
+            await GM.setValue(key, normalizeGalleryIdList(value));
+            return;
+        }
+        if (key === 'toFavoriteAddedAt' || key === 'toUnfavoriteAddedAt') {
+            await GM.setValue(key, normalizeQueueTimestampMap(value));
+            return;
+        }
+        if (key === 'processedFavorites' || key === 'processedUnfavorites') {
+            await GM.setValue(key, normalizeProcessedEntries(value));
+            return;
+        }
+        if (key === 'bookmarkedMangas' && Array.isArray(value)) {
+            await GM.setValue(key, value.map(stripBookmarkedMangaForSync));
+            return;
+        }
+        await GM.setValue(key, value);
+    }
+
     // Apply synced data
     async applySyncData(syncData) {
         if (!syncData || !syncData.data) {
@@ -13678,46 +13728,67 @@ class OnlineDataSync {
             }
         }
 
+        const mergeMode = await GM.getValue('syncMergeMode', false);
         let appliedCount = 0;
-        for (const [key, value] of Object.entries(syncData.data)) {
-            if (key === 'offlineFavorites' || key === 'readGalleries') {
-                await GM.setValue(key, normalizeGalleryIdList(value));
+
+        if (mergeMode) {
+            const localData = {};
+            for (const key of Object.keys(syncData.data)) {
+                if (SYNC_LOCAL_ONLY_KEYS.has(key)) continue;
+                localData[key] = await GM.getValue(key);
+            }
+            const lastSyncUpload = await GM.getValue('lastSyncUpload', null);
+            const mergedData = mergeSyncDataObjects(localData, syncData.data, {
+                prefer: 'newer',
+                localTimestamp: lastSyncUpload,
+                remoteTimestamp: syncData.timestamp
+            });
+            for (const [key, value] of Object.entries(mergedData)) {
+                if (SYNC_LOCAL_ONLY_KEYS.has(key)) continue;
+                await this.applySyncValue(key, value);
                 appliedCount++;
-                continue;
             }
-
-            // For pending-action queues, union-merge with the existing GM value instead of
-            // overwriting, so any items the userscript added while offline are preserved.
-            if (key === 'toFavorite' || key === 'toUnfavorite') {
-                const existing = await GM.getValue(key, []);
-                const existingArr = normalizeGalleryIdList(existing);
-                const incomingArr = normalizeGalleryIdList(value);
-                const merged = [...new Set([...existingArr, ...incomingArr])];
-                await GM.setValue(key, merged);
-
-                const timestampKey = key === 'toFavorite' ? 'toFavoriteAddedAt' : 'toUnfavoriteAddedAt';
-                const existingTs = normalizeQueueTimestampMap(await GM.getValue(timestampKey, {}));
-                const incomingTs = normalizeQueueTimestampMap(syncData.data[timestampKey]);
-                const mergedTs = mergeQueueTimestampMaps(merged, existingTs, incomingTs);
-                await GM.setValue(timestampKey, mergedTs);
-            } else if (key === 'processedFavorites' || key === 'processedUnfavorites') {
-                const incomingProcessed = normalizeProcessedEntries(value);
-                // App clears processed queues by uploading an explicit empty array.
-                if (Array.isArray(value) && value.length === 0) {
-                    await GM.setValue(key, []);
-                } else {
-                    const existingProcessed = normalizeProcessedEntries(await GM.getValue(key, []));
-                    const mergedProcessed = mergeProcessedEntries(existingProcessed, incomingProcessed);
-                    await GM.setValue(key, mergedProcessed);
+        } else {
+            for (const [key, value] of Object.entries(syncData.data)) {
+                if (key === 'offlineFavorites' || key === 'readGalleries') {
+                    await GM.setValue(key, normalizeGalleryIdList(value));
+                    appliedCount++;
+                    continue;
                 }
-            } else {
-                await GM.setValue(key, value);
+
+                // For pending-action queues, union-merge with the existing GM value instead of
+                // overwriting, so any items the userscript added while offline are preserved.
+                if (key === 'toFavorite' || key === 'toUnfavorite') {
+                    const existing = await GM.getValue(key, []);
+                    const existingArr = normalizeGalleryIdList(existing);
+                    const incomingArr = normalizeGalleryIdList(value);
+                    const merged = [...new Set([...existingArr, ...incomingArr])];
+                    await GM.setValue(key, merged);
+
+                    const timestampKey = key === 'toFavorite' ? 'toFavoriteAddedAt' : 'toUnfavoriteAddedAt';
+                    const existingTs = normalizeQueueTimestampMap(await GM.getValue(timestampKey, {}));
+                    const incomingTs = normalizeQueueTimestampMap(syncData.data[timestampKey]);
+                    const mergedTs = mergeQueueTimestampMaps(merged, existingTs, incomingTs);
+                    await GM.setValue(timestampKey, mergedTs);
+                } else if (key === 'processedFavorites' || key === 'processedUnfavorites') {
+                    const incomingProcessed = normalizeProcessedEntries(value);
+                    // App clears processed queues by uploading an explicit empty array.
+                    if (Array.isArray(value) && value.length === 0) {
+                        await GM.setValue(key, []);
+                    } else {
+                        const existingProcessed = normalizeProcessedEntries(await GM.getValue(key, []));
+                        const mergedProcessed = mergeProcessedEntries(existingProcessed, incomingProcessed);
+                        await GM.setValue(key, mergedProcessed);
+                    }
+                } else {
+                    await GM.setValue(key, value);
+                }
+                appliedCount++;
             }
-            appliedCount++;
         }
 
         await GM.setValue('lastSyncDownload', new Date().toISOString());
-        return appliedCount;
+        return { appliedCount, mergeMode };
     }
 
     // Upload data using specified provider (supports multiple users)
@@ -13787,25 +13858,29 @@ class OnlineDataSync {
             await this.setPublicUsersSnapshot(existingUsers);
         }
 
+        const mergeMode = await GM.getValue('syncMergeMode', false);
+        const previousUserData = existingData.users[userUUID];
+        let payloadUserData = userSyncData;
+        if (mergeMode && previousUserData && previousUserData.data) {
+            payloadUserData = mergeUserSyncBlobs(userSyncData, previousUserData, { prefer: 'newer' });
+        }
+
         // Add/update current user's data
-        existingData.users[userUUID] = userSyncData;
-        // existingData.lastUpdated = new Date().toISOString();
-        // existingData.version = CURRENT_VERSION;
+        existingData.users[userUUID] = payloadUserData;
 
         // Pre-upload size check is advisory only; do not block upload.
-        // Some payloads above this estimate can still be accepted by upstream.
-        const UPLOAD_SIZE_LIMIT_BYTES = 95 * 1024; // 95 KB — stay under jsonstorage.net's 100 KB cap
         const rawJson = JSON.stringify(existingData);
         const estimatedBytes = new TextEncoder().encode(rawJson).length;
         console.log(`[NHP Sync] Pre-upload payload: ~${Math.round(estimatedBytes / 1024)} KB (${existingData.users ? Object.keys(existingData.users).length : 0} user(s))`);
-        if (estimatedBytes > UPLOAD_SIZE_LIMIT_BYTES) {
+        const overSizeLimit = estimatedBytes > SYNC_UPLOAD_SIZE_LIMIT_BYTES;
+        if (overSizeLimit) {
             const kb = Math.round(estimatedBytes / 1024);
             console.warn(`[NHP Sync] Payload estimate is high (~${kb} KB). Upload will still be attempted.`);
         }
 
         await provider.upload(config, existingData);
         await GM.setValue('lastSyncUpload', new Date().toISOString());
-        return userSyncData;
+        return { userSyncData: payloadUserData, mergeMode, estimatedBytes, overSizeLimit };
     }
 
     // Download data using specified provider (supports multiple users)
@@ -13839,8 +13914,13 @@ class OnlineDataSync {
             throw new Error(`Data belongs to UUID ${allData.userUUID}, but your UUID is ${userUUID}`);
         }
 
-        const appliedCount = await this.applySyncData(userSyncData);
-        return { syncData: userSyncData, appliedCount, allUsers: allData.users ? Object.keys(allData.users) : [allData.userUUID] };
+        const applyResult = await this.applySyncData(userSyncData);
+        return {
+            syncData: userSyncData,
+            appliedCount: applyResult.appliedCount,
+            mergeMode: applyResult.mergeMode,
+            allUsers: allData.users ? Object.keys(allData.users) : [allData.userUUID]
+        };
     }
 
     // Get available users from cloud storage without downloading data
@@ -14727,6 +14807,198 @@ function mergeProcessedEntries(existingEntries, incomingEntries) {
     }
 
     return Array.from(byId.values());
+}
+
+const SYNC_GALLERY_ID_LIST_KEYS = new Set([
+    'offlineFavorites', 'readGalleries', 'hiddenGalleries', 'toFavorite', 'toUnfavorite'
+]);
+const SYNC_STRING_ARRAY_KEYS = new Set([
+    'bookmarkedPages', 'favoriteTagsList', 'mustAddTags', 'blacklistedTags',
+    'randomPrefTags', 'tags'
+]);
+const SYNC_QUEUE_TIMESTAMP_KEYS = new Set(['toFavoriteAddedAt', 'toUnfavoriteAddedAt']);
+const SYNC_PROCESSED_KEYS = new Set(['processedFavorites', 'processedUnfavorites']);
+const SYNC_LOCAL_ONLY_KEYS = new Set(['lastSyncUpload', 'lastSyncDownload', 'lastAutoSync']);
+const SYNC_INBOX_MESSAGES_MAX = 200;
+const SYNC_UPLOAD_SIZE_LIMIT_BYTES = 95 * 1024;
+
+function parseSyncTimestamp(ts) {
+    const n = Date.parse(ts);
+    return Number.isFinite(n) ? n : 0;
+}
+
+function mergeStringArraysForSync(a, b) {
+    const out = [];
+    const seen = new Set();
+    for (const list of [a, b]) {
+        if (!Array.isArray(list)) continue;
+        for (const item of list) {
+            const s = typeof item === 'string' ? item.trim() : String(item).trim();
+            if (!s) continue;
+            const key = s.toLowerCase();
+            if (seen.has(key)) continue;
+            seen.add(key);
+            out.push(s);
+        }
+    }
+    return out;
+}
+
+function getBookmarkedMangaMergeKey(manga) {
+    if (!manga || typeof manga !== 'object') return null;
+    if (manga.url) return `url:${String(manga.url)}`;
+    const id = normalizeGalleryId(manga.id);
+    return id ? `id:${id}` : null;
+}
+
+function stripBookmarkedMangaForSync(manga) {
+    if (!manga || typeof manga !== 'object') return manga;
+    const { tags: _tags, coverImageUrl: _cov, ...rest } = manga;
+    return rest;
+}
+
+function mergeBookmarkedMangasForSync(localList, remoteList, localTs, remoteTs) {
+    const byKey = new Map();
+    const addList = (list, sourceTs) => {
+        if (!Array.isArray(list)) return;
+        for (const raw of list) {
+            const rest = stripBookmarkedMangaForSync(raw);
+            const key = getBookmarkedMangaMergeKey(rest);
+            if (!key) continue;
+            const entryTs = Number(rest.timestamp);
+            const effectiveTs = Number.isFinite(entryTs) && entryTs > 0 ? entryTs : sourceTs;
+            const prev = byKey.get(key);
+            if (!prev || effectiveTs >= prev.effectiveTs) {
+                byKey.set(key, { entry: rest, effectiveTs });
+            }
+        }
+    };
+    addList(localList, localTs);
+    addList(remoteList, remoteTs);
+    return Array.from(byKey.values()).map((x) => x.entry);
+}
+
+function mergeInboxMessagesForSync(localList, remoteList) {
+    const byId = new Map();
+    const addList = (list) => {
+        if (!Array.isArray(list)) return;
+        for (const msg of list) {
+            if (!msg || typeof msg !== 'object') continue;
+            const id = msg.id != null ? String(msg.id) : (msg.url ? String(msg.url) : null);
+            if (!id) continue;
+            const prev = byId.get(id);
+            if (!prev || (msg.ts || 0) > (prev.ts || 0)) {
+                byId.set(id, msg);
+            }
+        }
+    };
+    addList(localList);
+    addList(remoteList);
+    return Array.from(byId.values())
+        .sort((a, b) => (b.ts || 0) - (a.ts || 0))
+        .slice(0, SYNC_INBOX_MESSAGES_MAX);
+}
+
+function mergeProcessedEntriesForSync(localEntries, remoteEntries) {
+    const local = Array.isArray(localEntries) ? localEntries : [];
+    const remote = Array.isArray(remoteEntries) ? remoteEntries : [];
+    if (remote.length === 0) {
+        return normalizeProcessedEntries(local);
+    }
+    if (local.length === 0) {
+        return normalizeProcessedEntries(remote);
+    }
+    return mergeProcessedEntries(local, remote);
+}
+
+function shouldPreferRemoteForSync(prefer, localTs, remoteTs) {
+    if (prefer === 'remote') return true;
+    if (prefer === 'local') return false;
+    return remoteTs >= localTs;
+}
+
+function mergeSyncDataObjects(localData, remoteData, options = {}) {
+    const prefer = options.prefer || 'newer';
+    const localTs = parseSyncTimestamp(options.localTimestamp);
+    const remoteTs = parseSyncTimestamp(options.remoteTimestamp);
+    const preferRemote = shouldPreferRemoteForSync(prefer, localTs, remoteTs);
+    const local = localData && typeof localData === 'object' ? localData : {};
+    const remote = remoteData && typeof remoteData === 'object' ? remoteData : {};
+    const allKeys = new Set([...Object.keys(local), ...Object.keys(remote)]);
+    const merged = {};
+
+    for (const key of allKeys) {
+        if (SYNC_LOCAL_ONLY_KEYS.has(key)) {
+            if (key in local) merged[key] = local[key];
+            else if (key in remote) merged[key] = remote[key];
+            continue;
+        }
+
+        const localVal = local[key];
+        const remoteVal = remote[key];
+        if (localVal === undefined) {
+            merged[key] = remoteVal;
+            continue;
+        }
+        if (remoteVal === undefined) {
+            merged[key] = localVal;
+            continue;
+        }
+
+        if (SYNC_GALLERY_ID_LIST_KEYS.has(key)) {
+            merged[key] = normalizeGalleryIdList([
+                ...(Array.isArray(localVal) ? localVal : []),
+                ...(Array.isArray(remoteVal) ? remoteVal : [])
+            ]);
+        } else if (SYNC_STRING_ARRAY_KEYS.has(key)) {
+            merged[key] = mergeStringArraysForSync(localVal, remoteVal);
+        } else if (SYNC_QUEUE_TIMESTAMP_KEYS.has(key)) {
+            const queueKey = key === 'toFavoriteAddedAt' ? 'toFavorite' : 'toUnfavorite';
+            const queueIds = normalizeGalleryIdList([
+                ...(Array.isArray(local[queueKey]) ? local[queueKey] : []),
+                ...(Array.isArray(remote[queueKey]) ? remote[queueKey] : []),
+                ...(Array.isArray(merged[queueKey]) ? merged[queueKey] : [])
+            ]);
+            merged[key] = mergeQueueTimestampMaps(queueIds, localVal, remoteVal);
+        } else if (SYNC_PROCESSED_KEYS.has(key)) {
+            merged[key] = mergeProcessedEntriesForSync(localVal, remoteVal);
+        } else if (key === 'bookmarkedMangas') {
+            merged[key] = mergeBookmarkedMangasForSync(localVal, remoteVal, localTs, remoteTs);
+        } else if (key === 'inboxMessages') {
+            merged[key] = mergeInboxMessagesForSync(localVal, remoteVal);
+        } else if (Array.isArray(localVal) || Array.isArray(remoteVal)) {
+            merged[key] = preferRemote ? remoteVal : localVal;
+        } else if (typeof localVal === 'object' && localVal !== null && typeof remoteVal === 'object' && remoteVal !== null) {
+            merged[key] = preferRemote ? remoteVal : localVal;
+        } else {
+            merged[key] = preferRemote ? remoteVal : localVal;
+        }
+    }
+
+    return merged;
+}
+
+function mergeUserSyncBlobs(localBlob, remoteBlob, options = {}) {
+    const mergedData = mergeSyncDataObjects(
+        localBlob?.data || {},
+        remoteBlob?.data || {},
+        {
+            prefer: options.prefer || 'newer',
+            localTimestamp: localBlob?.timestamp,
+            remoteTimestamp: remoteBlob?.timestamp
+        }
+    );
+    const localTs = parseSyncTimestamp(localBlob?.timestamp);
+    const remoteTs = parseSyncTimestamp(remoteBlob?.timestamp);
+    const maxTs = Math.max(localTs, remoteTs, Date.now());
+    return {
+        ...remoteBlob,
+        ...localBlob,
+        version: localBlob?.version || remoteBlob?.version || CURRENT_VERSION,
+        userUUID: localBlob?.userUUID || remoteBlob?.userUUID,
+        timestamp: new Date(maxTs).toISOString(),
+        data: mergedData
+    };
 }
 
 async function appendProcessedEntries(key, ids) {
