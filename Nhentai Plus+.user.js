@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      10.8.8
+// @version      10.8.9
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -23,7 +23,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "10.8.7";
+const CURRENT_VERSION = "10.8.9";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -3640,6 +3640,640 @@ function addSettingsButton() {
 // Call the function to add the settings button
 addSettingsButton();
 
+// -----------------------------------------------**Manga-Sync**-----------------------------------------------------------------------
+
+
+// Online Data Sync Implementation
+class OnlineDataSync {
+    constructor() {
+        this.providers = {
+            jsonstorage: new JSONStorageProvider()
+        };
+        this.publicConfig = {
+            // Proxied through Cloudflare Worker to protect credentials and allow storage migration
+            // The old version (10.2.1) will continue to use the old hardcoded JSONStorage URL (and corrupt it),
+            // while updated clients will use this proxy pointing to a new, clean storage bin.
+            url: 'https://nhentai-share.babykoolstar.workers.dev/sync',
+            apiKey: 'proxy' // Key is handled by the worker
+        };
+        this.taxonomyConfig = {
+            url: 'https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/nhentai_taxonomy.json',
+            apiKey: ''
+        };
+        this.tagCatalogConfig = {
+            baseUrl: 'https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/tag_catalog',
+            apiKey: ''
+        };
+    }
+
+    async getPublicUsersSnapshot() {
+        const snap = await GM.getValue('publicUsersSnapshot', null);
+        if (!snap || typeof snap !== 'object') return { users: [], at: null };
+        const users = Array.isArray(snap.users) ? snap.users.filter(u => typeof u === 'string') : [];
+        const at = typeof snap.at === 'string' ? snap.at : null;
+        return { users, at };
+    }
+
+    async setPublicUsersSnapshot(users) {
+        const list = Array.isArray(users) ? users.filter(u => typeof u === 'string') : [];
+        await GM.setValue('publicUsersSnapshot', { users: list, at: new Date().toISOString() });
+    }
+
+    // Generate 5-character alphanumeric UUID
+    generateUUID() {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+        let result = '';
+        for (let i = 0; i < 5; i++) {
+            result += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return result;
+    }
+
+    // Get or create user UUID
+    async getUserUUID() {
+        // Check if we have a cached UUID first
+        if (this.cachedUUID) {
+            return this.cachedUUID;
+        }
+
+        let uuid = await GM.getValue('userUUID');
+        if (!uuid) {
+            uuid = this.generateUUID();
+            await GM.setValue('userUUID', uuid);
+        }
+
+        // Cache the UUID for future use
+        this.cachedUUID = uuid;
+        return uuid;
+    }
+
+    // Collect essential syncable data (reduced for bandwidth efficiency)
+    async collectSyncData() {
+        const allKeys = await GM.listValues();
+        const syncData = {
+            version: CURRENT_VERSION,
+            timestamp: new Date().toISOString(),
+            userUUID: await this.getUserUUID(),
+            data: {}
+        };
+        // Define which keys to sync 
+        const syncableKeys = [
+            'bookmarkedPages', 'offlineFavorites', 'mustAddTags', 'mustAddTagsEnabled',
+            'randomPrefLanguage', 'randomPrefTags', 'randomPrefPagesMin', 'randomPrefPagesMax',
+            'blacklistedTags', 'findSimilarEnabled', 'bookmarksEnabled', 'maxTagsToSelect',
+            'showNonEnglish', 'showPageNumbersEnabled', 'maxMangaPerBookmark',
+            'englishFilterEnabled', 'autoLoginEnabled', 'findAltmangaEnabled',
+            'bookmarksEnabled', 'language', 'tags', 'pagesMin', 'pagesMax', 'matchAllTags',
+            'mustAddTagsEnabled', 'findAltMangaThumbnailEnabled', 'openInNewTabEnabled',
+            'mangaBookMarkingButtonEnabled', 'mangaBookMarkingType', 'bookmarkArrangementType',
+            'monthFilterEnabled', 'tooltipsEnabled', 'mangagroupingenabled', 'maxMangaPerBookmark',
+            'openInNewTabType', 'offlineFavoritingEnabled', 'offlineFavoritesPageEnabled',
+            'nfmPageEnabled', 'publicSyncEnabled', 'privateSyncEnabled',
+            'autoSyncEnabled', 'syncInterval', 'lastSyncUpload',
+            'lastSyncDownload', 'bookmarksPageEnabled', 'replaceRelatedWithBookmarks',
+            'enableRelatedFlipButton', 'twitterButtonEnabled', 'enableRandomButton',
+            'randomOpenType', 'profileButtonEnabled', 'infoButtonEnabled', 'logoutButtonEnabled',
+            'bookmarkLinkEnabled', 'findSimilarType', 'bookmarkedMangas',
+            // New Hide/Blacklist feature
+            'hideBlacklistEnabled', 'hiddenGalleries',
+            // Read history
+            'readGalleries',
+            // Pending favorite queues
+            'toFavorite', 'toUnfavorite',
+            // Pending queue timestamps for stale cleanup
+            'toFavoriteAddedAt', 'toUnfavoriteAddedAt',
+            // Userscript-managed processed confirmations
+            'processedFavorites', 'processedUnfavorites',
+            // Inbox & Share settings
+            'shareButtonEnabled', 'receiveSharesEnabled', 'receivePopupsEnabled', 'inboxPollIntervalMin', 'inboxMessages',
+            'favoriteTagsList'
+        ];
+
+        for (const key of syncableKeys) {
+            if (allKeys.includes(key)) {
+                let value = await GM.getValue(key);
+
+                // Strip bulky cached fields that can be lazily re-fetched after download.
+                // This dramatically reduces payload size without losing essential data.
+                if (key === 'bookmarkedMangas' && Array.isArray(value)) {
+                    value = value.map(stripBookmarkedMangaForSync);
+                }
+
+                if (key === 'offlineFavorites' || key === 'readGalleries' || key === 'toFavorite' || key === 'toUnfavorite') {
+                    value = normalizeGalleryIdList(value);
+                }
+
+                if (key === 'toFavoriteAddedAt' || key === 'toUnfavoriteAddedAt') {
+                    value = normalizeQueueTimestampMap(value);
+                }
+
+                if (key === 'processedFavorites' || key === 'processedUnfavorites') {
+                    value = normalizeProcessedEntries(value);
+                }
+
+                syncData.data[key] = value;
+            }
+        }
+
+        return syncData;
+    }
+
+    async applySyncValue(key, value) {
+        if (key === 'offlineFavorites' || key === 'readGalleries' || key === 'hiddenGalleries') {
+            await GM.setValue(key, normalizeGalleryIdList(value));
+            return;
+        }
+        if (key === 'toFavorite' || key === 'toUnfavorite') {
+            await GM.setValue(key, normalizeGalleryIdList(value));
+            return;
+        }
+        if (key === 'toFavoriteAddedAt' || key === 'toUnfavoriteAddedAt') {
+            await GM.setValue(key, normalizeQueueTimestampMap(value));
+            return;
+        }
+        if (key === 'processedFavorites' || key === 'processedUnfavorites') {
+            await GM.setValue(key, normalizeProcessedEntries(value));
+            return;
+        }
+        if (key === 'bookmarkedMangas' && Array.isArray(value)) {
+            await GM.setValue(key, value.map(stripBookmarkedMangaForSync));
+            return;
+        }
+        await GM.setValue(key, value);
+    }
+
+    // Apply synced data
+    async applySyncData(syncData) {
+        if (!syncData || !syncData.data) {
+            throw new Error('Invalid sync data format');
+        }
+
+        const currentUUID = await this.getUserUUID();
+        if (syncData.userUUID && syncData.userUUID !== currentUUID) {
+            const confirmMerge = confirm(
+                `This data belongs to a different user (${syncData.userUUID}). ` +
+                `Your UUID is ${currentUUID}. Do you want to merge this data anyway?`
+            );
+            if (!confirmMerge) {
+                throw new Error('User cancelled data merge');
+            }
+        }
+
+        const mergeMode = await GM.getValue('syncMergeMode', false);
+        let appliedCount = 0;
+
+        if (mergeMode) {
+            const localData = {};
+            for (const key of Object.keys(syncData.data)) {
+                if (SYNC_LOCAL_ONLY_KEYS.has(key)) continue;
+                localData[key] = await GM.getValue(key);
+            }
+            const lastSyncUpload = await GM.getValue('lastSyncUpload', null);
+            const mergedData = mergeSyncDataObjects(localData, syncData.data, {
+                prefer: 'newer',
+                localTimestamp: lastSyncUpload,
+                remoteTimestamp: syncData.timestamp
+            });
+            for (const [key, value] of Object.entries(mergedData)) {
+                if (SYNC_LOCAL_ONLY_KEYS.has(key)) continue;
+                await this.applySyncValue(key, value);
+                appliedCount++;
+            }
+        } else {
+            for (const [key, value] of Object.entries(syncData.data)) {
+                if (key === 'offlineFavorites' || key === 'readGalleries') {
+                    await GM.setValue(key, normalizeGalleryIdList(value));
+                    appliedCount++;
+                    continue;
+                }
+
+                // For pending-action queues, union-merge with the existing GM value instead of
+                // overwriting, so any items the userscript added while offline are preserved.
+                if (key === 'toFavorite' || key === 'toUnfavorite') {
+                    const existing = await GM.getValue(key, []);
+                    const existingArr = normalizeGalleryIdList(existing);
+                    const incomingArr = normalizeGalleryIdList(value);
+                    const merged = [...new Set([...existingArr, ...incomingArr])];
+                    await GM.setValue(key, merged);
+
+                    const timestampKey = key === 'toFavorite' ? 'toFavoriteAddedAt' : 'toUnfavoriteAddedAt';
+                    const existingTs = normalizeQueueTimestampMap(await GM.getValue(timestampKey, {}));
+                    const incomingTs = normalizeQueueTimestampMap(syncData.data[timestampKey]);
+                    const mergedTs = mergeQueueTimestampMaps(merged, existingTs, incomingTs);
+                    await GM.setValue(timestampKey, mergedTs);
+                } else if (key === 'processedFavorites' || key === 'processedUnfavorites') {
+                    const incomingProcessed = normalizeProcessedEntries(value);
+                    // App clears processed queues by uploading an explicit empty array.
+                    if (Array.isArray(value) && value.length === 0) {
+                        await GM.setValue(key, []);
+                    } else {
+                        const existingProcessed = normalizeProcessedEntries(await GM.getValue(key, []));
+                        const mergedProcessed = mergeProcessedEntries(existingProcessed, incomingProcessed);
+                        await GM.setValue(key, mergedProcessed);
+                    }
+                } else {
+                    await GM.setValue(key, value);
+                }
+                appliedCount++;
+            }
+        }
+
+        await GM.setValue('lastSyncDownload', new Date().toISOString());
+        return { appliedCount, mergeMode };
+    }
+
+    // Upload data using specified provider (supports multiple users)
+    async uploadData(providerType, config) {
+        const provider = this.providers[providerType];
+        if (!provider) {
+            throw new Error(`Unknown provider: ${providerType}`);
+        }
+
+        const userSyncData = await this.collectSyncData();
+        const userUUID = userSyncData.userUUID;
+
+        // Download existing data to merge with current user's data
+        const isPublicSyncTarget = !!(config && config.url && config.url === this.publicConfig.url);
+        let existingData = {};
+        try {
+            existingData = await provider.download(config);
+        } catch (error) {
+            if (isPublicSyncTarget) {
+                throw new Error(`Public sync safety: aborting upload because existing cloud data could not be downloaded (${error && error.message ? error.message : String(error)})`);
+            }
+            console.log('No existing data found, creating new storage');
+        }
+
+        if (existingData === null || (typeof existingData !== 'object') || Array.isArray(existingData)) {
+            if (isPublicSyncTarget) {
+                throw new Error('Public sync safety: aborting upload because existing cloud data format is invalid');
+            }
+            existingData = {};
+        }
+
+        if (!existingData.users && existingData.userUUID && existingData.data) {
+            existingData = { users: { [existingData.userUUID]: existingData } };
+        }
+
+        // Ensure existingData has the correct structure for multiple users
+        if (!existingData.users) {
+            if (isPublicSyncTarget) {
+                throw new Error('Public sync safety: aborting upload because existing cloud data has no users map');
+            }
+            existingData = {
+                //  version: CURRENT_VERSION,
+                //lastUpdated: new Date().toISOString(),
+                users: {}
+            };
+        }
+
+        if (typeof existingData.users !== 'object' || existingData.users === null || Array.isArray(existingData.users)) {
+            if (isPublicSyncTarget) {
+                throw new Error('Public sync safety: aborting upload because existing cloud users map is invalid');
+            }
+            existingData.users = {};
+        }
+
+        if (isPublicSyncTarget) {
+            const existingUsers = Object.keys(existingData.users);
+            const snapshot = await this.getPublicUsersSnapshot();
+            if (snapshot.users.length) {
+                const existingSet = new Set(existingUsers);
+                const missingCount = snapshot.users.reduce((acc, u) => acc + (existingSet.has(u) ? 0 : 1), 0);
+                const shrunk = existingUsers.length < snapshot.users.length;
+                const missingTooMany = missingCount >= 3 || (snapshot.users.length >= 10 && missingCount >= Math.ceil(snapshot.users.length * 0.25));
+                if (shrunk && missingTooMany) {
+                    throw new Error('Public sync safety: aborting upload because public storage appears to be missing many users compared to your last known snapshot');
+                }
+            }
+            await this.setPublicUsersSnapshot(existingUsers);
+        }
+
+        const mergeMode = await GM.getValue('syncMergeMode', false);
+        const previousUserData = existingData.users[userUUID];
+        let payloadUserData = userSyncData;
+        if (mergeMode && previousUserData && previousUserData.data) {
+            payloadUserData = mergeUserSyncBlobs(userSyncData, previousUserData, { prefer: 'newer' });
+        }
+
+        // Add/update current user's data
+        existingData.users[userUUID] = payloadUserData;
+
+        // Pre-upload size check is advisory only; do not block upload.
+        const rawJson = JSON.stringify(existingData);
+        const estimatedBytes = new TextEncoder().encode(rawJson).length;
+        console.log(`[NHP Sync] Pre-upload payload: ~${Math.round(estimatedBytes / 1024)} KB (${existingData.users ? Object.keys(existingData.users).length : 0} user(s))`);
+        const overSizeLimit = estimatedBytes > SYNC_UPLOAD_SIZE_LIMIT_BYTES;
+        if (overSizeLimit) {
+            const kb = Math.round(estimatedBytes / 1024);
+            console.warn(`[NHP Sync] Payload estimate is high (~${kb} KB). Upload will still be attempted.`);
+        }
+
+        await provider.upload(config, existingData);
+        await GM.setValue('lastSyncUpload', new Date().toISOString());
+        return { userSyncData: payloadUserData, mergeMode, estimatedBytes, overSizeLimit };
+    }
+
+    // Download data using specified provider (supports multiple users)
+    async downloadData(providerType, config) {
+        const provider = this.providers[providerType];
+        if (!provider) {
+            throw new Error(`Unknown provider: ${providerType}`);
+        }
+
+        const allData = await provider.download(config);
+        const isPublicSyncTarget = !!(config && config.url && config.url === this.publicConfig.url);
+        if (isPublicSyncTarget && allData && typeof allData === 'object' && allData.users && typeof allData.users === 'object' && !Array.isArray(allData.users)) {
+            await this.setPublicUsersSnapshot(Object.keys(allData.users));
+        }
+        const userUUID = await this.getUserUUID();
+
+        // Handle both old single-user format and new multi-user format
+        let userSyncData;
+        if (allData.users && allData.users[userUUID]) {
+            // New multi-user format
+            userSyncData = allData.users[userUUID];
+        } else if (allData.userUUID === userUUID) {
+            // Old single-user format
+            userSyncData = allData;
+        } else if (allData.users) {
+            // Multi-user format but user not found
+            const availableUsers = Object.keys(allData.users);
+            throw new Error(`No data found for UUID ${userUUID}. Available UUIDs: ${availableUsers.join(', ')}`);
+        } else {
+            // Single-user format but different user
+            throw new Error(`Data belongs to UUID ${allData.userUUID}, but your UUID is ${userUUID}`);
+        }
+
+        const applyResult = await this.applySyncData(userSyncData);
+        return {
+            syncData: userSyncData,
+            appliedCount: applyResult.appliedCount,
+            mergeMode: applyResult.mergeMode,
+            allUsers: allData.users ? Object.keys(allData.users) : [allData.userUUID]
+        };
+    }
+
+    // Get available users from cloud storage without downloading data
+    async getAvailableUsers(providerType, config) {
+        const provider = this.providers[providerType];
+        if (!provider) {
+            throw new Error(`Unknown provider: ${providerType}`);
+        }
+
+        const allData = await provider.download(config);
+        const isPublicSyncTarget = !!(config && config.url && config.url === this.publicConfig.url);
+        if (isPublicSyncTarget && allData && typeof allData === 'object' && allData.users && typeof allData.users === 'object' && !Array.isArray(allData.users)) {
+            await this.setPublicUsersSnapshot(Object.keys(allData.users));
+        }
+
+        if (allData.users) {
+            // Multi-user format
+            return Object.keys(allData.users).map(uuid => ({
+                uuid,
+                version: allData.users[uuid].version || 'Unknown',
+                timestamp: allData.users[uuid].timestamp,
+                dataCount: Object.keys(allData.users[uuid].data || {}).length
+            }));
+        } else if (allData.userUUID) {
+            // Old single-user format
+            return [{
+                uuid: allData.userUUID,
+                version: allData.version || 'Unknown',
+                timestamp: allData.timestamp,
+                dataCount: Object.keys(allData.data || {}).length
+            }];
+        }
+
+        return [];
+    }
+}
+
+
+function uint8ArrayToBase64(bytes) {
+    let binary = '';
+    const chunkSize = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+        binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+    }
+    return btoa(binary);
+}
+
+function base64ToUint8Array(base64) {
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes;
+}
+
+function supportsGzipStreams() {
+    return typeof CompressionStream === 'function' && typeof DecompressionStream === 'function';
+}
+
+async function gzipCompressStringToBase64(text) {
+    const cs = new CompressionStream('gzip');
+    const stream = new Blob([text]).stream().pipeThrough(cs);
+    const buffer = await new Response(stream).arrayBuffer();
+    return uint8ArrayToBase64(new Uint8Array(buffer));
+}
+
+async function gzipDecompressBase64ToString(base64) {
+    const bytes = base64ToUint8Array(base64);
+    const ds = new DecompressionStream('gzip');
+    const stream = new Blob([bytes]).stream().pipeThrough(ds);
+    return await new Response(stream).text();
+}
+
+// JSONStorage.net provider implementation
+class JSONStorageProvider {
+    buildRequestUrl(config) {
+        const rawUrl = String((config && config.url) || '').trim();
+        if (!rawUrl) {
+            throw new Error('Storage URL is required');
+        }
+
+        // Keep existing query parameters and only add apiKey when needed.
+        const requestUrl = new URL(rawUrl);
+        const apiKey = config && typeof config.apiKey === 'string' ? config.apiKey.trim() : '';
+        if (apiKey && !requestUrl.searchParams.get('apiKey')) {
+            requestUrl.searchParams.set('apiKey', apiKey);
+        }
+        return requestUrl.toString();
+    }
+
+    getResponseErrorDetails(response) {
+        const body = (response && typeof response.responseText === 'string') ? response.responseText.trim() : '';
+        if (!body) return '';
+        return ` | ${body.slice(0, 300)}`;
+    }
+
+    async compressUserData(userData) {
+        // Return as-is if null/undefined
+        if (!userData) return userData;
+
+        try {
+            // Prevent double compression if data is already compressed
+            if (userData.isCompressed && userData.compressedData) {
+                return userData;
+            }
+
+            const preservedVersion = userData.version || CURRENT_VERSION;
+            const json = JSON.stringify(userData);
+            if (supportsGzipStreams()) {
+                try {
+                    const compressedData = await gzipCompressStringToBase64(json);
+                    return {
+                        isCompressed: true,
+                        algo: 'gzip',
+                        version: preservedVersion,
+                        compressedData
+                    };
+                } catch (_) { }
+            }
+            return {
+                isCompressed: true,
+                algo: 'lz-string',
+                version: preservedVersion,
+                compressedData: LZString.compressToBase64(json)
+            };
+        } catch (error) {
+            console.error('User data compression failed, using uncompressed data:', error);
+            return userData; // Fallback to uncompressed data
+        }
+    }
+
+    // Decompress individual user data if it's compressed
+    async decompressUserData(userData) {
+        try {
+            if (userData && userData.isCompressed && userData.compressedData) {
+                const algo = (userData.algo || '').toLowerCase();
+                let json = null;
+
+                if (algo === 'gzip' && supportsGzipStreams()) {
+                    json = await gzipDecompressBase64ToString(userData.compressedData);
+                } else {
+                    json = LZString.decompressFromBase64(userData.compressedData);
+                }
+
+                if (json === null) {
+                    throw new Error(`Decompression failed (algo: ${algo || 'lz-string'})`);
+                }
+
+                const decompressed = JSON.parse(json);
+                if (decompressed === null) {
+                    throw new Error('Decompressed data resulted in null');
+                }
+
+                return decompressed;
+            }
+            return userData; // Return as is if not compressed
+        } catch (error) {
+            console.error('User data decompression failed:', error);
+            return userData; // Return original data if decompression fails
+        }
+    }
+
+    // Process data for upload - compresses each user's data individually
+    async prepareDataForUpload(data) {
+        // If data doesn't have users structure, return as is
+        if (!data || !data.users) return data;
+
+        // Create a copy of the data structure
+        const processedData = {
+            ...data,
+            users: {}
+        };
+
+        // Compress each user's data individually
+        for (const [uuid, userData] of Object.entries(data.users)) {
+            processedData.users[uuid] = await this.compressUserData(userData);
+        }
+
+        return processedData;
+    }
+
+    // Process downloaded data - decompresses each user's data individually
+    async processDownloadedData(data) {
+        // If data doesn't have users structure, return as is
+        if (!data || !data.users) return data;
+
+        // Create a copy of the data structure
+        const processedData = {
+            ...data,
+            users: {}
+        };
+
+        // Decompress each user's data individually
+        for (const [uuid, userData] of Object.entries(data.users)) {
+            processedData.users[uuid] = await this.decompressUserData(userData);
+        }
+
+        return processedData;
+    }
+
+    async upload(config, data) {
+        const processedData = await this.prepareDataForUpload(data);
+        const requestUrl = this.buildRequestUrl(config);
+        return new Promise((resolve, reject) => {
+            GM.xmlHttpRequest({
+                method: 'PUT',
+                url: requestUrl,
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                data: JSON.stringify(processedData),
+                onload: function (response) {
+                    if (response.status === 200) {
+                        resolve(JSON.parse(response.responseText));
+                    } else {
+                        const details = this.getResponseErrorDetails(response);
+                        if (response.status === 404) {
+                            reject(new Error(`Upload failed: 404 ${response.statusText}${details} | Possible cause: JSON storage size limit reached.`));
+                            return;
+                        }
+                        reject(new Error(`Upload failed: ${response.status} ${response.statusText}${details}`));
+                    }
+                }.bind(this),
+                onerror: function (error) {
+                    reject(new Error(`Network error: ${error}`));
+                }
+            });
+        });
+    }
+
+    async download(config) {
+        const requestUrl = this.buildRequestUrl(config);
+        return new Promise((resolve, reject) => {
+            GM.xmlHttpRequest({
+                method: 'GET',
+                url: requestUrl,
+                headers: {
+                    'Accept': 'application/json'
+                },
+                onload: async (response) => {
+                    if (response.status === 200) {
+                        const data = JSON.parse(response.responseText);
+                        // Process downloaded data (decompress each user's data individually)
+                        const processedData = await this.processDownloadedData(data);
+                        resolve(processedData);
+                    } else {
+                        const details = this.getResponseErrorDetails(response);
+                        reject(new Error(`Download failed: ${response.status} ${response.statusText}${details}`));
+                    }
+                },
+                onerror: function (error) {
+                    reject(new Error(`Network error: ${error}`));
+                }
+            });
+        });
+    }
+}
+
+// Initialize sync system
+const syncSystem = new OnlineDataSync();
+globalThis.syncSystem = syncSystem;
 // Handle settings page
 if (window.location.href.includes('/settings')) {
     // Remove 404 Not Found elements
@@ -13579,415 +14213,6 @@ XMLHttpRequest.prototype.open = function (method, url) {
 // -----------------------------------------------**Must-Add-Tags**-----------------------------------------------------------------------
 
 
-// -----------------------------------------------**Manga-Sync**-----------------------------------------------------------------------
-
-
-// Online Data Sync Implementation
-class OnlineDataSync {
-    constructor() {
-        this.providers = {
-            jsonstorage: new JSONStorageProvider()
-        };
-        this.publicConfig = {
-            // Proxied through Cloudflare Worker to protect credentials and allow storage migration
-            // The old version (10.2.1) will continue to use the old hardcoded JSONStorage URL (and corrupt it),
-            // while updated clients will use this proxy pointing to a new, clean storage bin.
-            url: 'https://nhentai-share.babykoolstar.workers.dev/sync',
-            apiKey: 'proxy' // Key is handled by the worker
-        };
-        this.taxonomyConfig = {
-            url: 'https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/nhentai_taxonomy.json',
-            apiKey: ''
-        };
-        this.tagCatalogConfig = {
-            baseUrl: 'https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/tag_catalog',
-            apiKey: ''
-        };
-    }
-
-    async getPublicUsersSnapshot() {
-        const snap = await GM.getValue('publicUsersSnapshot', null);
-        if (!snap || typeof snap !== 'object') return { users: [], at: null };
-        const users = Array.isArray(snap.users) ? snap.users.filter(u => typeof u === 'string') : [];
-        const at = typeof snap.at === 'string' ? snap.at : null;
-        return { users, at };
-    }
-
-    async setPublicUsersSnapshot(users) {
-        const list = Array.isArray(users) ? users.filter(u => typeof u === 'string') : [];
-        await GM.setValue('publicUsersSnapshot', { users: list, at: new Date().toISOString() });
-    }
-
-    // Generate 5-character alphanumeric UUID
-    generateUUID() {
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-        let result = '';
-        for (let i = 0; i < 5; i++) {
-            result += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
-        return result;
-    }
-
-    // Get or create user UUID
-    async getUserUUID() {
-        // Check if we have a cached UUID first
-        if (this.cachedUUID) {
-            return this.cachedUUID;
-        }
-
-        let uuid = await GM.getValue('userUUID');
-        if (!uuid) {
-            uuid = this.generateUUID();
-            await GM.setValue('userUUID', uuid);
-        }
-
-        // Cache the UUID for future use
-        this.cachedUUID = uuid;
-        return uuid;
-    }
-
-    // Collect essential syncable data (reduced for bandwidth efficiency)
-    async collectSyncData() {
-        const allKeys = await GM.listValues();
-        const syncData = {
-            version: CURRENT_VERSION,
-            timestamp: new Date().toISOString(),
-            userUUID: await this.getUserUUID(),
-            data: {}
-        };
-        // Define which keys to sync 
-        const syncableKeys = [
-            'bookmarkedPages', 'offlineFavorites', 'mustAddTags', 'mustAddTagsEnabled',
-            'randomPrefLanguage', 'randomPrefTags', 'randomPrefPagesMin', 'randomPrefPagesMax',
-            'blacklistedTags', 'findSimilarEnabled', 'bookmarksEnabled', 'maxTagsToSelect',
-            'showNonEnglish', 'showPageNumbersEnabled', 'maxMangaPerBookmark',
-            'englishFilterEnabled', 'autoLoginEnabled', 'findAltmangaEnabled',
-            'bookmarksEnabled', 'language', 'tags', 'pagesMin', 'pagesMax', 'matchAllTags',
-            'mustAddTagsEnabled', 'findAltMangaThumbnailEnabled', 'openInNewTabEnabled',
-            'mangaBookMarkingButtonEnabled', 'mangaBookMarkingType', 'bookmarkArrangementType',
-            'monthFilterEnabled', 'tooltipsEnabled', 'mangagroupingenabled', 'maxMangaPerBookmark',
-            'openInNewTabType', 'offlineFavoritingEnabled', 'offlineFavoritesPageEnabled',
-            'nfmPageEnabled', 'publicSyncEnabled', 'privateSyncEnabled',
-            'autoSyncEnabled', 'syncInterval', 'lastSyncUpload',
-            'lastSyncDownload', 'bookmarksPageEnabled', 'replaceRelatedWithBookmarks',
-            'enableRelatedFlipButton', 'twitterButtonEnabled', 'enableRandomButton',
-            'randomOpenType', 'profileButtonEnabled', 'infoButtonEnabled', 'logoutButtonEnabled',
-            'bookmarkLinkEnabled', 'findSimilarType', 'bookmarkedMangas',
-            // New Hide/Blacklist feature
-            'hideBlacklistEnabled', 'hiddenGalleries',
-            // Read history
-            'readGalleries',
-            // Pending favorite queues
-            'toFavorite', 'toUnfavorite',
-            // Pending queue timestamps for stale cleanup
-            'toFavoriteAddedAt', 'toUnfavoriteAddedAt',
-            // Userscript-managed processed confirmations
-            'processedFavorites', 'processedUnfavorites',
-            // Inbox & Share settings
-            'shareButtonEnabled', 'receiveSharesEnabled', 'receivePopupsEnabled', 'inboxPollIntervalMin', 'inboxMessages',
-            'favoriteTagsList'
-        ];
-
-        for (const key of syncableKeys) {
-            if (allKeys.includes(key)) {
-                let value = await GM.getValue(key);
-
-                // Strip bulky cached fields that can be lazily re-fetched after download.
-                // This dramatically reduces payload size without losing essential data.
-                if (key === 'bookmarkedMangas' && Array.isArray(value)) {
-                    value = value.map(stripBookmarkedMangaForSync);
-                }
-
-                if (key === 'offlineFavorites' || key === 'readGalleries' || key === 'toFavorite' || key === 'toUnfavorite') {
-                    value = normalizeGalleryIdList(value);
-                }
-
-                if (key === 'toFavoriteAddedAt' || key === 'toUnfavoriteAddedAt') {
-                    value = normalizeQueueTimestampMap(value);
-                }
-
-                if (key === 'processedFavorites' || key === 'processedUnfavorites') {
-                    value = normalizeProcessedEntries(value);
-                }
-
-                syncData.data[key] = value;
-            }
-        }
-
-        return syncData;
-    }
-
-    async applySyncValue(key, value) {
-        if (key === 'offlineFavorites' || key === 'readGalleries' || key === 'hiddenGalleries') {
-            await GM.setValue(key, normalizeGalleryIdList(value));
-            return;
-        }
-        if (key === 'toFavorite' || key === 'toUnfavorite') {
-            await GM.setValue(key, normalizeGalleryIdList(value));
-            return;
-        }
-        if (key === 'toFavoriteAddedAt' || key === 'toUnfavoriteAddedAt') {
-            await GM.setValue(key, normalizeQueueTimestampMap(value));
-            return;
-        }
-        if (key === 'processedFavorites' || key === 'processedUnfavorites') {
-            await GM.setValue(key, normalizeProcessedEntries(value));
-            return;
-        }
-        if (key === 'bookmarkedMangas' && Array.isArray(value)) {
-            await GM.setValue(key, value.map(stripBookmarkedMangaForSync));
-            return;
-        }
-        await GM.setValue(key, value);
-    }
-
-    // Apply synced data
-    async applySyncData(syncData) {
-        if (!syncData || !syncData.data) {
-            throw new Error('Invalid sync data format');
-        }
-
-        const currentUUID = await this.getUserUUID();
-        if (syncData.userUUID && syncData.userUUID !== currentUUID) {
-            const confirmMerge = confirm(
-                `This data belongs to a different user (${syncData.userUUID}). ` +
-                `Your UUID is ${currentUUID}. Do you want to merge this data anyway?`
-            );
-            if (!confirmMerge) {
-                throw new Error('User cancelled data merge');
-            }
-        }
-
-        const mergeMode = await GM.getValue('syncMergeMode', false);
-        let appliedCount = 0;
-
-        if (mergeMode) {
-            const localData = {};
-            for (const key of Object.keys(syncData.data)) {
-                if (SYNC_LOCAL_ONLY_KEYS.has(key)) continue;
-                localData[key] = await GM.getValue(key);
-            }
-            const lastSyncUpload = await GM.getValue('lastSyncUpload', null);
-            const mergedData = mergeSyncDataObjects(localData, syncData.data, {
-                prefer: 'newer',
-                localTimestamp: lastSyncUpload,
-                remoteTimestamp: syncData.timestamp
-            });
-            for (const [key, value] of Object.entries(mergedData)) {
-                if (SYNC_LOCAL_ONLY_KEYS.has(key)) continue;
-                await this.applySyncValue(key, value);
-                appliedCount++;
-            }
-        } else {
-            for (const [key, value] of Object.entries(syncData.data)) {
-                if (key === 'offlineFavorites' || key === 'readGalleries') {
-                    await GM.setValue(key, normalizeGalleryIdList(value));
-                    appliedCount++;
-                    continue;
-                }
-
-                // For pending-action queues, union-merge with the existing GM value instead of
-                // overwriting, so any items the userscript added while offline are preserved.
-                if (key === 'toFavorite' || key === 'toUnfavorite') {
-                    const existing = await GM.getValue(key, []);
-                    const existingArr = normalizeGalleryIdList(existing);
-                    const incomingArr = normalizeGalleryIdList(value);
-                    const merged = [...new Set([...existingArr, ...incomingArr])];
-                    await GM.setValue(key, merged);
-
-                    const timestampKey = key === 'toFavorite' ? 'toFavoriteAddedAt' : 'toUnfavoriteAddedAt';
-                    const existingTs = normalizeQueueTimestampMap(await GM.getValue(timestampKey, {}));
-                    const incomingTs = normalizeQueueTimestampMap(syncData.data[timestampKey]);
-                    const mergedTs = mergeQueueTimestampMaps(merged, existingTs, incomingTs);
-                    await GM.setValue(timestampKey, mergedTs);
-                } else if (key === 'processedFavorites' || key === 'processedUnfavorites') {
-                    const incomingProcessed = normalizeProcessedEntries(value);
-                    // App clears processed queues by uploading an explicit empty array.
-                    if (Array.isArray(value) && value.length === 0) {
-                        await GM.setValue(key, []);
-                    } else {
-                        const existingProcessed = normalizeProcessedEntries(await GM.getValue(key, []));
-                        const mergedProcessed = mergeProcessedEntries(existingProcessed, incomingProcessed);
-                        await GM.setValue(key, mergedProcessed);
-                    }
-                } else {
-                    await GM.setValue(key, value);
-                }
-                appliedCount++;
-            }
-        }
-
-        await GM.setValue('lastSyncDownload', new Date().toISOString());
-        return { appliedCount, mergeMode };
-    }
-
-    // Upload data using specified provider (supports multiple users)
-    async uploadData(providerType, config) {
-        const provider = this.providers[providerType];
-        if (!provider) {
-            throw new Error(`Unknown provider: ${providerType}`);
-        }
-
-        const userSyncData = await this.collectSyncData();
-        const userUUID = userSyncData.userUUID;
-
-        // Download existing data to merge with current user's data
-        const isPublicSyncTarget = !!(config && config.url && config.url === this.publicConfig.url);
-        let existingData = {};
-        try {
-            existingData = await provider.download(config);
-        } catch (error) {
-            if (isPublicSyncTarget) {
-                throw new Error(`Public sync safety: aborting upload because existing cloud data could not be downloaded (${error && error.message ? error.message : String(error)})`);
-            }
-            console.log('No existing data found, creating new storage');
-        }
-
-        if (existingData === null || (typeof existingData !== 'object') || Array.isArray(existingData)) {
-            if (isPublicSyncTarget) {
-                throw new Error('Public sync safety: aborting upload because existing cloud data format is invalid');
-            }
-            existingData = {};
-        }
-
-        if (!existingData.users && existingData.userUUID && existingData.data) {
-            existingData = { users: { [existingData.userUUID]: existingData } };
-        }
-
-        // Ensure existingData has the correct structure for multiple users
-        if (!existingData.users) {
-            if (isPublicSyncTarget) {
-                throw new Error('Public sync safety: aborting upload because existing cloud data has no users map');
-            }
-            existingData = {
-                //  version: CURRENT_VERSION,
-                //lastUpdated: new Date().toISOString(),
-                users: {}
-            };
-        }
-
-        if (typeof existingData.users !== 'object' || existingData.users === null || Array.isArray(existingData.users)) {
-            if (isPublicSyncTarget) {
-                throw new Error('Public sync safety: aborting upload because existing cloud users map is invalid');
-            }
-            existingData.users = {};
-        }
-
-        if (isPublicSyncTarget) {
-            const existingUsers = Object.keys(existingData.users);
-            const snapshot = await this.getPublicUsersSnapshot();
-            if (snapshot.users.length) {
-                const existingSet = new Set(existingUsers);
-                const missingCount = snapshot.users.reduce((acc, u) => acc + (existingSet.has(u) ? 0 : 1), 0);
-                const shrunk = existingUsers.length < snapshot.users.length;
-                const missingTooMany = missingCount >= 3 || (snapshot.users.length >= 10 && missingCount >= Math.ceil(snapshot.users.length * 0.25));
-                if (shrunk && missingTooMany) {
-                    throw new Error('Public sync safety: aborting upload because public storage appears to be missing many users compared to your last known snapshot');
-                }
-            }
-            await this.setPublicUsersSnapshot(existingUsers);
-        }
-
-        const mergeMode = await GM.getValue('syncMergeMode', false);
-        const previousUserData = existingData.users[userUUID];
-        let payloadUserData = userSyncData;
-        if (mergeMode && previousUserData && previousUserData.data) {
-            payloadUserData = mergeUserSyncBlobs(userSyncData, previousUserData, { prefer: 'newer' });
-        }
-
-        // Add/update current user's data
-        existingData.users[userUUID] = payloadUserData;
-
-        // Pre-upload size check is advisory only; do not block upload.
-        const rawJson = JSON.stringify(existingData);
-        const estimatedBytes = new TextEncoder().encode(rawJson).length;
-        console.log(`[NHP Sync] Pre-upload payload: ~${Math.round(estimatedBytes / 1024)} KB (${existingData.users ? Object.keys(existingData.users).length : 0} user(s))`);
-        const overSizeLimit = estimatedBytes > SYNC_UPLOAD_SIZE_LIMIT_BYTES;
-        if (overSizeLimit) {
-            const kb = Math.round(estimatedBytes / 1024);
-            console.warn(`[NHP Sync] Payload estimate is high (~${kb} KB). Upload will still be attempted.`);
-        }
-
-        await provider.upload(config, existingData);
-        await GM.setValue('lastSyncUpload', new Date().toISOString());
-        return { userSyncData: payloadUserData, mergeMode, estimatedBytes, overSizeLimit };
-    }
-
-    // Download data using specified provider (supports multiple users)
-    async downloadData(providerType, config) {
-        const provider = this.providers[providerType];
-        if (!provider) {
-            throw new Error(`Unknown provider: ${providerType}`);
-        }
-
-        const allData = await provider.download(config);
-        const isPublicSyncTarget = !!(config && config.url && config.url === this.publicConfig.url);
-        if (isPublicSyncTarget && allData && typeof allData === 'object' && allData.users && typeof allData.users === 'object' && !Array.isArray(allData.users)) {
-            await this.setPublicUsersSnapshot(Object.keys(allData.users));
-        }
-        const userUUID = await this.getUserUUID();
-
-        // Handle both old single-user format and new multi-user format
-        let userSyncData;
-        if (allData.users && allData.users[userUUID]) {
-            // New multi-user format
-            userSyncData = allData.users[userUUID];
-        } else if (allData.userUUID === userUUID) {
-            // Old single-user format
-            userSyncData = allData;
-        } else if (allData.users) {
-            // Multi-user format but user not found
-            const availableUsers = Object.keys(allData.users);
-            throw new Error(`No data found for UUID ${userUUID}. Available UUIDs: ${availableUsers.join(', ')}`);
-        } else {
-            // Single-user format but different user
-            throw new Error(`Data belongs to UUID ${allData.userUUID}, but your UUID is ${userUUID}`);
-        }
-
-        const applyResult = await this.applySyncData(userSyncData);
-        return {
-            syncData: userSyncData,
-            appliedCount: applyResult.appliedCount,
-            mergeMode: applyResult.mergeMode,
-            allUsers: allData.users ? Object.keys(allData.users) : [allData.userUUID]
-        };
-    }
-
-    // Get available users from cloud storage without downloading data
-    async getAvailableUsers(providerType, config) {
-        const provider = this.providers[providerType];
-        if (!provider) {
-            throw new Error(`Unknown provider: ${providerType}`);
-        }
-
-        const allData = await provider.download(config);
-        const isPublicSyncTarget = !!(config && config.url && config.url === this.publicConfig.url);
-        if (isPublicSyncTarget && allData && typeof allData === 'object' && allData.users && typeof allData.users === 'object' && !Array.isArray(allData.users)) {
-            await this.setPublicUsersSnapshot(Object.keys(allData.users));
-        }
-
-        if (allData.users) {
-            // Multi-user format
-            return Object.keys(allData.users).map(uuid => ({
-                uuid,
-                version: allData.users[uuid].version || 'Unknown',
-                timestamp: allData.users[uuid].timestamp,
-                dataCount: Object.keys(allData.users[uuid].data || {}).length
-            }));
-        } else if (allData.userUUID) {
-            // Old single-user format
-            return [{
-                uuid: allData.userUUID,
-                version: allData.version || 'Unknown',
-                timestamp: allData.timestamp,
-                dataCount: Object.keys(allData.data || {}).length
-            }];
-        }
-
-        return [];
-    }
-}
-
 // Tag ID catalog (GitHub-hosted slug/name -> numeric id)
 class TagCatalogManager {
     constructor(syncSystem) {
@@ -14302,227 +14527,6 @@ class TaxonomyManager {
     }
 }
 
-function uint8ArrayToBase64(bytes) {
-    let binary = '';
-    const chunkSize = 0x8000;
-    for (let i = 0; i < bytes.length; i += chunkSize) {
-        binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
-    }
-    return btoa(binary);
-}
-
-function base64ToUint8Array(base64) {
-    const binary = atob(base64);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) {
-        bytes[i] = binary.charCodeAt(i);
-    }
-    return bytes;
-}
-
-function supportsGzipStreams() {
-    return typeof CompressionStream === 'function' && typeof DecompressionStream === 'function';
-}
-
-async function gzipCompressStringToBase64(text) {
-    const cs = new CompressionStream('gzip');
-    const stream = new Blob([text]).stream().pipeThrough(cs);
-    const buffer = await new Response(stream).arrayBuffer();
-    return uint8ArrayToBase64(new Uint8Array(buffer));
-}
-
-async function gzipDecompressBase64ToString(base64) {
-    const bytes = base64ToUint8Array(base64);
-    const ds = new DecompressionStream('gzip');
-    const stream = new Blob([bytes]).stream().pipeThrough(ds);
-    return await new Response(stream).text();
-}
-
-// JSONStorage.net provider implementation
-class JSONStorageProvider {
-    buildRequestUrl(config) {
-        const rawUrl = String((config && config.url) || '').trim();
-        if (!rawUrl) {
-            throw new Error('Storage URL is required');
-        }
-
-        // Keep existing query parameters and only add apiKey when needed.
-        const requestUrl = new URL(rawUrl);
-        const apiKey = config && typeof config.apiKey === 'string' ? config.apiKey.trim() : '';
-        if (apiKey && !requestUrl.searchParams.get('apiKey')) {
-            requestUrl.searchParams.set('apiKey', apiKey);
-        }
-        return requestUrl.toString();
-    }
-
-    getResponseErrorDetails(response) {
-        const body = (response && typeof response.responseText === 'string') ? response.responseText.trim() : '';
-        if (!body) return '';
-        return ` | ${body.slice(0, 300)}`;
-    }
-
-    async compressUserData(userData) {
-        // Return as-is if null/undefined
-        if (!userData) return userData;
-
-        try {
-            // Prevent double compression if data is already compressed
-            if (userData.isCompressed && userData.compressedData) {
-                return userData;
-            }
-
-            const preservedVersion = userData.version || CURRENT_VERSION;
-            const json = JSON.stringify(userData);
-            if (supportsGzipStreams()) {
-                try {
-                    const compressedData = await gzipCompressStringToBase64(json);
-                    return {
-                        isCompressed: true,
-                        algo: 'gzip',
-                        version: preservedVersion,
-                        compressedData
-                    };
-                } catch (_) { }
-            }
-            return {
-                isCompressed: true,
-                algo: 'lz-string',
-                version: preservedVersion,
-                compressedData: LZString.compressToBase64(json)
-            };
-        } catch (error) {
-            console.error('User data compression failed, using uncompressed data:', error);
-            return userData; // Fallback to uncompressed data
-        }
-    }
-
-    // Decompress individual user data if it's compressed
-    async decompressUserData(userData) {
-        try {
-            if (userData && userData.isCompressed && userData.compressedData) {
-                const algo = (userData.algo || '').toLowerCase();
-                let json = null;
-
-                if (algo === 'gzip' && supportsGzipStreams()) {
-                    json = await gzipDecompressBase64ToString(userData.compressedData);
-                } else {
-                    json = LZString.decompressFromBase64(userData.compressedData);
-                }
-
-                if (json === null) {
-                    throw new Error(`Decompression failed (algo: ${algo || 'lz-string'})`);
-                }
-
-                const decompressed = JSON.parse(json);
-                if (decompressed === null) {
-                    throw new Error('Decompressed data resulted in null');
-                }
-
-                return decompressed;
-            }
-            return userData; // Return as is if not compressed
-        } catch (error) {
-            console.error('User data decompression failed:', error);
-            return userData; // Return original data if decompression fails
-        }
-    }
-
-    // Process data for upload - compresses each user's data individually
-    async prepareDataForUpload(data) {
-        // If data doesn't have users structure, return as is
-        if (!data || !data.users) return data;
-
-        // Create a copy of the data structure
-        const processedData = {
-            ...data,
-            users: {}
-        };
-
-        // Compress each user's data individually
-        for (const [uuid, userData] of Object.entries(data.users)) {
-            processedData.users[uuid] = await this.compressUserData(userData);
-        }
-
-        return processedData;
-    }
-
-    // Process downloaded data - decompresses each user's data individually
-    async processDownloadedData(data) {
-        // If data doesn't have users structure, return as is
-        if (!data || !data.users) return data;
-
-        // Create a copy of the data structure
-        const processedData = {
-            ...data,
-            users: {}
-        };
-
-        // Decompress each user's data individually
-        for (const [uuid, userData] of Object.entries(data.users)) {
-            processedData.users[uuid] = await this.decompressUserData(userData);
-        }
-
-        return processedData;
-    }
-
-    async upload(config, data) {
-        const processedData = await this.prepareDataForUpload(data);
-        const requestUrl = this.buildRequestUrl(config);
-        return new Promise((resolve, reject) => {
-            GM.xmlHttpRequest({
-                method: 'PUT',
-                url: requestUrl,
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                data: JSON.stringify(processedData),
-                onload: function (response) {
-                    if (response.status === 200) {
-                        resolve(JSON.parse(response.responseText));
-                    } else {
-                        const details = this.getResponseErrorDetails(response);
-                        if (response.status === 404) {
-                            reject(new Error(`Upload failed: 404 ${response.statusText}${details} | Possible cause: JSON storage size limit reached.`));
-                            return;
-                        }
-                        reject(new Error(`Upload failed: ${response.status} ${response.statusText}${details}`));
-                    }
-                }.bind(this),
-                onerror: function (error) {
-                    reject(new Error(`Network error: ${error}`));
-                }
-            });
-        });
-    }
-
-    async download(config) {
-        const requestUrl = this.buildRequestUrl(config);
-        return new Promise((resolve, reject) => {
-            GM.xmlHttpRequest({
-                method: 'GET',
-                url: requestUrl,
-                headers: {
-                    'Accept': 'application/json'
-                },
-                onload: async (response) => {
-                    if (response.status === 200) {
-                        const data = JSON.parse(response.responseText);
-                        // Process downloaded data (decompress each user's data individually)
-                        const processedData = await this.processDownloadedData(data);
-                        resolve(processedData);
-                    } else {
-                        const details = this.getResponseErrorDetails(response);
-                        reject(new Error(`Download failed: ${response.status} ${response.statusText}${details}`));
-                    }
-                },
-                onerror: function (error) {
-                    reject(new Error(`Network error: ${error}`));
-                }
-            });
-        });
-    }
-}
-
 // AutoSync Manager Class
 // Handles automatic syncing of user data at specified intervals
 // Features:
@@ -14730,9 +14734,7 @@ class AutoSyncManager {
     }
 }
 
-// Initialize sync system
-const syncSystem = new OnlineDataSync();
-globalThis.syncSystem = syncSystem;
+// Initialize sync managers (syncSystem created before settings page)
 const autoSyncManager = new AutoSyncManager(syncSystem);
 const taxonomyManager = new TaxonomyManager(syncSystem);
 const tagCatalogManager = new TagCatalogManager(syncSystem);
