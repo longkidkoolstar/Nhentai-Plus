@@ -1,4 +1,10 @@
 {
+  "10.8.10": {
+    "date": "2026-06-26",
+    "changes": [
+      "fix(ui): scope profile button removal selector to 'nav a[href^=\"/users/\"]' to prevent stripping commenter avatars and usernames from comment sections"
+    ]
+  },
   "10.8.9": {
     "date": "2026-06-16",
     "changes": [

@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      10.8.9
+// @version      10.8.10
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -23,7 +23,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "10.8.9";
+const CURRENT_VERSION = "10.8.10";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -3260,7 +3260,7 @@ function nhpRegisterPersistentRemovalRules() {
     nhpKeepRemoved({
         id: 'profile',
         settingKey: 'profileButtonEnabled',
-        selectors: ['a[href^="/users/"]'],
+        selectors: ['nav a[href^="/users/"]'],
         remove: 'closest-li',
         observe: 'nav',
     });
