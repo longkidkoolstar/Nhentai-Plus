@@ -1,4 +1,13 @@
 {
+  "10.9.0": {
+    "date": "2026-07-24",
+    "changes": [
+      "feat(ignore): split Ignore from Blacklist — Ignore is soft dismiss (seen/don't care), Blacklist is hard block for extreme content",
+      "feat(ignore): manage Ignored and Blacklisted manga as separate lists in settings",
+      "feat(explore): Explore New Content auto-fills listing pages by fetching subsequent pages and skipping ignored, blacklisted, and optionally read galleries",
+      "feat(read): optional Hide Read Galleries setting to fully remove read manga from browse grids"
+    ]
+  },
   "10.8.10": {
     "date": "2026-06-26",
     "changes": [

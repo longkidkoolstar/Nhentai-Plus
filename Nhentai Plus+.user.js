@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      10.8.10
+// @version      10.9.0
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -23,7 +23,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "10.8.10";
+const CURRENT_VERSION = "10.9.0";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -3734,8 +3734,9 @@ class OnlineDataSync {
             'enableRelatedFlipButton', 'twitterButtonEnabled', 'enableRandomButton',
             'randomOpenType', 'profileButtonEnabled', 'infoButtonEnabled', 'logoutButtonEnabled',
             'bookmarkLinkEnabled', 'findSimilarType', 'bookmarkedMangas',
-            // New Hide/Blacklist feature
-            'hideBlacklistEnabled', 'hiddenGalleries',
+            // Ignore / Blacklist / Explore
+            'hideBlacklistEnabled', 'hiddenGalleries', 'blacklistedGalleries',
+            'hideReadGalleriesEnabled', 'exploreNewEnabled', 'exploreHideReadEnabled', 'exploreMaxPages',
             // Read history
             'readGalleries',
             // Pending favorite queues
@@ -3779,7 +3780,7 @@ class OnlineDataSync {
     }
 
     async applySyncValue(key, value) {
-        if (key === 'offlineFavorites' || key === 'readGalleries' || key === 'hiddenGalleries') {
+        if (key === 'offlineFavorites' || key === 'readGalleries' || key === 'hiddenGalleries' || key === 'blacklistedGalleries') {
             await GM.setValue(key, normalizeGalleryIdList(value));
             return;
         }
@@ -4979,6 +4980,16 @@ if (window.location.href.includes('/settings')) {
                             <span class="toggle-slider"></span>
                         </label>
                     </div>
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <span class="setting-label">Hide Read Galleries</span>
+                            <span class="setting-desc">Fully hide read manga from browse grids (instead of only fading)</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="hideReadGalleriesEnabled">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
                     
                     <div style="margin-top: 15px;">
                         <label style="display:block; margin-bottom:5px;">Non-English Opacity: <span id="nonEnglishOpacityValue">0.2</span></label>
@@ -4996,7 +5007,7 @@ if (window.location.href.includes('/settings')) {
                 <h2 class="section-title">Tag Management</h2>
                 
                 <div class="setting-card">
-                    <h3>Warnings & Blacklist</h3>
+                    <h3>Ignore, Blacklist & Explore</h3>
                     <div class="setting-row">
                         <div class="setting-info">
                             <span class="setting-label">Tag Warning System</span>
@@ -5009,8 +5020,8 @@ if (window.location.href.includes('/settings')) {
                     </div>
                     <div class="setting-row">
                         <div class="setting-info">
-                            <span class="setting-label">Hide/Blacklist System</span>
-                            <span class="setting-desc">Hide manga with specific tags</span>
+                            <span class="setting-label">Ignore & Blacklist System</span>
+                            <span class="setting-desc">Ignore = soft dismiss (seen/don't care). Blacklist = hard block for extreme content</span>
                         </div>
                         <label class="toggle-switch">
                             <input type="checkbox" id="hideBlacklistEnabled">
@@ -5019,7 +5030,7 @@ if (window.location.href.includes('/settings')) {
                     </div>
                     <div class="setting-row">
                         <div class="setting-info">
-                            <span class="setting-label">Auto-hide Blacklisted</span>
+                            <span class="setting-label">Auto-hide Blacklisted Tags</span>
                             <span class="setting-desc">Automatically hide galleries with blacklisted tags</span>
                         </div>
                         <label class="toggle-switch">
@@ -5027,10 +5038,35 @@ if (window.location.href.includes('/settings')) {
                             <span class="toggle-slider"></span>
                         </label>
                     </div>
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <span class="setting-label">Explore New Content</span>
+                            <span class="setting-desc">Auto-load next pages to fill the grid with non-ignored / non-blacklisted manga</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="exploreNewEnabled">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="setting-row">
+                        <div class="setting-info">
+                            <span class="setting-label">Explore: Skip Read</span>
+                            <span class="setting-desc">When exploring, also skip galleries already marked as read</span>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="exploreHideReadEnabled">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div style="margin-top: 12px;">
+                        <label style="display:block; margin-bottom:5px;">Explore max pages: <span id="exploreMaxPagesValue">8</span></label>
+                        <input type="range" id="exploreMaxPages" min="2" max="20" step="1" value="8">
+                    </div>
                     
-                    <div style="margin-top: 15px; display: flex; gap: 10px;">
+                    <div style="margin-top: 15px; display: flex; gap: 10px; flex-wrap: wrap;">
                         <button type="button" id="toggleTagLists" class="btn btn-primary">Manage Tags</button>
-                        <button type="button" id="manageHiddenManga" class="btn btn-secondary">Hidden Manga <span id="hiddenMangaCount"></span></button>
+                        <button type="button" id="manageHiddenManga" class="btn btn-secondary">Ignored Manga <span id="hiddenMangaCount"></span></button>
+                        <button type="button" id="manageBlacklistedManga" class="btn btn-secondary">Blacklisted Manga <span id="blacklistedMangaCount"></span></button>
                     </div>
                 </div>
 
@@ -5121,10 +5157,28 @@ if (window.location.href.includes('/settings')) {
                 <div id="hiddenMangaModal" class="nhp-modal">
                     <div class="nhp-modal-content">
                         <div class="nhp-modal-header">
-                            <span class="title">Hidden Manga</span>
+                            <span class="title">Ignored Manga</span>
                             <button type="button" id="closeHiddenMangaModal" class="close-btn">&times;</button>
                         </div>
+                        <p style="font-size:12px;color:#888;margin:0 0 10px;">Soft dismiss — seen or don't care. Separate from Blacklist.</p>
+                        <div style="margin-bottom:10px;">
+                            <button type="button" id="clearHiddenManga" class="btn btn-secondary">Clear All Ignored</button>
+                        </div>
                         <div id="hiddenMangaList" class="nhp-modal-list"></div>
+                    </div>
+                </div>
+
+                <div id="blacklistedMangaModal" class="nhp-modal">
+                    <div class="nhp-modal-content">
+                        <div class="nhp-modal-header">
+                            <span class="title">Blacklisted Manga</span>
+                            <button type="button" id="closeBlacklistedMangaModal" class="close-btn">&times;</button>
+                        </div>
+                        <p style="font-size:12px;color:#888;margin:0 0 10px;">Hard block — extreme content you never want to see again.</p>
+                        <div style="margin-bottom:10px;">
+                            <button type="button" id="clearBlacklistedManga" class="btn btn-secondary">Clear All Blacklisted</button>
+                        </div>
+                        <div id="blacklistedMangaList" class="nhp-modal-list"></div>
                     </div>
                 </div>
             </div>
@@ -5820,6 +5874,10 @@ if (window.location.href.includes('/settings')) {
         const autoMarkReadEnabled = await GM.getValue('autoMarkReadEnabled', true);
         const hideBlacklistEnabled = await GM.getValue('hideBlacklistEnabled', true);
         const autoHideBlacklistedTagsEnabled = await GM.getValue('autoHideBlacklistedTagsEnabled', false);
+        const hideReadGalleriesEnabled = await GM.getValue('hideReadGalleriesEnabled', false);
+        const exploreNewEnabled = await GM.getValue('exploreNewEnabled', true);
+        const exploreHideReadEnabled = await GM.getValue('exploreHideReadEnabled', true);
+        const exploreMaxPages = await GM.getValue('exploreMaxPages', 8);
         const nonEnglishOpacity = await GM.getValue('nonEnglishOpacity', 0.2);
         const readGalleriesOpacity = await GM.getValue('readGalleriesOpacity', 0.6);
 
@@ -5993,6 +6051,11 @@ if (window.location.href.includes('/settings')) {
         $('#autoMarkReadEnabled').prop('checked', autoMarkReadEnabled);
         $('#hideBlacklistEnabled').prop('checked', hideBlacklistEnabled);
         $('#autoHideBlacklistedTagsEnabled').prop('checked', autoHideBlacklistedTagsEnabled);
+        $('#hideReadGalleriesEnabled').prop('checked', hideReadGalleriesEnabled);
+        $('#exploreNewEnabled').prop('checked', exploreNewEnabled);
+        $('#exploreHideReadEnabled').prop('checked', exploreHideReadEnabled);
+        $('#exploreMaxPages').val(exploreMaxPages);
+        $('#exploreMaxPagesValue').text(exploreMaxPages);
         $('#nonEnglishOpacity').val(nonEnglishOpacity);
         $('#nonEnglishOpacityValue').text(nonEnglishOpacity);
         $('#readGalleriesOpacity').val(readGalleriesOpacity);
@@ -6632,27 +6695,55 @@ if (window.location.href.includes('/settings')) {
             $('#readGalleriesOpacityValue').text('0.6');
             $('#markAsReadEnabled').prop('checked', true);
             $('#autoMarkReadEnabled').prop('checked', true);
+            $('#hideReadGalleriesEnabled').prop('checked', false);
             $('#hideBlacklistEnabled').prop('checked', true);
             $('#autoHideBlacklistedTagsEnabled').prop('checked', false);
+            $('#exploreNewEnabled').prop('checked', true);
+            $('#exploreHideReadEnabled').prop('checked', true);
+            $('#exploreMaxPages').val(8);
+            $('#exploreMaxPagesValue').text('8');
         });
 
-        // Clear hidden manga list
+        $('#exploreMaxPages').on('input', function () {
+            $('#exploreMaxPagesValue').text($(this).val());
+        });
+
+        // Clear ignored manga list
         $('#clearHiddenManga').on('click', async function () {
-            if (confirm('Clear all hidden/blacklisted manga?')) {
+            if (confirm('Clear all ignored manga?')) {
                 await GM.setValue('hiddenGalleries', []);
                 await GM.setValue('hiddenGalleryTitles', {});
                 try {
                     if (typeof hideBlacklistSystem !== 'undefined' && hideBlacklistSystem) {
                         hideBlacklistSystem.hiddenGalleries = new Set();
+                        hideBlacklistSystem.hiddenTitles = new Map();
                         hideBlacklistSystem.applyHiddenFilter && hideBlacklistSystem.applyHiddenFilter();
                     }
                 } catch (_) { /* ignore */ }
                 if (typeof updateHiddenCount === 'function') updateHiddenCount();
-                alert('Hidden manga list cleared.');
+                $('#hiddenMangaList').html('<p style="font-size:12px;color:#888;">No ignored manga.</p>');
+                alert('Ignored manga list cleared.');
             }
         });
 
-        // Manage hidden manga (compact modal)
+        $('#clearBlacklistedManga').on('click', async function () {
+            if (confirm('Clear all blacklisted manga?')) {
+                await GM.setValue('blacklistedGalleries', []);
+                await GM.setValue('blacklistedGalleryTitles', {});
+                try {
+                    if (typeof hideBlacklistSystem !== 'undefined' && hideBlacklistSystem) {
+                        hideBlacklistSystem.blacklistedGalleries = new Set();
+                        hideBlacklistSystem.blacklistedTitles = new Map();
+                        hideBlacklistSystem.applyHiddenFilter && hideBlacklistSystem.applyHiddenFilter();
+                    }
+                } catch (_) { /* ignore */ }
+                if (typeof updateBlacklistedCount === 'function') updateBlacklistedCount();
+                $('#blacklistedMangaList').html('<p style="font-size:12px;color:#888;">No blacklisted manga.</p>');
+                alert('Blacklisted manga list cleared.');
+            }
+        });
+
+        // Manage ignored / blacklisted manga (compact modals)
         async function updateHiddenCount() {
             try {
                 const ids = await GM.getValue('hiddenGalleries', []);
@@ -6660,6 +6751,16 @@ if (window.location.href.includes('/settings')) {
                 $('#hiddenMangaCount').text(count ? `(${count})` : '');
             } catch (_) {
                 $('#hiddenMangaCount').text('');
+            }
+        }
+
+        async function updateBlacklistedCount() {
+            try {
+                const ids = await GM.getValue('blacklistedGalleries', []);
+                const count = Array.isArray(ids) ? ids.length : 0;
+                $('#blacklistedMangaCount').text(count ? `(${count})` : '');
+            } catch (_) {
+                $('#blacklistedMangaCount').text('');
             }
         }
 
@@ -6694,12 +6795,12 @@ if (window.location.href.includes('/settings')) {
             }
         }
 
-        function renderHiddenRows(entries, titlesMap) {
-            const listEl = document.getElementById('hiddenMangaList');
+        function renderManagedGalleryRows(listElId, entries, titlesMap, titlesKey, emptyText, removeBtnClass, removeBtnLabel) {
+            const listEl = document.getElementById(listElId);
             if (!listEl) return;
             listEl.innerHTML = '';
             if (!entries || entries.length === 0) {
-                listEl.innerHTML = '<p style="font-size:12px;color:#888;">No hidden manga.</p>';
+                listEl.innerHTML = `<p style="font-size:12px;color:#888;">${emptyText}</p>`;
                 return;
             }
             entries.forEach(({ id, title }) => {
@@ -6717,31 +6818,37 @@ if (window.location.href.includes('/settings')) {
                 const actions = document.createElement('div');
                 actions.className = 'actions';
                 const btn = document.createElement('button');
-                btn.className = 'unhide-item';
+                btn.className = removeBtnClass;
                 btn.setAttribute('data-id', String(id));
-                btn.textContent = 'Unhide';
+                btn.textContent = removeBtnLabel;
                 actions.appendChild(btn);
                 row.appendChild(nameLink);
                 row.appendChild(idSpan);
                 row.appendChild(actions);
                 listEl.appendChild(row);
 
-                // Fetch and fill pretty title
                 (async () => {
                     const fetched = await fetchGalleryPrettyTitle(id);
                     const finalTitle = (fetched && fetched.trim())
                         ? fetched.trim()
                         : ((title && String(title).trim()) ? String(title).trim() : String(id));
                     nameLink.textContent = finalTitle;
-                    // Persist fetched title to storage map for future
                     try {
                         if (titlesMap) {
                             titlesMap[String(id)] = finalTitle;
-                            await GM.setValue('hiddenGalleryTitles', titlesMap);
+                            await GM.setValue(titlesKey, titlesMap);
                         }
                     } catch (_) { /* ignore */ }
                 })();
             });
+        }
+
+        function renderHiddenRows(entries, titlesMap) {
+            renderManagedGalleryRows('hiddenMangaList', entries, titlesMap, 'hiddenGalleryTitles', 'No ignored manga.', 'unhide-item', 'Unignore');
+        }
+
+        function renderBlacklistedRows(entries, titlesMap) {
+            renderManagedGalleryRows('blacklistedMangaList', entries, titlesMap, 'blacklistedGalleryTitles', 'No blacklisted manga.', 'unblacklist-item', 'Unblacklist');
         }
 
         $('#manageHiddenManga').on('click', async function () {
@@ -6756,8 +6863,24 @@ if (window.location.href.includes('/settings')) {
             $('#hiddenMangaModal').css('display', 'flex');
         });
 
+        $('#manageBlacklistedManga').on('click', async function () {
+            try {
+                const ids = await GM.getValue('blacklistedGalleries', []);
+                const titlesMap = await GM.getValue('blacklistedGalleryTitles', {});
+                const entries = (Array.isArray(ids) ? ids : []).map(id => ({ id: String(id), title: titlesMap && titlesMap[String(id)] }));
+                renderBlacklistedRows(entries, titlesMap);
+            } catch (_) {
+                renderBlacklistedRows([], {});
+            }
+            $('#blacklistedMangaModal').css('display', 'flex');
+        });
+
         $('#closeHiddenMangaModal').on('click', function () {
             $('#hiddenMangaModal').hide();
+        });
+
+        $('#closeBlacklistedMangaModal').on('click', function () {
+            $('#blacklistedMangaModal').hide();
         });
 
         $('#hiddenMangaModal').on('click', function (e) {
@@ -6766,7 +6889,13 @@ if (window.location.href.includes('/settings')) {
             }
         });
 
-        // Delegate unhide actions inside modal
+        $('#blacklistedMangaModal').on('click', function (e) {
+            if (e.target && e.target.id === 'blacklistedMangaModal') {
+                $('#blacklistedMangaModal').hide();
+            }
+        });
+
+        // Delegate unignore actions inside modal
         $('#hiddenMangaList').on('click', '.unhide-item', async function () {
             const id = String($(this).data('id'));
             try {
@@ -6784,16 +6913,40 @@ if (window.location.href.includes('/settings')) {
                     await GM.setValue('hiddenGalleryTitles', titlesMap);
                 }
             } catch (_) { /* ignore */ }
-            // Update UI
             $(this).closest('.row').remove();
             if ($('#hiddenMangaList .row').length === 0) {
-                $('#hiddenMangaList').html('<p style="font-size:12px;color:#888;">No hidden manga.</p>');
+                $('#hiddenMangaList').html('<p style="font-size:12px;color:#888;">No ignored manga.</p>');
             }
             updateHiddenCount();
         });
 
-        // Initialize count indicator
+        $('#blacklistedMangaList').on('click', '.unblacklist-item', async function () {
+            const id = String($(this).data('id'));
+            try {
+                if (typeof hideBlacklistSystem !== 'undefined' && hideBlacklistSystem && typeof hideBlacklistSystem.unblacklistGallery === 'function') {
+                    await hideBlacklistSystem.unblacklistGallery(id);
+                    hideBlacklistSystem.applyHiddenFilter && hideBlacklistSystem.applyHiddenFilter();
+                } else {
+                    let ids = await GM.getValue('blacklistedGalleries', []);
+                    ids = (Array.isArray(ids) ? ids : []).filter(x => String(x) !== id);
+                    await GM.setValue('blacklistedGalleries', ids);
+                }
+                let titlesMap = await GM.getValue('blacklistedGalleryTitles', {});
+                if (titlesMap && titlesMap[id]) {
+                    delete titlesMap[id];
+                    await GM.setValue('blacklistedGalleryTitles', titlesMap);
+                }
+            } catch (_) { /* ignore */ }
+            $(this).closest('.row').remove();
+            if ($('#blacklistedMangaList .row').length === 0) {
+                $('#blacklistedMangaList').html('<p style="font-size:12px;color:#888;">No blacklisted manga.</p>');
+            }
+            updateBlacklistedCount();
+        });
+
+        // Initialize count indicators
         updateHiddenCount();
+        updateBlacklistedCount();
 
         // Event handlers for new Tag Management settings
         $('#tag-management-settings h3').on('click', function () {
@@ -7012,6 +7165,10 @@ if (window.location.href.includes('/settings')) {
         const autoMarkReadEnabled = $('#autoMarkReadEnabled').prop('checked');
         const hideBlacklistEnabled = $('#hideBlacklistEnabled').prop('checked');
         const autoHideBlacklistedTagsEnabled = $('#autoHideBlacklistedTagsEnabled').prop('checked');
+        const hideReadGalleriesEnabled = $('#hideReadGalleriesEnabled').prop('checked');
+        const exploreNewEnabled = $('#exploreNewEnabled').prop('checked');
+        const exploreHideReadEnabled = $('#exploreHideReadEnabled').prop('checked');
+        const exploreMaxPages = parseInt($('#exploreMaxPages').val(), 10) || 8;
         const nonEnglishOpacity = parseFloat($('#nonEnglishOpacity').val());
         const readGalleriesOpacity = parseFloat($('#readGalleriesOpacity').val());
 
@@ -7106,6 +7263,10 @@ if (window.location.href.includes('/settings')) {
         await GM.setValue('autoMarkReadEnabled', autoMarkReadEnabled);
         await GM.setValue('hideBlacklistEnabled', hideBlacklistEnabled);
         await GM.setValue('autoHideBlacklistedTagsEnabled', autoHideBlacklistedTagsEnabled);
+        await GM.setValue('hideReadGalleriesEnabled', hideReadGalleriesEnabled);
+        await GM.setValue('exploreNewEnabled', exploreNewEnabled);
+        await GM.setValue('exploreHideReadEnabled', exploreHideReadEnabled);
+        await GM.setValue('exploreMaxPages', exploreMaxPages);
         await GM.setValue('nonEnglishOpacity', nonEnglishOpacity);
         await GM.setValue('readGalleriesOpacity', readGalleriesOpacity);
 
@@ -9712,7 +9873,7 @@ async function ensureGalleryActionButtons() {
                 hbSystem.addGalleryPageHideButton();
             }
         } catch (e) {
-            console.warn('Hide/Blacklist button restore failed:', e);
+            console.warn('Ignore/Blacklist button restore failed:', e);
         }
 
         try {
@@ -10791,6 +10952,7 @@ function stripGalleryInjectedState(gallery) {
         '.readTag',
         '.tag-warning-badge',
         '.hide-manga-btn',
+        '.blacklist-manga-btn',
         '.findVersionButton',
         '.numOfVersions',
         '.versionNextButton',
@@ -10912,6 +11074,20 @@ async function nhpApplyAllCore() {
 
         // 7) Re-stack tag warning badges above Find Alt button (must run after step 6)
         nhpPositionTagWarningBadges();
+
+        // 8) Ignore / Blacklist / Hide-read filters + Explore New fill
+        try {
+            const hbSystem = globalThis.hideBlacklistSystem;
+            if (hbSystem) {
+                if (typeof hbSystem.addHideButtons === 'function') hbSystem.addHideButtons();
+                else if (typeof hbSystem.applyHiddenFilter === 'function') hbSystem.applyHiddenFilter();
+            }
+            if (globalThis.exploreNewSystem && typeof globalThis.exploreNewSystem.scheduleFill === 'function') {
+                globalThis.exploreNewSystem.scheduleFill(400);
+            }
+        } catch (e) {
+            console.warn('[NHP] ignore/explore reapply failed:', e);
+        }
     } catch (e) {
         console.warn('[NHP] nhpApplyAllCore error:', e);
     }
@@ -14842,7 +15018,7 @@ function mergeProcessedEntries(existingEntries, incomingEntries) {
 }
 
 const SYNC_GALLERY_ID_LIST_KEYS = new Set([
-    'offlineFavorites', 'readGalleries', 'hiddenGalleries', 'toFavorite', 'toUnfavorite'
+    'offlineFavorites', 'readGalleries', 'hiddenGalleries', 'blacklistedGalleries', 'toFavorite', 'toUnfavorite'
 ]);
 const SYNC_STRING_ARRAY_KEYS = new Set([
     'bookmarkedPages', 'favoriteTagsList', 'mustAddTags', 'blacklistedTags',
@@ -15543,6 +15719,11 @@ class MarkAsReadSystem {
                 this.removeReadBadge(gallery);
             }
         });
+
+        try {
+            const hb = globalThis.hideBlacklistSystem;
+            if (hb && typeof hb.applyHiddenFilter === 'function') hb.applyHiddenFilter();
+        } catch (_) { /* ignore */ }
     }
 
     /**
@@ -15597,6 +15778,14 @@ class MarkAsReadSystem {
                 this.removeReadBadge(gallery);
             }
         });
+
+        try {
+            const hb = globalThis.hideBlacklistSystem;
+            if (hb && typeof hb.applyHiddenFilter === 'function') hb.applyHiddenFilter();
+            if (globalThis.exploreNewSystem && typeof globalThis.exploreNewSystem.scheduleFill === 'function') {
+                globalThis.exploreNewSystem.scheduleFill(300);
+            }
+        } catch (_) { /* ignore */ }
     }
 
     /**
@@ -15928,14 +16117,19 @@ class MarkAsReadSystem {
     }
 }
 
-//------------------------  **Hide/Blacklist System**  ------------------
+//------------------------  **Ignore / Blacklist System**  ------------------
+// Ignore = soft dismiss (seen / don't care). Blacklist = hard block (extreme content).
+// Existing hiddenGalleries storage is reused as the Ignore list for back-compat.
 
 class HideBlacklistSystem {
     constructor() {
-        this.hiddenGalleries = new Set();
+        this.hiddenGalleries = new Set(); // ignored
         this.hiddenTitles = new Map();
+        this.blacklistedGalleries = new Set();
+        this.blacklistedTitles = new Map();
         this.settings = {
-            enabled: true
+            enabled: true,
+            hideRead: false
         };
         this.init();
     }
@@ -15944,6 +16138,8 @@ class HideBlacklistSystem {
         await this.loadSettings();
         await this.loadHiddenGalleries();
         await this.loadHiddenGalleryTitles();
+        await this.loadBlacklistedGalleries();
+        await this.loadBlacklistedGalleryTitles();
         if (this.settings.enabled) {
             this.addCSS();
             this.applyZipOffsetFlag();
@@ -15957,7 +16153,7 @@ class HideBlacklistSystem {
     async loadSettings() {
         this.settings.enabled = await GM.getValue('hideBlacklistEnabled', true);
         this.settings.autoHideByTags = await GM.getValue('autoHideBlacklistedTagsEnabled', false);
-        // Load blacklist tags to support auto-hide by tags
+        this.settings.hideRead = await GM.getValue('hideReadGalleriesEnabled', false);
         const bl = await GM.getValue('blacklistTagsList', ['scat', 'guro', 'vore', 'ryona', 'snuff']);
         this.settings.blacklistTags = Array.isArray(bl) ? bl.map(t => String(t).toLowerCase().trim()) : [];
     }
@@ -15965,9 +16161,9 @@ class HideBlacklistSystem {
     async loadHiddenGalleries() {
         try {
             const list = await GM.getValue('hiddenGalleries', []);
-            this.hiddenGalleries = new Set(Array.isArray(list) ? list : []);
+            this.hiddenGalleries = new Set(Array.isArray(list) ? list.map(String) : []);
         } catch (e) {
-            console.error('Error loading hidden galleries:', e);
+            console.error('Error loading ignored galleries:', e);
             this.hiddenGalleries = new Set();
         }
     }
@@ -15976,17 +16172,16 @@ class HideBlacklistSystem {
         try {
             await GM.setValue('hiddenGalleries', Array.from(this.hiddenGalleries));
         } catch (e) {
-            console.error('Error saving hidden galleries:', e);
+            console.error('Error saving ignored galleries:', e);
         }
     }
 
     async loadHiddenGalleryTitles() {
         try {
             const obj = await GM.getValue('hiddenGalleryTitles', {});
-            const entries = Object.entries(obj || {});
-            this.hiddenTitles = new Map(entries);
+            this.hiddenTitles = new Map(Object.entries(obj || {}));
         } catch (e) {
-            console.error('Error loading hidden gallery titles:', e);
+            console.error('Error loading ignored gallery titles:', e);
             this.hiddenTitles = new Map();
         }
     }
@@ -15997,7 +16192,45 @@ class HideBlacklistSystem {
             this.hiddenTitles.forEach((title, id) => { obj[id] = title; });
             await GM.setValue('hiddenGalleryTitles', obj);
         } catch (e) {
-            console.error('Error saving hidden gallery titles:', e);
+            console.error('Error saving ignored gallery titles:', e);
+        }
+    }
+
+    async loadBlacklistedGalleries() {
+        try {
+            const list = await GM.getValue('blacklistedGalleries', []);
+            this.blacklistedGalleries = new Set(Array.isArray(list) ? list.map(String) : []);
+        } catch (e) {
+            console.error('Error loading blacklisted galleries:', e);
+            this.blacklistedGalleries = new Set();
+        }
+    }
+
+    async saveBlacklistedGalleries() {
+        try {
+            await GM.setValue('blacklistedGalleries', Array.from(this.blacklistedGalleries));
+        } catch (e) {
+            console.error('Error saving blacklisted galleries:', e);
+        }
+    }
+
+    async loadBlacklistedGalleryTitles() {
+        try {
+            const obj = await GM.getValue('blacklistedGalleryTitles', {});
+            this.blacklistedTitles = new Map(Object.entries(obj || {}));
+        } catch (e) {
+            console.error('Error loading blacklisted gallery titles:', e);
+            this.blacklistedTitles = new Map();
+        }
+    }
+
+    async saveBlacklistedGalleryTitles() {
+        try {
+            const obj = {};
+            this.blacklistedTitles.forEach((title, id) => { obj[id] = title; });
+            await GM.setValue('blacklistedGalleryTitles', obj);
+        } catch (e) {
+            console.error('Error saving blacklisted gallery titles:', e);
         }
     }
 
@@ -16007,14 +16240,34 @@ class HideBlacklistSystem {
         return match ? match[1] : null;
     }
 
-    isHidden(id) {
-        return this.hiddenGalleries.has(id);
+    isIgnored(id) {
+        return this.hiddenGalleries.has(String(id));
     }
 
-    /**
-     * Extract tags for a gallery using available DOM hints.
-     * If TagWarningSystem is available, reuse its extractor.
-     */
+    isBlacklisted(id) {
+        return this.blacklistedGalleries.has(String(id));
+    }
+
+    // Back-compat alias used by older call sites
+    isHidden(id) {
+        const sid = String(id);
+        return this.isIgnored(sid) || this.isBlacklisted(sid);
+    }
+
+    shouldSkipId(id, { skipRead = false } = {}) {
+        const sid = String(id);
+        if (this.settings.enabled) {
+            if (this.isIgnored(sid) || this.isBlacklisted(sid)) return true;
+        }
+        if (skipRead) {
+            try {
+                const mar = globalThis.markAsReadSystem;
+                if (mar && typeof mar.isRead === 'function' && mar.isRead(sid)) return true;
+            } catch (_) { /* ignore */ }
+        }
+        return false;
+    }
+
     extractGalleryTags(gallery) {
         try {
             if (typeof tagWarningSystem !== 'undefined' && tagWarningSystem && typeof tagWarningSystem.extractGalleryTags === 'function') {
@@ -16024,14 +16277,12 @@ class HideBlacklistSystem {
         } catch (_) { /* ignore */ }
 
         const tags = [];
-        // Method 2: From tag elements (if available)
         const tagElements = gallery.querySelectorAll('.tag .name');
         tagElements.forEach(tagElement => {
             const tagName = (tagElement.textContent || '').trim().toLowerCase();
             if (tagName) tags.push(tagName);
         });
 
-        // Method 3: From title/caption text
         if (tags.length === 0) {
             const caption = gallery.querySelector('.caption');
             if (caption) {
@@ -16059,45 +16310,100 @@ class HideBlacklistSystem {
         return tags.some(t => set.has(String(t).toLowerCase().trim()));
     }
 
+    async rememberTitle(map, saveFn, id, title) {
+        if (!title || !String(title).trim()) return;
+        try {
+            map.set(String(id), String(title).trim());
+            await saveFn.call(this);
+        } catch (_) { /* ignore */ }
+    }
+
     async hideGallery(id, title) {
+        // Alias for ignore (back-compat)
+        await this.ignoreGallery(id, title);
+    }
+
+    async ignoreGallery(id, title) {
         if (!id) return;
-        this.hiddenGalleries.add(id);
-        if (title && String(title).trim()) {
-            try {
-                this.hiddenTitles.set(id, String(title).trim());
-                await this.saveHiddenGalleryTitles();
-            } catch (_) { /* ignore */ }
-        }
+        const sid = String(id);
+        this.hiddenGalleries.add(sid);
+        // If it was blacklisted, keep blacklist (more severe) — ignore is redundant but fine
+        await this.rememberTitle(this.hiddenTitles, this.saveHiddenGalleryTitles, sid, title);
         await this.saveHiddenGalleries();
-        this.updateGalleryVisibility(id);
+        this.updateGalleryVisibility(sid);
+        if (globalThis.exploreNewSystem) globalThis.exploreNewSystem.scheduleFill(400);
     }
 
     async unhideGallery(id) {
+        await this.unignoreGallery(id);
+    }
+
+    async unignoreGallery(id) {
         if (!id) return;
-        this.hiddenGalleries.delete(id);
+        const sid = String(id);
+        this.hiddenGalleries.delete(sid);
         try {
-            if (this.hiddenTitles.has(id)) {
-                this.hiddenTitles.delete(id);
+            if (this.hiddenTitles.has(sid)) {
+                this.hiddenTitles.delete(sid);
                 await this.saveHiddenGalleryTitles();
             }
         } catch (_) { /* ignore */ }
         await this.saveHiddenGalleries();
-        this.updateGalleryVisibility(id);
+        this.updateGalleryVisibility(sid);
+    }
+
+    async blacklistGallery(id, title) {
+        if (!id) return;
+        const sid = String(id);
+        this.blacklistedGalleries.add(sid);
+        // Remove from ignore list if present (blacklist supersedes)
+        if (this.hiddenGalleries.has(sid)) {
+            this.hiddenGalleries.delete(sid);
+            this.hiddenTitles.delete(sid);
+            await this.saveHiddenGalleries();
+            await this.saveHiddenGalleryTitles();
+        }
+        await this.rememberTitle(this.blacklistedTitles, this.saveBlacklistedGalleryTitles, sid, title);
+        await this.saveBlacklistedGalleries();
+        this.updateGalleryVisibility(sid);
+        if (globalThis.exploreNewSystem) globalThis.exploreNewSystem.scheduleFill(400);
+    }
+
+    async unblacklistGallery(id) {
+        if (!id) return;
+        const sid = String(id);
+        this.blacklistedGalleries.delete(sid);
+        try {
+            if (this.blacklistedTitles.has(sid)) {
+                this.blacklistedTitles.delete(sid);
+                await this.saveBlacklistedGalleryTitles();
+            }
+        } catch (_) { /* ignore */ }
+        await this.saveBlacklistedGalleries();
+        this.updateGalleryVisibility(sid);
     }
 
     async toggleHidden(id, title) {
-        if (this.isHidden(id)) {
-            await this.unhideGallery(id);
+        // Toggle ignore (listing button)
+        if (this.isIgnored(id)) {
+            await this.unignoreGallery(id);
         } else {
-            await this.hideGallery(id, title);
+            await this.ignoreGallery(id, title);
+        }
+    }
+
+    async toggleBlacklist(id, title) {
+        if (this.isBlacklisted(id)) {
+            await this.unblacklistGallery(id);
+        } else {
+            await this.blacklistGallery(id, title);
         }
     }
 
     addCSS() {
         const css = `
-            .hide-manga-btn {
+            .hide-manga-btn, .blacklist-manga-btn {
                 position: absolute;
-                top: 5px;
                 left: 5px;
                 width: 24px;
                 height: 24px;
@@ -16114,26 +16420,34 @@ class HideBlacklistSystem {
                 transition: all 0.3s ease;
             }
 
-            .hide-manga-btn:hover {
+            .hide-manga-btn { top: 5px; }
+            .blacklist-manga-btn { top: 34px; }
+
+            .hide-manga-btn:hover, .blacklist-manga-btn:hover {
                 background: rgba(0, 0, 0, 0.9);
                 transform: scale(1.1);
             }
 
             .hide-manga-btn.hidden {
-                background: rgba(183, 28, 28, 0.85);
+                background: rgba(96, 125, 139, 0.9);
                 color: #fff;
             }
 
-            .gallery.hidden-by-blacklist {
+            .blacklist-manga-btn.blacklisted {
+                background: rgba(183, 28, 28, 0.9);
+                color: #fff;
+            }
+
+            .gallery.hidden-by-blacklist,
+            .gallery.hidden-by-ignore,
+            .gallery.hidden-by-read {
                 display: none !important;
             }
 
-            /* Offset when a top download-zip bar is present */
-            body.nhp-zip-offset .hide-manga-btn {
-                top: 40px;
-            }
+            body.nhp-zip-offset .hide-manga-btn { top: 40px; }
+            body.nhp-zip-offset .blacklist-manga-btn { top: 69px; }
 
-            .btn-nhi-hide {
+            .btn-nhi-hide, .btn-nhi-blacklist {
                 display: inline-flex;
                 align-items: center;
                 gap: 8px;
@@ -16147,13 +16461,18 @@ class HideBlacklistSystem {
                 user-select: none;
             }
 
-            .btn-nhi-hide:hover {
+            .btn-nhi-hide:hover, .btn-nhi-blacklist:hover {
                 text-decoration: none;
                 transform: translateY(-1px);
                 box-shadow: 0 4px 8px rgba(0,0,0,0.2);
             }
 
-            .btn-nhi-hide.btn-danger {
+            .btn-nhi-hide.btn-warning {
+                background: linear-gradient(135deg, #607d8b 0%, #455a64 100%);
+                color: white;
+            }
+
+            .btn-nhi-blacklist.btn-danger {
                 background: linear-gradient(135deg, #b71c1c 0%, #8e0000 100%);
                 color: white;
             }
@@ -16172,31 +16491,48 @@ class HideBlacklistSystem {
         const galleries = document.querySelectorAll('.gallery');
         galleries.forEach(gallery => {
             if (gallery.classList.contains('read-manga-gallery')) return;
-            if (gallery.querySelector('.hide-manga-btn')) return;
 
             const coverLink = gallery.querySelector('.cover');
             if (!coverLink) return;
             const id = this.extractGalleryId(coverLink.getAttribute('href'));
             if (!id) return;
 
-            // Capture title for storage when hiding from listings
             const captionEl = gallery.querySelector('.caption');
             const titleText = captionEl ? (captionEl.textContent || '').trim() : '';
 
-            const btn = document.createElement('button');
-            btn.className = 'hide-manga-btn';
-            const hidden = this.isHidden(id);
-            btn.title = hidden ? 'Unhide' : 'Hide';
-            btn.textContent = hidden ? '✕' : '–';
-            if (hidden) btn.classList.add('hidden');
+            if (!gallery.querySelector('.hide-manga-btn')) {
+                const btn = document.createElement('button');
+                btn.className = 'hide-manga-btn';
+                const ignored = this.isIgnored(id);
+                btn.title = ignored ? 'Unignore' : 'Ignore (seen / don\'t care)';
+                btn.textContent = ignored ? '↩' : '–';
+                if (ignored) btn.classList.add('hidden');
 
-            btn.addEventListener('click', async (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                await this.toggleHidden(id, titleText);
-            });
+                btn.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    await this.toggleHidden(id, titleText);
+                });
 
-            gallery.appendChild(btn);
+                gallery.appendChild(btn);
+            }
+
+            if (!gallery.querySelector('.blacklist-manga-btn')) {
+                const bbtn = document.createElement('button');
+                bbtn.className = 'blacklist-manga-btn';
+                const blacklisted = this.isBlacklisted(id);
+                bbtn.title = blacklisted ? 'Unblacklist' : 'Blacklist (never show again)';
+                bbtn.textContent = '✕';
+                if (blacklisted) bbtn.classList.add('blacklisted');
+
+                bbtn.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    await this.toggleBlacklist(id, titleText);
+                });
+
+                gallery.appendChild(bbtn);
+            }
         });
 
         this.applyHiddenFilter();
@@ -16210,15 +16546,34 @@ class HideBlacklistSystem {
             if (!coverLink) return;
             const id = this.extractGalleryId(coverLink.getAttribute('href'));
             if (!id) return;
-            const manualHidden = this.isHidden(id);
+
+            const ignored = this.isIgnored(id);
+            const blacklisted = this.isBlacklisted(id);
             const autoHidden = this.settings.autoHideByTags && this.galleryHasBlacklistedTags(gallery);
-            const hidden = (manualHidden || autoHidden) && this.settings.enabled;
-            gallery.classList.toggle('hidden-by-blacklist', hidden);
+            const hideHard = this.settings.enabled && (blacklisted || autoHidden);
+            const hideIgnore = this.settings.enabled && ignored;
+            let hideRead = false;
+            if (this.settings.hideRead) {
+                try {
+                    const mar = globalThis.markAsReadSystem;
+                    if (mar && typeof mar.isRead === 'function') hideRead = mar.isRead(id);
+                } catch (_) { /* ignore */ }
+            }
+
+            gallery.classList.toggle('hidden-by-blacklist', hideHard);
+            gallery.classList.toggle('hidden-by-ignore', hideIgnore);
+            gallery.classList.toggle('hidden-by-read', hideRead);
+
             const btn = gallery.querySelector('.hide-manga-btn');
             if (btn) {
-                btn.classList.toggle('hidden', hidden);
-                btn.title = hidden ? 'Unhide' : 'Hide';
-                btn.textContent = hidden ? '✕' : '–';
+                btn.classList.toggle('hidden', ignored);
+                btn.title = ignored ? 'Unignore' : 'Ignore (seen / don\'t care)';
+                btn.textContent = ignored ? '↩' : '–';
+            }
+            const bbtn = gallery.querySelector('.blacklist-manga-btn');
+            if (bbtn) {
+                bbtn.classList.toggle('blacklisted', blacklisted);
+                bbtn.title = blacklisted ? 'Unblacklist' : 'Blacklist (never show again)';
             }
         });
     }
@@ -16229,14 +16584,26 @@ class HideBlacklistSystem {
             const coverLink = gallery.querySelector('.cover');
             if (!coverLink) return;
             const id = this.extractGalleryId(coverLink.getAttribute('href'));
-            if (id !== galleryId) return;
-            const hidden = this.isHidden(id) && this.settings.enabled;
-            gallery.classList.toggle('hidden-by-blacklist', hidden);
+            if (id !== String(galleryId)) return;
+
+            const ignored = this.isIgnored(id);
+            const blacklisted = this.isBlacklisted(id);
+            const hideHard = this.settings.enabled && blacklisted;
+            const hideIgnore = this.settings.enabled && ignored;
+
+            gallery.classList.toggle('hidden-by-blacklist', hideHard);
+            gallery.classList.toggle('hidden-by-ignore', hideIgnore);
+
             const btn = gallery.querySelector('.hide-manga-btn');
             if (btn) {
-                btn.classList.toggle('hidden', hidden);
-                btn.title = hidden ? 'Unhide' : 'Hide';
-                btn.textContent = hidden ? '✕' : '–';
+                btn.classList.toggle('hidden', ignored);
+                btn.title = ignored ? 'Unignore' : 'Ignore (seen / don\'t care)';
+                btn.textContent = ignored ? '↩' : '–';
+            }
+            const bbtn = gallery.querySelector('.blacklist-manga-btn');
+            if (bbtn) {
+                bbtn.classList.toggle('blacklisted', blacklisted);
+                bbtn.title = blacklisted ? 'Unblacklist' : 'Blacklist (never show again)';
             }
         });
     }
@@ -16247,49 +16614,88 @@ class HideBlacklistSystem {
         const id = match[1];
         const container = document.querySelector('.buttons');
         if (!container) return;
-        if (document.getElementById('nhi-hide-button')) return;
 
-        const hidden = this.isHidden(id);
-        const html = `
-            <a href="#" id="nhi-hide-button" class="btn ${hidden ? 'btn-danger' : 'btn-secondary'} btn-enabled tooltip btn-nhi-hide">
-                <i class="fas fa-ban"></i>
-                <span>${hidden ? 'Unhide' : 'Hide/Blacklist'}</span>
-                <div class="top">${hidden ? 'Show this manga again' : 'Hide this manga across listings'}<i></i></div>
-            </a>
-        `;
-        const wrap = document.createElement('div');
-        wrap.innerHTML = html;
-        const btn = wrap.firstElementChild;
-        btn.addEventListener('click', async (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const span = btn.querySelector('span');
-            const original = span ? span.textContent : '';
-            if (span) span.textContent = 'Processing...';
-            btn.style.opacity = '0.7';
-            try {
-                const titleText = this.getCurrentGalleryTitle() || '';
-                await this.toggleHidden(id, titleText);
-                const newHidden = this.isHidden(id);
-                if (span) span.textContent = newHidden ? 'Unhide' : 'Hide/Blacklist';
-                if (btn.querySelector('.top')) {
-                    btn.querySelector('.top').innerHTML = `${newHidden ? 'Show this manga again' : 'Hide this manga across listings'}<i></i>`;
+        if (!document.getElementById('nhi-hide-button')) {
+            const ignored = this.isIgnored(id);
+            const html = `
+                <a href="#" id="nhi-hide-button" class="btn ${ignored ? 'btn-warning' : 'btn-secondary'} btn-enabled tooltip btn-nhi-hide">
+                    <i class="fas fa-eye-slash"></i>
+                    <span>${ignored ? 'Unignore' : 'Ignore'}</span>
+                    <div class="top">${ignored ? 'Show this manga again' : 'Soft dismiss — seen / don\'t care'}<i></i></div>
+                </a>
+            `;
+            const wrap = document.createElement('div');
+            wrap.innerHTML = html;
+            const btn = wrap.firstElementChild;
+            btn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const span = btn.querySelector('span');
+                const original = span ? span.textContent : '';
+                if (span) span.textContent = 'Processing...';
+                btn.style.opacity = '0.7';
+                try {
+                    const titleText = this.getCurrentGalleryTitle() || '';
+                    await this.toggleHidden(id, titleText);
+                    const newIgnored = this.isIgnored(id);
+                    if (span) span.textContent = newIgnored ? 'Unignore' : 'Ignore';
+                    if (btn.querySelector('.top')) {
+                        btn.querySelector('.top').innerHTML = `${newIgnored ? 'Show this manga again' : 'Soft dismiss — seen / don\'t care'}<i></i>`;
+                    }
+                    btn.classList.toggle('btn-warning', newIgnored);
+                    btn.classList.toggle('btn-secondary', !newIgnored);
+                } catch (_) {
+                    if (span) span.textContent = original;
+                } finally {
+                    btn.style.opacity = '1';
                 }
-                btn.classList.toggle('btn-danger', newHidden);
-                btn.classList.toggle('btn-secondary', !newHidden);
-            } catch (_) {
-                if (span) span.textContent = original;
-            } finally {
-                btn.style.opacity = '1';
-            }
-        });
-        container.appendChild(btn);
+            });
+            container.appendChild(btn);
+        }
+
+        if (!document.getElementById('nhi-blacklist-button')) {
+            const blacklisted = this.isBlacklisted(id);
+            const html = `
+                <a href="#" id="nhi-blacklist-button" class="btn ${blacklisted ? 'btn-danger' : 'btn-secondary'} btn-enabled tooltip btn-nhi-blacklist">
+                    <i class="fas fa-ban"></i>
+                    <span>${blacklisted ? 'Unblacklist' : 'Blacklist'}</span>
+                    <div class="top">${blacklisted ? 'Remove hard block' : 'Hard block — never show again'}<i></i></div>
+                </a>
+            `;
+            const wrap = document.createElement('div');
+            wrap.innerHTML = html;
+            const btn = wrap.firstElementChild;
+            btn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const span = btn.querySelector('span');
+                const original = span ? span.textContent : '';
+                if (span) span.textContent = 'Processing...';
+                btn.style.opacity = '0.7';
+                try {
+                    const titleText = this.getCurrentGalleryTitle() || '';
+                    await this.toggleBlacklist(id, titleText);
+                    const newBl = this.isBlacklisted(id);
+                    if (span) span.textContent = newBl ? 'Unblacklist' : 'Blacklist';
+                    if (btn.querySelector('.top')) {
+                        btn.querySelector('.top').innerHTML = `${newBl ? 'Remove hard block' : 'Hard block — never show again'}<i></i>`;
+                    }
+                    btn.classList.toggle('btn-danger', newBl);
+                    btn.classList.toggle('btn-secondary', !newBl);
+                } catch (_) {
+                    if (span) span.textContent = original;
+                } finally {
+                    btn.style.opacity = '1';
+                }
+            });
+            container.appendChild(btn);
+        }
+
         this.updateGalleryVisibility(id);
     }
 
     getCurrentGalleryTitle() {
         try {
-            // nhentai gallery page often has #info h1 or .title
             const h1 = document.querySelector('#info h1');
             if (h1 && h1.textContent) return h1.textContent.trim();
             const titleEl = document.querySelector('.title') || document.querySelector('#info .title');
@@ -16373,6 +16779,416 @@ if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initHideBlacklistSystem);
 } else {
     initHideBlacklistSystem();
+}
+
+//------------------------  **Explore New Content**  ------------------
+// Auto-fetches subsequent listing pages and appends galleries that are not
+// ignored, blacklisted, or (optionally) already read — so grids stay full of new stuff.
+
+class ExploreNewContentSystem {
+    constructor() {
+        this.settings = {
+            enabled: true,
+            skipRead: true,
+            maxPages: 8,
+            targetVisible: 25,
+            fetchDelayMs: 1200
+        };
+        this.state = {
+            running: false,
+            pageCursor: null,
+            maxPage: null,
+            pagesFetched: 0,
+            appended: 0,
+            skipped: 0,
+            seenIds: new Set(),
+            aborted: false
+        };
+        this._fillTimer = null;
+        this._statusEl = null;
+        this.init();
+    }
+
+    async init() {
+        await this.loadSettings();
+        this.addCSS();
+        if (this.settings.enabled && this.isEligiblePage()) {
+            this.seedSeenIds();
+            this.scheduleFill(600);
+        }
+        this.watchNavigation();
+    }
+
+    async loadSettings() {
+        this.settings.enabled = await GM.getValue('exploreNewEnabled', true);
+        this.settings.skipRead = await GM.getValue('exploreHideReadEnabled', true);
+        this.settings.maxPages = Math.max(2, Math.min(20, parseInt(await GM.getValue('exploreMaxPages', 8), 10) || 8));
+    }
+
+    isEligiblePage() {
+        const path = location.pathname || '';
+        if (/^\/g\/\d+/.test(path)) return false;
+        if (/^\/(settings|read-manga|quick-nut|continue-reading|continue_reading|bookmarks|favorite)\/?/.test(path)) return false;
+        if (document.querySelector('.read-manga-page') || document.body.classList.contains('read-manga-active')) return false;
+        // Home, search, tag/artist/etc, favorites, popular
+        return !!this.getGalleryContainer();
+    }
+
+    getGalleryContainer() {
+        return document.querySelector('.container.index-container:not(.index-popular)') ||
+            document.querySelector('#content .container.index-container') ||
+            document.querySelector('.index-container') ||
+            null;
+    }
+
+    getCurrentPageNumber() {
+        const params = new URLSearchParams(location.search);
+        const p = parseInt(params.get('page') || '1', 10);
+        return Number.isFinite(p) && p > 0 ? p : 1;
+    }
+
+    getMaxPageFromDom() {
+        let max = 1;
+        document.querySelectorAll('.pagination a, .pagination .page').forEach(el => {
+            const href = el.getAttribute('href') || '';
+            const m = href.match(/[?&]page=(\d+)/);
+            if (m) max = Math.max(max, parseInt(m[1], 10));
+            const n = parseInt((el.textContent || '').trim(), 10);
+            if (Number.isFinite(n)) max = Math.max(max, n);
+        });
+        const last = document.querySelector('.pagination .last');
+        if (last) {
+            const href = last.getAttribute('href') || '';
+            const m = href.match(/[?&]page=(\d+)/);
+            if (m) max = Math.max(max, parseInt(m[1], 10));
+        }
+        return max;
+    }
+
+    buildPageUrl(pageNum) {
+        const url = new URL(location.href);
+        if (pageNum <= 1) url.searchParams.delete('page');
+        else url.searchParams.set('page', String(pageNum));
+        return url.toString();
+    }
+
+    seedSeenIds() {
+        this.state.seenIds = new Set();
+        document.querySelectorAll('.gallery a.cover, .gallery a[href*="/g/"]').forEach(a => {
+            const m = (a.getAttribute('href') || '').match(/\/g\/(\d+)/);
+            if (m) this.state.seenIds.add(m[1]);
+        });
+    }
+
+    countVisibleGalleries() {
+        const container = this.getGalleryContainer();
+        if (!container) return 0;
+        let n = 0;
+        container.querySelectorAll('.gallery').forEach(g => {
+            if (g.classList.contains('hidden-by-blacklist')) return;
+            if (g.classList.contains('hidden-by-ignore')) return;
+            if (g.classList.contains('hidden-by-read')) return;
+            // Also check computed display in case filters applied via other means
+            if (g.style.display === 'none') return;
+            n++;
+        });
+        return n;
+    }
+
+    shouldSkipGalleryEl(galleryEl) {
+        const link = galleryEl.querySelector('a.cover') || galleryEl.querySelector('a[href*="/g/"]');
+        if (!link) return true;
+        const m = (link.getAttribute('href') || '').match(/\/g\/(\d+)/);
+        if (!m) return true;
+        const id = m[1];
+        if (this.state.seenIds.has(id)) return true;
+
+        const hb = globalThis.hideBlacklistSystem;
+        if (hb && typeof hb.shouldSkipId === 'function') {
+            if (hb.shouldSkipId(id, { skipRead: this.settings.skipRead })) return true;
+        } else if (hb) {
+            if (hb.isHidden && hb.isHidden(id)) return true;
+            if (this.settings.skipRead) {
+                const mar = globalThis.markAsReadSystem;
+                if (mar && mar.isRead && mar.isRead(id)) return true;
+            }
+        }
+        return false;
+    }
+
+    addCSS() {
+        GM.addStyle(`
+            #nhp-explore-status {
+                position: sticky;
+                bottom: 12px;
+                z-index: 50;
+                margin: 16px auto;
+                max-width: 640px;
+                padding: 10px 14px;
+                border-radius: 8px;
+                background: rgba(30, 30, 30, 0.92);
+                color: #ddd;
+                font-size: 13px;
+                text-align: center;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.35);
+                display: none;
+            }
+            #nhp-explore-status.visible { display: block; }
+            #nhp-explore-status .nhp-explore-muted { color: #999; font-size: 12px; }
+        `);
+    }
+
+    ensureStatusEl() {
+        if (this._statusEl && document.body.contains(this._statusEl)) return this._statusEl;
+        let el = document.getElementById('nhp-explore-status');
+        if (!el) {
+            el = document.createElement('div');
+            el.id = 'nhp-explore-status';
+            const container = this.getGalleryContainer();
+            if (container && container.parentNode) {
+                container.parentNode.insertBefore(el, container.nextSibling);
+            } else {
+                document.body.appendChild(el);
+            }
+        }
+        this._statusEl = el;
+        return el;
+    }
+
+    setStatus(text, { muted } = {}) {
+        const el = this.ensureStatusEl();
+        if (!text) {
+            el.classList.remove('visible');
+            el.innerHTML = '';
+            return;
+        }
+        el.classList.add('visible');
+        el.innerHTML = muted ? `${text}<div class="nhp-explore-muted">${muted}</div>` : text;
+    }
+
+    scheduleFill(delayMs = 300) {
+        if (this._fillTimer) clearTimeout(this._fillTimer);
+        this._fillTimer = setTimeout(() => this.fillIfNeeded(), delayMs);
+    }
+
+    resetForNewPage() {
+        this.state.aborted = true;
+        this.state.running = false;
+        this.state.pagesFetched = 0;
+        this.state.appended = 0;
+        this.state.skipped = 0;
+        this.state.pageCursor = null;
+        this.state.maxPage = null;
+        this.seedSeenIds();
+        this.setStatus('');
+        if (this.settings.enabled && this.isEligiblePage()) {
+            this.state.aborted = false;
+            this.scheduleFill(500);
+        }
+    }
+
+    watchNavigation() {
+        let lastUrl = location.href;
+        const onMaybeNav = () => {
+            if (location.href === lastUrl) return;
+            lastUrl = location.href;
+            this.resetForNewPage();
+        };
+        window.addEventListener('popstate', onMaybeNav);
+        // Svelte / pushState
+        const _push = history.pushState;
+        const _replace = history.replaceState;
+        history.pushState = function (...args) {
+            const r = _push.apply(this, args);
+            try { onMaybeNav(); } catch (_) { /* ignore */ }
+            return r;
+        };
+        history.replaceState = function (...args) {
+            const r = _replace.apply(this, args);
+            try { onMaybeNav(); } catch (_) { /* ignore */ }
+            return r;
+        };
+        // Also re-check after svelte page init
+        window.addEventListener('nhp-hide-blacklist-ready', () => this.scheduleFill(700));
+    }
+
+    async fillIfNeeded() {
+        await this.loadSettings();
+        if (!this.settings.enabled || !this.isEligiblePage()) return;
+        if (this.state.running) return;
+
+        const hb = globalThis.hideBlacklistSystem;
+        if (hb && typeof hb.applyHiddenFilter === 'function') {
+            hb.applyHiddenFilter();
+        }
+
+        const visible = this.countVisibleGalleries();
+        if (visible >= this.settings.targetVisible) return;
+
+        this.state.running = true;
+        this.state.aborted = false;
+        if (this.state.pageCursor == null) {
+            this.state.pageCursor = this.getCurrentPageNumber();
+            this.state.maxPage = this.getMaxPageFromDom();
+        }
+
+        try {
+            while (
+                !this.state.aborted &&
+                this.state.pagesFetched < this.settings.maxPages &&
+                this.countVisibleGalleries() < this.settings.targetVisible
+            ) {
+                const nextPage = this.state.pageCursor + 1;
+                if (this.state.maxPage && nextPage > this.state.maxPage) {
+                    this.setStatus(
+                        `Explore New: end of results`,
+                        { muted: `Added ${this.state.appended} · skipped ${this.state.skipped} ignored/blacklisted/read` }
+                    );
+                    break;
+                }
+
+                this.setStatus(
+                    `Explore New: loading page ${nextPage}…`,
+                    { muted: `Visible ${this.countVisibleGalleries()} · added ${this.state.appended} · skipped ${this.state.skipped}` }
+                );
+
+                const ok = await this.fetchAndAppendPage(nextPage);
+                this.state.pageCursor = nextPage;
+                this.state.pagesFetched += 1;
+
+                if (!ok) {
+                    // Likely rate-limited or antibot — stop politely
+                    this.setStatus(
+                        `Explore New: stopped (rate limit or empty page)`,
+                        { muted: `Added ${this.state.appended} · skipped ${this.state.skipped}. Try again later.` }
+                    );
+                    break;
+                }
+
+                if (this.state.pagesFetched < this.settings.maxPages &&
+                    this.countVisibleGalleries() < this.settings.targetVisible) {
+                    await new Promise(r => setTimeout(r, this.settings.fetchDelayMs));
+                }
+            }
+
+            if (!this.state.aborted && this.countVisibleGalleries() >= this.settings.targetVisible) {
+                this.setStatus(
+                    `Explore New: filled grid`,
+                    { muted: `Added ${this.state.appended} · skipped ${this.state.skipped} · fetched ${this.state.pagesFetched} page(s)` }
+                );
+            } else if (!this.state.aborted && this.state.pagesFetched >= this.settings.maxPages) {
+                this.setStatus(
+                    `Explore New: reached max pages (${this.settings.maxPages})`,
+                    { muted: `Added ${this.state.appended} · skipped ${this.state.skipped}. Raise max in Settings → Tags.` }
+                );
+            }
+        } finally {
+            this.state.running = false;
+        }
+    }
+
+    async fetchAndAppendPage(pageNum) {
+        const container = this.getGalleryContainer();
+        if (!container) return false;
+
+        const url = this.buildPageUrl(pageNum);
+        let res;
+        try {
+            res = await fetch(url, { credentials: 'include', signal: AbortSignal.timeout(12000) });
+        } catch (e) {
+            console.warn('[NHP Explore] fetch failed', e);
+            return false;
+        }
+        if (!res || !res.ok) {
+            console.warn('[NHP Explore] bad status', res && res.status);
+            return false;
+        }
+
+        const html = await res.text();
+        // Cloudflare / antibot challenge pages usually lack gallery markup
+        if (!html.includes('class="gallery"') && !html.includes("class='gallery'")) {
+            return false;
+        }
+
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        const galleries = Array.from(doc.querySelectorAll('.gallery'));
+        if (!galleries.length) {
+            // Update max page guess
+            this.state.maxPage = Math.min(this.state.maxPage || pageNum, pageNum);
+            return false;
+        }
+
+        // Learn max page from fetched DOM if available
+        const fetchedMax = (() => {
+            let max = this.state.maxPage || 1;
+            doc.querySelectorAll('.pagination a, .pagination .page, .pagination .last').forEach(el => {
+                const href = el.getAttribute('href') || '';
+                const m = href.match(/[?&]page=(\d+)/);
+                if (m) max = Math.max(max, parseInt(m[1], 10));
+            });
+            return max;
+        })();
+        this.state.maxPage = Math.max(this.state.maxPage || 1, fetchedMax);
+
+        let addedThisPage = 0;
+        for (const g of galleries) {
+            const link = g.querySelector('a.cover') || g.querySelector('a[href*="/g/"]');
+            const m = link && (link.getAttribute('href') || '').match(/\/g\/(\d+)/);
+            const id = m ? m[1] : null;
+            if (!id) continue;
+
+            if (this.shouldSkipGalleryEl(g)) {
+                this.state.skipped += 1;
+                if (id) this.state.seenIds.add(id);
+                continue;
+            }
+
+            this.state.seenIds.add(id);
+            const imported = document.importNode(g, true);
+            // Strip any leftover injected state from source page
+            if (typeof stripGalleryInjectedState === 'function') {
+                stripGalleryInjectedState(imported);
+            }
+            imported.classList.add('nhp-explore-appended');
+            container.appendChild(imported);
+            this.state.appended += 1;
+            addedThisPage += 1;
+        }
+
+        if (addedThisPage > 0) {
+            try {
+                if (globalThis.hideBlacklistSystem) {
+                    globalThis.hideBlacklistSystem.addHideButtons();
+                    globalThis.hideBlacklistSystem.applyHiddenFilter();
+                }
+                if (typeof nhpScheduleApplyAll === 'function') {
+                    nhpScheduleApplyAll(100);
+                }
+            } catch (e) {
+                console.warn('[NHP Explore] reapply failed', e);
+            }
+        }
+
+        return true;
+    }
+}
+
+let exploreNewSystem;
+
+async function initExploreNewContentSystem() {
+    const enabled = await GM.getValue('exploreNewEnabled', true);
+    // Always construct so settings toggles / ignore actions can schedule fills
+    exploreNewSystem = new ExploreNewContentSystem();
+    globalThis.exploreNewSystem = exploreNewSystem;
+    if (!enabled) {
+        exploreNewSystem.settings.enabled = false;
+    }
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initExploreNewContentSystem);
+} else {
+    initExploreNewContentSystem();
 }
 
 //------------------------  **Enhanced Opacity/Fade System**  ------------------
