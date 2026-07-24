@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      10.9.0
+// @version      10.9.1
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -23,7 +23,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "10.9.0";
+const CURRENT_VERSION = "10.9.1";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -10310,9 +10310,17 @@ const nhpApiRateLimiter = {
     maxTokens: 8,
     refillIntervalMs: 2000, // 1 token every 2 seconds
     lastRefillTime: Date.now(),
+    cooldownUntil: 0, // set after a server 429 to fully back off
+
+    startCooldown(ms = 30000) {
+        this.tokens = 0;
+        this.cooldownUntil = Date.now() + ms;
+        this.lastRefillTime = this.cooldownUntil;
+    },
 
     refill() {
         const now = Date.now();
+        if (now < this.cooldownUntil) return;
         const elapsed = now - this.lastRefillTime;
         const tokensToAdd = Math.floor(elapsed / this.refillIntervalMs);
         if (tokensToAdd > 0) {
@@ -10322,6 +10330,7 @@ const nhpApiRateLimiter = {
     },
 
     tryAcquire() {
+        if (Date.now() < this.cooldownUntil) return false;
         this.refill();
         if (this.tokens > 0) {
             this.tokens--;
@@ -11221,6 +11230,10 @@ async function nhpFetchGalleryV2(galleryId) {
 
     // Rate limit individual fetches to avoid 429s
     if (!nhpApiRateLimiter.tryAcquire()) {
+        // During a 429 cooldown, bail immediately instead of waiting for tokens that can't refill
+        if (Date.now() < nhpApiRateLimiter.cooldownUntil) {
+            return null;
+        }
         console.warn(`[NHP] Rate limiter: skipping fetch for gallery ${id} (no tokens available)`);
         // Wait for a token with timeout
         const acquired = await nhpApiRateLimiter.waitForToken(6000);
@@ -11237,9 +11250,8 @@ async function nhpFetchGalleryV2(galleryId) {
         });
         if (!res.ok) {
             if (res.status === 429) {
-                console.warn(`[NHP] 429 rate limited fetching gallery ${id}`);
-                // Drain tokens to back off
-                nhpApiRateLimiter.tokens = 0;
+                console.warn(`[NHP] 429 rate limited fetching gallery ${id}, backing off for 30s`);
+                nhpApiRateLimiter.startCooldown(30000);
             }
             return null;
         }
@@ -15296,7 +15308,8 @@ class MarkAsReadSystem {
             this.addMarkAsReadButtons();
             this.applyReadStatus();
             this.setupAutoMark();
-            await this.checkAndApplyJustRead(); // New: Check and apply justRead data
+            await this.checkAndApplyJustRead();
+            this.setupJustReadWatcher();
         }
     }
 
@@ -15339,92 +15352,154 @@ class MarkAsReadSystem {
     }
 
     /**
-     * Check for 'justRead' key in localStorage, apply, and remove it.
+     * Watch for late justRead writes (Manga Loader finishes after Plus+ init).
      */
-    async checkAndApplyJustRead() {
-        const parseGalleries = (raw) => {
-            try {
-                const data = JSON.parse(raw);
-                return Array.isArray(data) ? data : null;
-            } catch (err) {
-                console.error('Error parsing justRead data from localStorage:', err);
-                return null;
-            }
+    setupJustReadWatcher() {
+        if (window.__nhpJustReadWatchInstalled) return;
+        window.__nhpJustReadWatchInstalled = true;
+
+        const scheduleCheck = () => {
+            clearTimeout(this._justReadDebounce);
+            this._justReadDebounce = setTimeout(() => {
+                this.checkAndApplyJustRead().catch((err) => {
+                    console.warn('justRead watcher failed:', err);
+                });
+            }, 400);
         };
 
-        const isPlaceholderMeta = (g) => {
-            if (!g) return true;
-            const cover = String(g.coverImageUrl || '');
-            const language = String(g.language || '');
-            const title = String(g.title || '');
-            return cover.startsWith('data:image/svg') && language === 'Unknown' && title === 'Unknown';
+        // Same-tab: Manga Loader writes via localStorage.setItem
+        const originalSetItem = localStorage.setItem.bind(localStorage);
+        localStorage.setItem = (key, value) => {
+            originalSetItem(key, value);
+            if (key === 'justRead') scheduleCheck();
         };
 
-        const justReadData = localStorage.getItem('justRead');
-        if (!justReadData) return;
-
-        let galleries = parseGalleries(justReadData);
-        if (!galleries) {
-            // Invalid JSON; clean up to avoid repeated errors
-            localStorage.removeItem('justRead');
-            return;
-        }
-
-        // If any gallery has placeholder metadata, wait for external script to populate
-        if (galleries.some(isPlaceholderMeta)) {
-            // Inform the user we're fetching missing metadata
-            this.showMarkNotification('Fetching metadata to mark as read...', 'info');
-
-            const intervalMs = 2000; // check every 2 seconds
-            // Keep checking until metadata is populated; do not delete justRead early
-            while (true) {
-                await new Promise(r => setTimeout(r, intervalMs));
-                const updatedRaw = localStorage.getItem('justRead');
-                if (!updatedRaw) {
-                    // External script removed it; stop here
-                    return;
-                }
-                const updated = parseGalleries(updatedRaw);
-                if (!updated) {
-                    // If parsing fails, keep waiting
-                    continue;
-                }
-                if (updated.every(g => !isPlaceholderMeta(g))) {
-                    galleries = updated;
-                    break;
-                }
-            }
-        }
-
-        // Process and mark as read
-        let markedCount = 0;
-        for (const gallery of galleries) {
-            const galleryId = normalizeGalleryId(gallery && gallery.id);
-            if (galleryId && !this.readGalleries.has(galleryId)) {
-                this.readGalleries.add(galleryId);
-                await this.cacheGalleryData(galleryId, gallery.title, gallery.coverImageUrl);
-                await this.checkAndRemoveFromInbox(galleryId); // Check inbox removal
-                markedCount++;
-            }
-        }
-        if (markedCount > 0) {
-            await this.saveReadGalleries();
-            this.applyReadStatus(); // Re-apply styles to reflect new reads
-            this.showAutoMarkNotification(markedCount);
-        }
-
-        // Remove once processed successfully
-        localStorage.removeItem('justRead');
+        // Cross-tab / other windows
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'justRead' && e.newValue) scheduleCheck();
+        });
     }
 
     /**
-     * Show a notification for auto-marked galleries.
+     * Check for 'justRead' key in localStorage, apply, and remove it.
+     * Manga Loader may write placeholder metadata first; we briefly wait, then
+     * resolve remaining placeholders ourselves so marking never hangs forever.
      */
-    showAutoMarkNotification(count) {
-        // Placeholder for notification logic. Implement as needed.
-        console.log(`Auto-marked ${count} galleries as read from 'justRead' data.`);
-        // Example: You might want to use a more visible notification system here.
-        // For instance, a temporary div that fades out, similar to the changelog popup.
+    async checkAndApplyJustRead() {
+        if (this._justReadProcessing) return;
+        this._justReadProcessing = true;
+
+        try {
+            const parseGalleries = (raw) => {
+                try {
+                    const data = JSON.parse(raw);
+                    return Array.isArray(data) ? data : null;
+                } catch (err) {
+                    console.error('Error parsing justRead data from localStorage:', err);
+                    return null;
+                }
+            };
+
+            const isPlaceholderCover = (cover) => {
+                const value = String(cover || '');
+                return !value || value.startsWith('data:image');
+            };
+
+            const isPlaceholderMeta = (g) => {
+                if (!g) return true;
+                const cover = String(g.coverImageUrl || '');
+                const language = String(g.language || '');
+                const title = String(g.title || '');
+                return isPlaceholderCover(cover) &&
+                    (language === 'Unknown' || !language) &&
+                    (title === 'Unknown' || !title);
+            };
+
+            const usableTitle = (title) => {
+                const value = String(title || '').trim();
+                return value && value !== 'Unknown' ? value : null;
+            };
+
+            const usableCover = (cover) => {
+                return isPlaceholderCover(cover) ? null : String(cover);
+            };
+
+            const justReadData = localStorage.getItem('justRead');
+            if (!justReadData) return;
+
+            let galleries = parseGalleries(justReadData);
+            if (!galleries) {
+                localStorage.removeItem('justRead');
+                return;
+            }
+
+            if (galleries.some(isPlaceholderMeta)) {
+                this.showMarkNotification('Fetching metadata to mark as read...', 'info');
+
+                // Brief wait for Manga Loader's background metadata update
+                const intervalMs = 1000;
+                const maxAttempts = 6;
+                for (let attempt = 0; attempt < maxAttempts; attempt++) {
+                    await new Promise(r => setTimeout(r, intervalMs));
+                    const updatedRaw = localStorage.getItem('justRead');
+                    if (!updatedRaw) return; // already consumed elsewhere
+                    const updated = parseGalleries(updatedRaw);
+                    if (!updated) continue;
+                    galleries = updated;
+                    if (updated.every(g => !isPlaceholderMeta(g))) break;
+                }
+
+                // Resolve anything still placeholder via Plus+ API helpers
+                for (let i = 0; i < galleries.length; i++) {
+                    if (!isPlaceholderMeta(galleries[i])) continue;
+                    const galleryId = normalizeGalleryId(galleries[i] && galleries[i].id);
+                    if (!galleryId || typeof nhpFetchGalleryV2 !== 'function') continue;
+                    try {
+                        const apiData = await nhpFetchGalleryV2(galleryId);
+                        if (!apiData) continue;
+                        galleries[i] = {
+                            ...galleries[i],
+                            id: galleryId,
+                            title: apiData.title || galleries[i].title,
+                            coverImageUrl: apiData.cover_url || apiData.thumb_url || galleries[i].coverImageUrl,
+                            language: apiData.language || galleries[i].language
+                        };
+                    } catch (err) {
+                        console.warn(`Failed to resolve justRead metadata for ${galleryId}:`, err);
+                    }
+                }
+            }
+
+            let markedCount = 0;
+            for (const gallery of galleries) {
+                const galleryId = normalizeGalleryId(gallery && gallery.id);
+                if (!galleryId || this.readGalleries.has(galleryId)) continue;
+
+                this.readGalleries.add(galleryId);
+                const title = usableTitle(gallery.title);
+                const cover = usableCover(gallery.coverImageUrl);
+                await this.cacheGalleryData(galleryId, title, cover);
+                if (!title || !cover) {
+                    await this.cacheGalleryDataFromFirstPage(galleryId);
+                }
+                await this.checkAndRemoveFromInbox(galleryId);
+                markedCount++;
+            }
+
+            if (markedCount > 0) {
+                await this.saveReadGalleries();
+                this.applyReadStatus();
+                this.showMarkNotification(
+                    markedCount === 1
+                        ? 'Gallery marked as read!'
+                        : `${markedCount} galleries marked as read!`
+                );
+            }
+
+            localStorage.removeItem('justRead');
+        } finally {
+            this._justReadProcessing = false;
+        }
     }
 
     /**
@@ -18864,6 +18939,8 @@ class ReadMangaPageSystem {
         // Reverse the array to get the most recent reads first, then slice
         const recentGalleryIds = galleryIds.slice().reverse();
 
+        const needsRefresh = [];
+
         for (const galleryId of recentGalleryIds.slice(0, baseLimit)) { // Use configurable/incremental limit
             let galleryInfo = cachedData[galleryId];
             const needsTitleRefresh = !galleryInfo || this.isPlaceholderOrMissingTitle(galleryInfo.title, galleryId);
@@ -18885,24 +18962,93 @@ class ReadMangaPageSystem {
                 if (!galleryInfo.url) {
                     galleryInfo.url = `/g/${galleryId}/`;
                 }
-
-                // Try multiple sources for gallery data
-                await this.tryFetchGalleryInfo(galleryInfo);
+                needsRefresh.push(galleryInfo);
             }
 
             galleryData.push(galleryInfo);
         }
 
-        // Cache any newly found data
-        const updatedCache = { ...cachedData };
-        galleryData.forEach(gallery => {
-            if (gallery.cached) {
-                updatedCache[gallery.id] = gallery;
-            }
-        });
-        await GM.setValue('readGalleriesCache', updatedCache);
+        // Resolve missing metadata after the page renders — never block rendering
+        // on rate-limited API calls (a drained limiter used to stall the page for minutes)
+        if (needsRefresh.length > 0) {
+            setTimeout(() => this.refreshGalleryMetadataInBackground(needsRefresh), 0);
+        }
 
         return galleryData;
+    }
+
+    /**
+     * Progressively fetch missing gallery metadata and update rendered cards in place.
+     */
+    async refreshGalleryMetadataInBackground(galleries) {
+        if (this._metaRefreshRunning) {
+            // Queue newly requested galleries onto the running pass
+            this._metaRefreshQueue = (this._metaRefreshQueue || []).concat(galleries);
+            return;
+        }
+        this._metaRefreshRunning = true;
+        this._metaRefreshQueue = galleries.slice();
+
+        try {
+            while (this._metaRefreshQueue.length > 0) {
+                // Stop if the user navigated away from the read-manga page
+                const normalizedPath = window.location.pathname.replace(/\/+$/, '') || '/';
+                if (normalizedPath !== this.pageUrl.replace(/\/+$/, '')) break;
+
+                const galleryInfo = this._metaRefreshQueue.shift();
+                try {
+                    await this.tryFetchGalleryInfo(galleryInfo);
+                } catch (e) {
+                    console.warn(`Failed to refresh metadata for gallery ${galleryInfo.id}:`, e);
+                }
+
+                if (galleryInfo.cached) {
+                    const cache = await GM.getValue('readGalleriesCache', {});
+                    cache[galleryInfo.id] = galleryInfo;
+                    await GM.setValue('readGalleriesCache', cache);
+                    this.updateGalleryCardInPlace(galleryInfo);
+                }
+
+                // Gentle pacing between galleries to avoid hammering the API
+                await new Promise(r => setTimeout(r, 300));
+            }
+        } finally {
+            this._metaRefreshRunning = false;
+            this._metaRefreshQueue = [];
+        }
+    }
+
+    /**
+     * Patch an already-rendered gallery card with freshly fetched metadata.
+     */
+    updateGalleryCardInPlace(gallery) {
+        const card = document.querySelector(`.read-manga-gallery[data-gallery-id="${gallery.id}"]`);
+        if (!card) return;
+
+        const caption = card.querySelector('.caption');
+        if (caption && gallery.title && !this.isPlaceholderOrMissingTitle(gallery.title, gallery.id)) {
+            caption.textContent = gallery.title;
+        }
+
+        if (gallery.thumbnail) {
+            const coverLink = card.querySelector('a.cover');
+            if (!coverLink) return;
+            const placeholder = coverLink.querySelector('.no-image-placeholder');
+            let img = coverLink.querySelector('img');
+            if (!img) {
+                img = document.createElement('img');
+                img.alt = gallery.title || `Gallery ${gallery.id}`;
+                img.loading = 'lazy';
+                img.style.cssText = 'width: 100%; height: 300px; object-fit: cover; display: block;';
+                img.addEventListener('load', () => {
+                    if (placeholder) placeholder.style.setProperty('display', 'none', 'important');
+                });
+                coverLink.insertBefore(img, coverLink.firstChild);
+            }
+            if (img.src !== gallery.thumbnail) {
+                img.src = gallery.thumbnail;
+            }
+        }
     }
 
     /**

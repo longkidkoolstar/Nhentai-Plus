@@ -1,4 +1,13 @@
 {
+  "10.9.1": {
+    "date": "2026-07-24",
+    "changes": [
+      "fix(mark-as-read): stop hanging on Manga Loader justRead placeholder metadata — fetch metadata ourselves after a short wait and always mark as read",
+      "fix(mark-as-read): watch same-tab justRead writes so finishing a manga with Manga Loader marks it without requiring a full reload",
+      "fix(read-manga): render the page immediately from cache instead of blocking on rate-limited API calls — missing titles/covers now fill in progressively in the background",
+      "fix(api): real 30s backoff after a 429 response so the script stops hammering the gallery API"
+    ]
+  },
   "10.9.0": {
     "date": "2026-07-24",
     "changes": [
