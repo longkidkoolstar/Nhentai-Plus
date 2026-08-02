@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      10.9.1
+// @version      10.9.2
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -23,7 +23,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "10.9.1";
+const CURRENT_VERSION = "10.9.2";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -3747,7 +3747,7 @@ class OnlineDataSync {
             'processedFavorites', 'processedUnfavorites',
             // Inbox & Share settings
             'shareButtonEnabled', 'receiveSharesEnabled', 'receivePopupsEnabled', 'inboxPollIntervalMin', 'inboxMessages',
-            'favoriteTagsList'
+            'favoriteTagsList', 'blacklistTagsList', 'warningTagsList'
         ];
 
         for (const key of syncableKeys) {
@@ -3842,8 +3842,15 @@ class OnlineDataSync {
             }
         } else {
             for (const [key, value] of Object.entries(syncData.data)) {
-                if (key === 'offlineFavorites' || key === 'readGalleries') {
-                    await GM.setValue(key, normalizeGalleryIdList(value));
+                if (SYNC_LOCAL_ONLY_KEYS.has(key)) continue;
+
+                if (key === 'offlineFavorites' || key === 'readGalleries' || key === 'hiddenGalleries' || key === 'blacklistedGalleries') {
+                    const existing = await GM.getValue(key, []);
+                    const merged = normalizeGalleryIdList([
+                        ...(Array.isArray(existing) ? existing : []),
+                        ...(Array.isArray(value) ? value : [])
+                    ]);
+                    await GM.setValue(key, merged);
                     appliedCount++;
                     continue;
                 }
@@ -3872,6 +3879,21 @@ class OnlineDataSync {
                         const mergedProcessed = mergeProcessedEntries(existingProcessed, incomingProcessed);
                         await GM.setValue(key, mergedProcessed);
                     }
+                } else if (key === 'inboxMessages') {
+                    const existing = await GM.getValue(key, []);
+                    await GM.setValue(key, mergeInboxMessagesForSync(existing, value));
+                } else if (key === 'bookmarkedMangas') {
+                    const existing = await GM.getValue(key, []);
+                    const lastSyncUpload = await GM.getValue('lastSyncUpload', null);
+                    await GM.setValue(key, mergeBookmarkedMangasForSync(
+                        existing,
+                        value,
+                        parseSyncTimestamp(lastSyncUpload),
+                        parseSyncTimestamp(syncData.timestamp)
+                    ));
+                } else if (SYNC_STRING_ARRAY_KEYS.has(key)) {
+                    const existing = await GM.getValue(key, []);
+                    await GM.setValue(key, mergeStringArraysForSync(existing, value));
                 } else {
                     await GM.setValue(key, value);
                 }
@@ -3953,8 +3975,12 @@ class OnlineDataSync {
         const mergeMode = await GM.getValue('syncMergeMode', false);
         const previousUserData = existingData.users[userUUID];
         let payloadUserData = userSyncData;
-        if (mergeMode && previousUserData && previousUserData.data) {
-            payloadUserData = mergeUserSyncBlobs(userSyncData, previousUserData, { prefer: 'newer' });
+        // Always field-merge with the existing cloud blob so app-only keys (and any
+        // fields this client didn't collect) are not wiped on upload.
+        if (previousUserData && previousUserData.data) {
+            payloadUserData = mergeUserSyncBlobs(userSyncData, previousUserData, {
+                prefer: mergeMode ? 'newer' : 'local'
+            });
         }
 
         // Add/update current user's data
@@ -10067,16 +10093,34 @@ async function appendToInbox(newMessages) {
     try {
         const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
         const existing = await GM.getValue('inboxMessages', []);
-        const pruned = (Array.isArray(existing) ? existing : []).filter(m => Date.now() - (m.ts || 0) < THIRTY_DAYS_MS);
-        const combined = pruned.concat(newMessages.map(m => ({
-            toUUID: m.toUUID,
-            fromUUID: m.fromUUID,
-            id: m.id,
-            url: m.url,
-            ts: m.ts || Date.now(),
-            sourceStore: (m.sourceStore === 'private' || m.sourceStore === 'public') ? m.sourceStore : 'public'
-        })));
-        await GM.setValue('inboxMessages', combined);
+        const normalizeTs = (ts) => {
+            const n = Number(ts) || 0;
+            if (!Number.isFinite(n) || n <= 0) return Date.now();
+            // Worker uses ms; older app shares used seconds.
+            return n < 1e12 ? Math.floor(n * 1000) : Math.floor(n);
+        };
+        const pruned = (Array.isArray(existing) ? existing : []).filter(m => Date.now() - normalizeTs(m.ts) < THIRTY_DAYS_MS);
+        const byKey = new Map();
+        const add = (msg) => {
+            if (!msg || typeof msg !== 'object') return;
+            const id = msg.id != null ? String(msg.id) : '';
+            if (!id) return;
+            const ts = normalizeTs(msg.ts);
+            const key = `${id}::${msg.fromUUID || ''}`;
+            const normalized = {
+                toUUID: msg.toUUID,
+                fromUUID: msg.fromUUID,
+                id,
+                url: msg.url,
+                ts,
+                sourceStore: (msg.sourceStore === 'private' || msg.sourceStore === 'public') ? msg.sourceStore : 'public'
+            };
+            const prev = byKey.get(key);
+            if (!prev || ts >= prev.ts) byKey.set(key, normalized);
+        };
+        for (const m of pruned) add(m);
+        for (const m of (Array.isArray(newMessages) ? newMessages : [])) add(m);
+        await GM.setValue('inboxMessages', Array.from(byKey.values()).sort((a, b) => (b.ts || 0) - (a.ts || 0)));
     } catch (_) { }
 }
 
@@ -14813,21 +14857,21 @@ class AutoSyncManager {
         console.log(`AutoSync settings updated: enabled=${enabled}, interval=${intervalMinutes} minutes`);
     }
 
-    // Perform the actual sync operation
+    // Perform the actual sync operation (download+merge then upload)
     async performAutoSync() {
         if (!this.isEnabled) {
             return;
         }
 
         this.lastSyncAttempt = new Date().toISOString();
-        console.log('AutoSync: Starting automatic sync...');
+        console.log('AutoSync: Starting automatic sync (download then upload)...');
 
         try {
             // Determine which sync method to use based on user preferences
             const publicSyncEnabled = await GM.getValue('publicSyncEnabled', false);
             const privateSyncEnabled = await GM.getValue('privateSyncEnabled', false);
 
-            let syncPerformed = false;
+            let syncConfig = null;
 
             // Try private sync first if enabled
             if (privateSyncEnabled) {
@@ -14835,28 +14879,54 @@ class AutoSyncManager {
                 const privateApiKey = await GM.getValue('privateApiKey', '');
 
                 if (privateStorageUrl && privateApiKey) {
-                    await this.syncSystem.uploadData('jsonstorage', {
+                    syncConfig = {
                         url: privateStorageUrl,
                         apiKey: privateApiKey
-                    });
-                    console.log('AutoSync: Private sync completed successfully');
-                    syncPerformed = true;
+                    };
                 }
             }
 
-            // Fall back to public sync if private sync wasn't performed and public is enabled
-            if (!syncPerformed && publicSyncEnabled) {
-                await this.syncSystem.uploadData('jsonstorage', this.syncSystem.publicConfig);
-                console.log('AutoSync: Public sync completed successfully');
-                syncPerformed = true;
+            // Fall back to public sync if private sync wasn't configured and public is enabled
+            if (!syncConfig && publicSyncEnabled) {
+                syncConfig = this.syncSystem.publicConfig;
             }
 
-            if (syncPerformed) {
-                this.consecutiveErrors = 0; // Reset error counter on success
-                await GM.setValue('lastAutoSync', new Date().toISOString());
-            } else {
+            if (!syncConfig) {
                 console.log('AutoSync: No sync method enabled, skipping');
+                return;
             }
+
+            // Pull remote changes first so uploads don't clobber the other client.
+            try {
+                await this.syncSystem.downloadData('jsonstorage', syncConfig);
+                console.log('AutoSync: Download/merge completed successfully');
+            } catch (downloadError) {
+                // Missing UUID data is fine on first sync; other errors should not block upload.
+                const msg = downloadError && downloadError.message ? String(downloadError.message) : String(downloadError);
+                if (/No data found for UUID/i.test(msg)) {
+                    console.log('AutoSync: No remote data for this UUID yet — continuing with upload');
+                } else {
+                    console.warn('AutoSync: Download/merge failed, continuing with upload:', downloadError);
+                }
+            }
+
+            // Also drain Worker inbox so shares from the app arrive without waiting for the inbox poller.
+            try {
+                if (typeof fetchInboxOnce === 'function' && typeof appendToInbox === 'function') {
+                    const messages = await fetchInboxOnce(true);
+                    if (Array.isArray(messages) && messages.length) {
+                        await appendToInbox(messages);
+                    }
+                }
+            } catch (inboxError) {
+                console.warn('AutoSync: Worker inbox poll failed:', inboxError);
+            }
+
+            await this.syncSystem.uploadData('jsonstorage', syncConfig);
+            console.log('AutoSync: Upload completed successfully');
+
+            this.consecutiveErrors = 0; // Reset error counter on success
+            await GM.setValue('lastAutoSync', new Date().toISOString());
 
         } catch (error) {
             this.consecutiveErrors++;
@@ -15033,7 +15103,7 @@ const SYNC_GALLERY_ID_LIST_KEYS = new Set([
     'offlineFavorites', 'readGalleries', 'hiddenGalleries', 'blacklistedGalleries', 'toFavorite', 'toUnfavorite'
 ]);
 const SYNC_STRING_ARRAY_KEYS = new Set([
-    'bookmarkedPages', 'favoriteTagsList', 'mustAddTags', 'blacklistedTags',
+    'bookmarkedPages', 'favoriteTagsList', 'blacklistTagsList', 'warningTagsList', 'mustAddTags', 'blacklistedTags',
     'randomPrefTags', 'tags'
 ]);
 const SYNC_QUEUE_TIMESTAMP_KEYS = new Set(['toFavoriteAddedAt', 'toUnfavoriteAddedAt']);
@@ -15099,22 +15169,30 @@ function mergeBookmarkedMangasForSync(localList, remoteList, localTs, remoteTs) 
 }
 
 function mergeInboxMessagesForSync(localList, remoteList) {
-    const byId = new Map();
+    const byKey = new Map();
+    const normalizeTs = (ts) => {
+        const n = Number(ts) || 0;
+        if (!Number.isFinite(n) || n <= 0) return 0;
+        return n < 1e12 ? Math.floor(n * 1000) : Math.floor(n);
+    };
     const addList = (list) => {
         if (!Array.isArray(list)) return;
         for (const msg of list) {
             if (!msg || typeof msg !== 'object') continue;
             const id = msg.id != null ? String(msg.id) : (msg.url ? String(msg.url) : null);
             if (!id) continue;
-            const prev = byId.get(id);
-            if (!prev || (msg.ts || 0) > (prev.ts || 0)) {
-                byId.set(id, msg);
+            const fromUUID = msg.fromUUID != null ? String(msg.fromUUID) : '';
+            const key = `${id}::${fromUUID}`;
+            const normalized = { ...msg, id, fromUUID, ts: normalizeTs(msg.ts) || Date.now() };
+            const prev = byKey.get(key);
+            if (!prev || (normalized.ts || 0) > (prev.ts || 0)) {
+                byKey.set(key, normalized);
             }
         }
     };
     addList(localList);
     addList(remoteList);
-    return Array.from(byId.values())
+    return Array.from(byKey.values())
         .sort((a, b) => (b.ts || 0) - (a.ts || 0))
         .slice(0, SYNC_INBOX_MESSAGES_MAX);
 }

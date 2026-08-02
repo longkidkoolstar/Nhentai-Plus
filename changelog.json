@@ -1,4 +1,15 @@
 {
+  "10.9.2": {
+    "date": "2026-08-01",
+    "changes": [
+      "feat(sync): autosync now downloads/merges then uploads so app and userscript stay bidirectional",
+      "feat(sync): uploads always field-merge with the existing cloud blob so the other client’s keys are not wiped",
+      "feat(sync): sync blacklistTagsList and warningTagsList alongside favoriteTagsList",
+      "feat(sync): download merges inbox, bookmarks, tag lists, and gallery ID lists instead of overwriting",
+      "feat(inbox): normalize share timestamps (ms vs seconds) and dedupe by id+fromUUID",
+      "feat(inbox): autosync also drains the Worker inbox so app shares arrive without waiting for the inbox poller"
+    ]
+  },
   "10.9.1": {
     "date": "2026-07-24",
     "changes": [
