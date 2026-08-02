@@ -1,4 +1,13 @@
 {
+  "10.9.3": {
+    "date": "2026-08-01",
+    "changes": [
+      "feat(worker): public /sync now stores each UUID in Cloudflare KV (same KV namespace as inbox) — no more JSONStorage 64KB bin cap",
+      "feat(worker): one-time migrate of the legacy public JSONStorage bin into KV on first sync read after deploy",
+      "fix(sync): detect JSONStorage 64KB upload limit and show a clear error instead of a raw 400",
+      "fix(sync): block private JSONStorage uploads that already exceed 64KB before sending (private-only path)"
+    ]
+  },
   "10.9.2": {
     "date": "2026-08-01",
     "changes": [

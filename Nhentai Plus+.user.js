@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Nhentai Plus+
 // @namespace    github.com/longkidkoolstar
-// @version      10.9.2
+// @version      10.9.3
 // @description  Enhances the functionality of Nhentai website.
 // @author       longkidkoolstar
 // @match        https://nhentai.net/*
@@ -23,7 +23,7 @@
 
 //----------------------- **Change Log** ------------------------------------------
 
-const CURRENT_VERSION = "10.9.2";
+const CURRENT_VERSION = "10.9.3";
 const CHANGELOG_URL = "https://raw.githubusercontent.com/longkidkoolstar/Nhentai-Plus/refs/heads/main/changelog.json";
 
 (async () => {
@@ -3986,10 +3986,23 @@ class OnlineDataSync {
         // Add/update current user's data
         existingData.users[userUUID] = payloadUserData;
 
-        // Pre-upload size check is advisory only; do not block upload.
-        const rawJson = JSON.stringify(existingData);
+        // Size-check the *compressed* payload that will actually be PUT.
+        const processedForSize = await provider.prepareDataForUpload
+            ? await provider.prepareDataForUpload(existingData)
+            : existingData;
+        const rawJson = JSON.stringify(processedForSize);
         const estimatedBytes = new TextEncoder().encode(rawJson).length;
-        console.log(`[NHP Sync] Pre-upload payload: ~${Math.round(estimatedBytes / 1024)} KB (${existingData.users ? Object.keys(existingData.users).length : 0} user(s))`);
+        const userCount = existingData.users ? Object.keys(existingData.users).length : 0;
+        console.log(`[NHP Sync] Pre-upload payload: ~${Math.round(estimatedBytes / 1024)} KB (${userCount} user(s))`);
+
+        const isDirectJsonStorage = !!(config && config.url && /api\.jsonstorage\.net/i.test(config.url));
+        if (isDirectJsonStorage && estimatedBytes > 64 * 1024) {
+            throw new Error(
+                `Sync upload is too large for private JSONStorage (~${Math.round(estimatedBytes / 1024)}KB > 64KB). ` +
+                'Use Public Sync (Worker) instead — it stores each UUID separately — or prune data on accounts sharing this bin.'
+            );
+        }
+
         const overSizeLimit = estimatedBytes > SYNC_UPLOAD_SIZE_LIMIT_BYTES;
         if (overSizeLimit) {
             const kb = Math.round(estimatedBytes / 1024);
@@ -4256,6 +4269,14 @@ class JSONStorageProvider {
                         resolve(JSON.parse(response.responseText));
                     } else {
                         const details = this.getResponseErrorDetails(response);
+                        const bodyText = typeof response.responseText === 'string' ? response.responseText : '';
+                        if (response.status === 400 && /too large|64kb/i.test(bodyText)) {
+                            reject(new Error(
+                                `Upload failed: JSONStorage 64KB limit exceeded.${details} ` +
+                                'Switch to Public Sync (Worker) or prune synced data.'
+                            ));
+                            return;
+                        }
                         if (response.status === 404) {
                             reject(new Error(`Upload failed: 404 ${response.statusText}${details} | Possible cause: JSON storage size limit reached.`));
                             return;

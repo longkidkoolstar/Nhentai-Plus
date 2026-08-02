@@ -4,7 +4,13 @@
 //  - GET  /inbox    -> retrieve (and optionally drain) inbox messages for a UUID
 //  - POST /share    -> returns a shareable URL (legacy/back-compat)
 //  - GET  /g/:id    -> redirects to https://nhentai.net/g/:id/
+//  - GET/PUT /sync  -> per-user sync blobs in KV (avoids JSONStorage 64KB limit)
 // Requires KV binding: INBOX
+
+const SYNC_INDEX_KEY = 'sync:index';
+const SYNC_USER_PREFIX = 'sync:user:';
+const LEGACY_STORAGE_URL = 'https://api.jsonstorage.net/v1/json/d206ce58-9543-48db-a5e4-997cfc745ef3/acac021f-7bae-4492-8f3c-e90b18960dea';
+const LEGACY_STORAGE_KEY = '2f9e71c8-be66-4623-a2cc-a6f05e958563';
 
 export default {
   async fetch(request, env, ctx) {
@@ -96,34 +102,28 @@ export default {
       return Response.redirect(target, 302);
     }
 
-    // PROXY /sync -> Handle sync requests to new storage
+    // /sync -> per-user KV storage (JSONStorage is capped at 64KB for the whole bin)
     if (path === '/sync' || path === '/sync/') {
-      // New Bin URL provided by user
-      const STORAGE_URL = 'https://api.jsonstorage.net/v1/json/d206ce58-9543-48db-a5e4-997cfc745ef3/acac021f-7bae-4492-8f3c-e90b18960dea';
-      // Existing API Key
-      const STORAGE_KEY = '2f9e71c8-be66-4623-a2cc-a6f05e958563';
-
       if (method === 'GET') {
-        const proxyRes = await fetch(`${STORAGE_URL}?apiKey=${STORAGE_KEY}`);
-        if (!proxyRes.ok) return json({ error: 'Upstream sync error' }, proxyRes.status);
-        const data = await proxyRes.json();
-        return json(data);
+        try {
+          const store = await readSyncStore(env);
+          return json(store);
+        } catch (err) {
+          return json({ error: 'Sync download failed', detail: String(err && err.message ? err.message : err) }, 502);
+        }
       }
 
       if (method === 'POST' || method === 'PUT') {
         let payload = null;
         try { payload = await request.json(); } catch (_) {}
-        if (!payload) return json({ error: 'Missing payload' }, 400);
+        if (!payload || typeof payload !== 'object') return json({ error: 'Missing payload' }, 400);
 
-        const proxyRes = await fetch(`${STORAGE_URL}?apiKey=${STORAGE_KEY}`, {
-            method: 'PUT', // JSONStorage uses PUT for updates
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-        
-        if (!proxyRes.ok) return json({ error: 'Upstream sync error' }, proxyRes.status);
-        const data = await proxyRes.json();
-        return json(data);
+        try {
+          const saved = await writeSyncStore(env, payload);
+          return json(saved);
+        } catch (err) {
+          return json({ error: 'Sync upload failed', detail: String(err && err.message ? err.message : err) }, 502);
+        }
       }
     }
 
@@ -132,15 +132,109 @@ export default {
       return json({
         forceUpdate: false, // Set to true to enable the lock
         minVersion: "10.3.4", // Users below this version will be locked out
-        message: "A critical update is required to fix data corruption issues. Please update immediately."
+        message: "A critical update is required to fix data corruption issues. Please update immediately.",
+        syncBackend: 'kv',
       });
     }
 
     // Default help route
-    const help = 'NHentai Share Worker\n\nPOST /send with {toUUID, id|url, fromUUID?}.\nGET /inbox?uuid=...&drain=true to retrieve messages.\nPOST /share (legacy) and GET /g/:id available.\nPOST/GET /sync for data synchronization.\nGET /status for version checks.';
+    const help = 'NHentai Share Worker\n\nPOST /send with {toUUID, id|url, fromUUID?}.\nGET /inbox?uuid=...&drain=true to retrieve messages.\nPOST /share (legacy) and GET /g/:id available.\nPOST/GET /sync for data synchronization (KV-backed).\nGET /status for version checks.';
     return new Response(help, { status: 200, headers: { ...corsHeaders(), 'Content-Type': 'text/plain' } });
   }
 };
+
+async function readSyncIndex(env) {
+  const raw = await env.INBOX.get(SYNC_INDEX_KEY);
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((u) => typeof u === 'string' && /^[A-Z0-9]{5}$/.test(u)) : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+async function writeSyncIndex(env, uuids) {
+  const unique = [...new Set((uuids || []).map((u) => String(u).toUpperCase()).filter((u) => /^[A-Z0-9]{5}$/.test(u)))];
+  await env.INBOX.put(SYNC_INDEX_KEY, JSON.stringify(unique));
+  return unique;
+}
+
+async function migrateLegacySyncToKv(env) {
+  const proxyRes = await fetch(`${LEGACY_STORAGE_URL}?apiKey=${LEGACY_STORAGE_KEY}`);
+  if (!proxyRes.ok) {
+    throw new Error(`Legacy sync read failed (${proxyRes.status})`);
+  }
+  const data = await proxyRes.json();
+  if (!data || typeof data !== 'object') {
+    await writeSyncIndex(env, []);
+    return { users: {} };
+  }
+
+  const users = data.users && typeof data.users === 'object' ? data.users : {};
+  const uuids = Object.keys(users);
+  for (const uuid of uuids) {
+    await env.INBOX.put(`${SYNC_USER_PREFIX}${uuid}`, JSON.stringify(users[uuid]));
+  }
+  await writeSyncIndex(env, uuids);
+  return { users };
+}
+
+async function readSyncStore(env) {
+  let index = await readSyncIndex(env);
+
+  // First request after deploy: migrate the old JSONStorage bin into KV once.
+  if (index.length === 0) {
+    const legacyMarker = await env.INBOX.get('sync:migrated');
+    if (!legacyMarker) {
+      const migrated = await migrateLegacySyncToKv(env);
+      await env.INBOX.put('sync:migrated', new Date().toISOString());
+      return migrated;
+    }
+  }
+
+  const users = {};
+  for (const uuid of index) {
+    const raw = await env.INBOX.get(`${SYNC_USER_PREFIX}${uuid}`);
+    if (!raw) continue;
+    try {
+      users[uuid] = JSON.parse(raw);
+    } catch (_) {
+      // skip corrupt entry
+    }
+  }
+  return { users };
+}
+
+async function writeSyncStore(env, payload) {
+  const incomingUsers = payload.users && typeof payload.users === 'object' && !Array.isArray(payload.users)
+    ? payload.users
+    : null;
+
+  if (!incomingUsers) {
+    throw new Error('Payload must include a users map');
+  }
+
+  const existingIndex = await readSyncIndex(env);
+  const nextIndex = new Set(existingIndex);
+
+  for (const [uuidRaw, entry] of Object.entries(incomingUsers)) {
+    const uuid = String(uuidRaw || '').toUpperCase();
+    if (!/^[A-Z0-9]{5}$/.test(uuid)) continue;
+    await env.INBOX.put(`${SYNC_USER_PREFIX}${uuid}`, JSON.stringify(entry));
+    nextIndex.add(uuid);
+  }
+
+  const uuids = await writeSyncIndex(env, [...nextIndex]);
+  // Return assembled store so clients get the same shape as before.
+  const users = {};
+  for (const uuid of uuids) {
+    const raw = await env.INBOX.get(`${SYNC_USER_PREFIX}${uuid}`);
+    if (!raw) continue;
+    try { users[uuid] = JSON.parse(raw); } catch (_) {}
+  }
+  return { users };
+}
 
 function corsHeaders() {
   return {
